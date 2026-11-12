@@ -230,7 +230,7 @@ Read only the files needed for the current question.
 
 - [Commands](references/commands.md): command selection, output modes, limits, summaries, and deterministic ordering.
 - [Waveform formats](references/waveforms.md): VCD, FST, FSDB, SHM support, performance, and repeated-query costs.
-- [Paths, signals and scopes](references/paths.md): canonical and scoped names, bit projections, and ambiguous FSDB paths.
+- [Paths, signals and scopes](references/paths.md): canonical and scoped names, bit projections, and ambiguous source declarations.
 - [Time units and windows](references/timeunits.md): accepted time tokens, inclusive windows, alignment errors, and helper scripts.
 - [Clocks and sampling](references/sampling.md): event expressions, native and pre-edge modes, `time`, `sample_time`, and boundary behavior.
 - [Boolean conditions](references/predicates.md): common predicate forms and SystemVerilog literal syntax.

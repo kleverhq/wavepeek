@@ -86,6 +86,10 @@ This section lists the leaf forms that can appear as direct operands.
 
 - `operand reference`
   - a resolved signal reference uses the operand type defined by dump metadata
+  - qualified paths can contain JSON-quoted components, such as `top."a.b".c`
+  - `$signal("path")` explicitly references a path encoded as a JSON string;
+    use `$signal("\"root.name\"")` for a quoted root name
+  - a standalone quoted token remains a string literal; see [paths](paths.md)
 
 - `literal`
   - any supported literal form

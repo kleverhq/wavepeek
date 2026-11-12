@@ -28,7 +28,10 @@ by `--eval`. `extract` does not support wildcard triggers. `change`,
 A name may appear as a simple signal, a hierarchical path, or another canonical
 dump-derived signal token accepted by the command surface. With `--scope`, names
 may be relative or canonical paths inside that scope, and both forms may be
-mixed. Names must resolve to signals; unresolved names are errors.
+mixed. Names must resolve to signals; unresolved names are errors. Qualified
+paths may contain JSON-quoted components. `$signal("path")` explicitly supplies
+a path as a JSON string, including quoted root names and reserved words. See
+[path resolution](paths.md).
 
 ## 1.3 Basic Event Semantics
 

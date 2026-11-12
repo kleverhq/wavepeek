@@ -1,18 +1,13 @@
 use crate::engine::scoped_signal_path;
 use crate::error::WavepeekError;
+use crate::waveform::selection::parse_trailing_range;
 use crate::waveform::{ResolvedSignal, SampledSignalState, Waveform};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct BitRange {
-    msb: u32,
-    lsb: u32,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ProjectedSignal {
     pub source: ResolvedSignal,
     pub path: String,
-    range: Option<BitRange>,
+    projected: bool,
 }
 
 impl ProjectedSignal {
@@ -21,57 +16,24 @@ impl ProjectedSignal {
         Self {
             path: source.path.clone(),
             source,
-            range: None,
+            projected: false,
         }
     }
 
     pub(crate) fn width(&self) -> u32 {
-        self.range
-            .map_or(self.source.width, |range| range.msb - range.lsb + 1)
+        self.source.width
     }
 
     pub(crate) fn is_projected(&self) -> bool {
-        self.range.is_some()
+        self.projected
     }
 
-    pub(crate) fn project_sample(
-        &self,
-        sample: SampledSignalState,
-    ) -> Result<SampledSignalState, WavepeekError> {
-        let bits = match self.range {
-            Some(_) => self.project_bits(sample.bits.as_deref())?,
-            None => sample.bits,
-        };
-
-        Ok(SampledSignalState {
+    pub(crate) fn project_sample(&self, sample: SampledSignalState) -> SampledSignalState {
+        SampledSignalState {
             path: self.path.clone(),
             width: self.width(),
-            bits,
-        })
-    }
-
-    pub(crate) fn project_bits(&self, bits: Option<&str>) -> Result<Option<String>, WavepeekError> {
-        let Some(bits) = bits else {
-            return Ok(None);
-        };
-        let Some(range) = self.range else {
-            return Ok(Some(bits.to_string()));
-        };
-        let width = usize::try_from(self.source.width).map_err(|_| {
-            WavepeekError::Internal("signal width exceeds platform limits".to_string())
-        })?;
-        let start = width - 1 - range.msb as usize;
-        let end = width - range.lsb as usize;
-        Ok(Some(
-            bits.get(start..end)
-                .ok_or_else(|| {
-                    WavepeekError::Internal(format!(
-                        "sampled width for signal '{}' does not match resolved width {}",
-                        self.source.path, self.source.width
-                    ))
-                })?
-                .to_string(),
-        ))
+            bits: sample.bits,
+        }
     }
 }
 
@@ -87,10 +49,13 @@ pub(crate) fn resolve_projected_signal(
             return Ok(ProjectedSignal {
                 path: source.path.clone(),
                 source,
-                range: None,
+                projected: false,
             });
         }
         Err(WavepeekError::SignalNotFound(_)) => {}
+        Err(_)
+            if ondas::HierarchyPath::parse(&canonical_path).is_err()
+                && parse_trailing_range(token)?.is_some() => {}
         Err(error) => return Err(error),
     }
 
@@ -105,7 +70,7 @@ pub(crate) fn resolve_projected_signal(
         return Ok(ProjectedSignal {
             path: source.path.clone(),
             source,
-            range: None,
+            projected: false,
         });
     };
 
@@ -124,107 +89,10 @@ pub(crate) fn resolve_projected_signal(
         )));
     }
 
+    let source = waveform.project_signal(&source, range.msb, range.lsb)?;
     Ok(ProjectedSignal {
-        path: format!("{}[{}:{}]", source.path, range.msb, range.lsb),
+        path: source.path.clone(),
         source,
-        range: Some(range),
+        projected: true,
     })
-}
-
-fn parse_trailing_range(token: &str) -> Result<Option<(&str, BitRange)>, WavepeekError> {
-    let Some(open) = token.rfind('[') else {
-        return Ok(None);
-    };
-    let contents = &token[open + 1..];
-    if !contents.contains(':') {
-        return Ok(None);
-    }
-    if !token.ends_with(']') {
-        return Err(invalid_projection(token, "range must end with ']'"));
-    }
-
-    let base = &token[..open];
-    if base.is_empty() {
-        return Err(invalid_projection(
-            token,
-            "base signal path must not be empty",
-        ));
-    }
-    if base.ends_with(']') {
-        return Err(invalid_projection(
-            token,
-            "chained and multidimensional projections are not supported",
-        ));
-    }
-
-    let range = &contents[..contents.len() - 1];
-    let Some((msb, lsb)) = range.split_once(':') else {
-        return Ok(None);
-    };
-    if msb.is_empty() || lsb.is_empty() || lsb.contains(':') {
-        return Err(invalid_projection(
-            token,
-            "expected one static range '[msb:lsb]'",
-        ));
-    }
-    let msb = parse_bound(token, msb)?;
-    let lsb = parse_bound(token, lsb)?;
-    if msb < lsb {
-        return Err(invalid_projection(
-            token,
-            "msb must be greater than or equal to lsb",
-        ));
-    }
-
-    Ok(Some((base, BitRange { msb, lsb })))
-}
-
-fn parse_bound(token: &str, bound: &str) -> Result<u32, WavepeekError> {
-    if !bound.bytes().all(|byte| byte.is_ascii_digit()) {
-        return Err(invalid_projection(
-            token,
-            "bounds must be non-negative decimal integers",
-        ));
-    }
-    bound
-        .parse::<u32>()
-        .map_err(|_| invalid_projection(token, "bounds exceed the supported integer range"))
-}
-
-fn invalid_projection(token: &str, detail: &str) -> WavepeekError {
-    WavepeekError::Signal(format!("invalid flat projection '{token}': {detail}"))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{BitRange, parse_trailing_range};
-
-    #[test]
-    fn parses_only_one_static_trailing_range() {
-        assert_eq!(parse_trailing_range("top.data").unwrap(), None);
-        assert_eq!(parse_trailing_range("top.mem[0]").unwrap(), None);
-        assert_eq!(
-            parse_trailing_range("top.data[7:4]").unwrap(),
-            Some(("top.data", BitRange { msb: 7, lsb: 4 }))
-        );
-        assert_eq!(
-            parse_trailing_range("top.data[0:0]").unwrap(),
-            Some(("top.data", BitRange { msb: 0, lsb: 0 }))
-        );
-
-        for invalid in [
-            "top.data[4:7]",
-            "top.data[-1:0]",
-            "top.data[WIDTH:0]",
-            "top.data[7:]",
-            "top.data[7:4:1]",
-            "top.data[7:4",
-            "top.data[7:4][3:2]",
-        ] {
-            assert!(
-                parse_trailing_range(invalid).is_err(),
-                "{invalid} should fail"
-            );
-        }
-    }
 }

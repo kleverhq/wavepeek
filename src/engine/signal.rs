@@ -131,7 +131,7 @@ fn ambiguous_signal_warning(paths: &[String]) -> Diagnostic {
     Diagnostic::warning(
         WarningDiagnosticCode::AmbiguousSignalsOmitted,
         format!(
-            "omitted ambiguous FSDB signal paths: count={}, first='{}'; no candidate was selected",
+            "omitted ambiguous signal paths: count={}, first='{}'; multiple source declarations; no candidate was selected",
             paths.len(),
             paths[0]
         ),
@@ -150,7 +150,7 @@ mod tests {
         assert_eq!(diagnostic.code(), Some("WPK-W0005"));
         assert_eq!(
             diagnostic.message(),
-            "omitted ambiguous FSDB signal paths: count=2, first='top.opcode'; no candidate was selected"
+            "omitted ambiguous signal paths: count=2, first='top.opcode'; multiple source declarations; no candidate was selected"
         );
     }
 }

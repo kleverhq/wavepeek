@@ -1,41 +1,58 @@
 # Path and scope resolution
 
-This page explains how `wavepeek` deals with names and paths, including canonical and relative paths and bit projections.
+WavePeek formats canonical paths from exact Ondas hierarchy components. A path is a sequence of exact hierarchy components separated by dots. Components containing dots, brackets, commas, quotes, backslashes, or whitespace use JSON string syntax:
 
-Normally, `wavepeek` uses canonical dump-derived paths (also called canonical full paths) for every query. Some commands also support shorter relative paths.
+```text
+top.cpu.valid
+top."a.b".c
+top."a.b.c"
+top."literal[7:0]"
+```
+
+The middle two paths select different declarations. Brackets inside a quoted component are literal name characters. Quoting affects spelling, not identity. Legacy spellings that flatten components or remove literal suffixes are not aliases. Listing paths can be reused in selections and expressions. Scope depth counts components, regardless of punctuation inside a name.
+
+Use shell single quotes to preserve path quotes. Commas separate `--signals` and CLI `--payload` entries only outside quoted components. Order and duplicates are preserved.
+
+```sh
+wavepeek value --waves dump.vcd --at 10ns \
+  --signals 'top."literal[7:0]",top.literal'
+```
 
 ## Relative paths
 
-To reduce boilerplate on deep hierarchies most query commands support `--scope` (`signal`, `value`, `change`, `property`, `extract`) and accept shorter names relative to the selected scope and canonical paths inside it. With `--scope top`, both `cpu.valid` and `top.cpu.valid` resolve to the same signal, and both forms may appear in one request. Every name that does not begin with the exact selected-scope prefix is interpreted relative to that scope, so it cannot select a canonical path outside the scope.
+`signal`, `value`, `change`, `property`, and `extract` support `--scope`. With `--scope top`, both `cpu.valid` and `top.cpu.valid` resolve inside that scope. Names without the exact selected scope's component prefix are relative to it. Use `signal --scope ''` for root-level declarations; add `--recursive` to include signals in child scopes.
 
-Full canonical paths (without `--scope`):
-
-```text
-wavepeek value --waves dump.vcd --at 10ns --signals top.cpu.clk,top.cpu.state,top.cpu.csr.status
+```sh
+wavepeek value --waves dump.vcd --at 10ns \
+  --scope 'top."a.b"' --signals c
 ```
 
-With `--scope <path>`:
+Human output supports `--abs` for canonical paths. Machine path fields are always canonical; `relative_path` omits the selected scope.
 
-```text
-wavepeek value --waves dump.vcd --at 10ns --scope top.cpu --signals clk,state,csr.status
-# or
-wavepeek value --waves dump.vcd --at 10ns --scope top.cpu --signals clk,top.cpu.state,csr.status
+## Expression names
+
+Event and Boolean expressions accept qualified paths with quoted components, such as `top."a.b".c`. A standalone quoted token in a Boolean expression remains a string literal. Use `$signal("path")` to name a signal explicitly; its argument is a JSON string containing the path. This also addresses quoted root names and names containing expression operators or reserved words. Scope resolution is the same as for ordinary signal operands. An expression selection after `$signal(...)` applies to that resolved operand, rather than looking up another declaration with an appended index.
+
+```sh
+wavepeek property --waves dump.vcd --on 'posedge top.clk' \
+  --eval 'top."a.b".c == 34'
+wavepeek property --waves dump.vcd --on 'posedge top.clk' \
+  --eval '$signal("\"root.name\"") == 1'
 ```
 
-Commands that print signal paths in human output support `--abs` when relative output is possible. This includes `signal`, `value`, `change`, and the `extract` subcommands.
+SystemVerilog escaped identifiers are also accepted, with terminating whitespace: `top.\a.b .c` identifies the same components as `top."a.b".c`.
 
-## Bit projections
+## Bit projections and composite signals
 
-`value --signals`, `change --signals`, and `extract generic` payloads may append one flat static decimal `[msb:lsb]` projection. Resolution first tries the complete token as a waveform path, then removes one trailing projection and resolves its base. `[n]` therefore remains ordinary waveform path syntax; use `[n:n]` for one projected bit. Projection indexes normalized sampled bits with bit zero at the right. These request lists preserve order and duplicates, including overlapping projections and a projection beside its complete source.
+`value --signals`, `change --signals`, and `extract generic` payloads may append one flat static decimal `[msb:lsb]` projection. Resolution first tries the complete name, then a trailing projection outside quoted or escaped components. `[n]` names a declaration; use `[n:n]` for one projected bit. Bit zero is the rightmost normalized sampled bit. If a literal declaration conflicts with a projection spelling, the projection quotes its base component, such as `top."data"[3:0]`, so the returned selector remains unambiguous.
 
-```text
-wavepeek value --waves dump.vcd --at 10ns --scope top.cpu --signals 'state[7:4],top.cpu.data[31:16]'
+```sh
+wavepeek value --waves dump.vcd --at 10ns \
+  --signals 'top.data[7:4],top."memory[0]"[3:0]'
 ```
 
-## FSDB ambiguous paths
+Names such as `memory[0]` do not create scopes or prove array structure. WavePeek preserves the hierarchy provided by Ondas. Declarations sharing an exact name and owning scope form a composite vector only when explicit ranges establish a contiguous, non-overlapping, consistently directed layout. When all parts are scalar ranges, higher indices occupy the more significant bits. Ondas reads the concatenation and its projections. If some parts have observations, missing parts contribute X; if all parts are missing, the whole composition and its projections are missing.
 
-Older versions of Verdi can dump two distinct signals with exactly the same metadata under some circumstances. For example, a dump may contain `top.tx.opcode` (`opcode` is a struct field) and `top.opcode` (a logic signal), while the standalone FSDB does not expose enough information to recover both original paths.
+## Ambiguous declarations
 
-If distinct FSDB records map to one canonical signal path, `wavepeek` quarantines that path instead of selecting a backing record. Scopes and unambiguous signals remain available. Signal listings omit quarantined paths with a diagnostic, while an explicit reference to one fails as an ambiguous signal.
-
-Ambiguous-signal errors describe each candidate's scope, kind, width, and declared range in deterministic order. Candidate numbers are local to the diagnostic; they do not select a backing record.
+Distinct source declarations can have the same exact path. When confirmed ranges cannot form one vector, listings omit that path with `WPK-W0005`, and explicit selection fails without choosing a candidate. This rule applies to every format. Shared alias histories do not merge declarations or make different paths ambiguous. Canonical quoting prevents collisions caused by flattening different component sequences.

@@ -57,7 +57,6 @@ pub struct ChangeArgs {
     /// Signal paths or flat projections, comma-separated or repeated (for example, state,req or status[7:4])
     #[arg(
         long,
-        value_delimiter = ',',
         num_args = 1..,
         required = true,
         help_heading = "Selection options"

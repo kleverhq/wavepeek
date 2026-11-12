@@ -1051,7 +1051,7 @@ fn value_projects_flat_ranges_and_preserves_request_positions() {
             {"path": "top.data", "relative_path": "data", "value": "8'hff"},
             {"path": "top.data[7:4]", "relative_path": "data[7:4]", "value": "4'hf"},
             {"path": "top.data[0:0]", "relative_path": "data[0:0]", "value": "1'h1"},
-            {"path": "top.steps[0].flag", "relative_path": "steps[0].flag", "value": "1'h1"},
+            {"path": "top.\"steps[0]\".flag", "relative_path": "\"steps[0]\".flag", "value": "1'h1"},
         ])
     );
 }

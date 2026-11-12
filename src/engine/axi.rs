@@ -1447,7 +1447,7 @@ fn parse_cli_maps(values: &[String]) -> Result<Vec<(String, String)>, WavepeekEr
 
 fn normalize_map_pair(standard: &str, waves: &str) -> Result<(String, String), WavepeekError> {
     let standard = normalize_standard_name(standard)?;
-    let waves = waves.trim();
+    let waves = crate::engine::scoped_signal_path(waves, None);
     if waves.is_empty() {
         return Err(WavepeekError::Args(
             "AXI mapped waveform signal names must not be empty. See 'wavepeek extract axi --help'."
@@ -1582,15 +1582,12 @@ fn explicit_mappings(
                 standard
             )));
         }
-        if scope.is_some() && waves.contains('.') {
+        if scope.is_some() && ondas::HierarchyPath::parse(waves).is_ok_and(|path| path.len() > 1) {
             return Err(WavepeekError::Args(format!(
                 "AXI mapping for '{standard}' must use a scope-relative signal when --scope is set. See 'wavepeek extract axi --help'."
             )));
         }
-        let query_path = match scope {
-            Some(scope) => format!("{scope}.{waves}"),
-            None => waves.clone(),
-        };
+        let query_path = crate::engine::scoped_signal_path(waves, scope);
         let resolved =
             waveform
                 .borrow()
@@ -1755,7 +1752,7 @@ fn build_extract_sources(
             when,
             payload_waves: payload
                 .iter()
-                .map(|(_, mapping)| expr_name(mapping, scope).to_string())
+                .map(|(_, mapping)| selection_name(mapping, scope).to_string())
                 .collect(),
             payload_standards: payload
                 .iter()
@@ -1774,7 +1771,11 @@ fn build_extract_sources(
     Ok(sources)
 }
 
-fn expr_name<'a>(mapping: &'a AxiSignalMapping, scope: Option<&str>) -> &'a str {
+fn expr_name(mapping: &AxiSignalMapping, scope: Option<&str>) -> String {
+    crate::engine::expr_runtime::signal_operand(selection_name(mapping, scope))
+}
+
+fn selection_name<'a>(mapping: &'a AxiSignalMapping, scope: Option<&str>) -> &'a str {
     if scope.is_some() {
         mapping.display.as_str()
     } else {

@@ -123,9 +123,9 @@ fn fsdb_info_debug_preserves_metadata_only_result() {
     wavepeek_cmd()
         .args(["scope", "--waves", fixture.to_str().unwrap(), "--json"])
         .assert()
-        .code(2)
-        .stdout(predicate::str::contains("WPK-F0002"))
-        .stdout(predicate::str::contains("ambiguous canonical scope path"));
+        .success()
+        .stdout(predicate::str::contains("\\\\top.a"))
+        .stdout(predicate::str::contains("\\\\top/a"));
 }
 
 #[test]
@@ -522,11 +522,9 @@ fn fsdb_value_preserves_exact_projection_like_path_errors() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::contains(
-            "signal 'top.flags[0:0]' is ambiguous in FSDB hierarchy",
+            "signal 'top.\"flags[0:0]\"' is ambiguous in dump",
         ))
-        .stderr(predicate::str::contains(
-            "candidates: 1: scope=\"top\" kind=wire width=1 range=none, 2: scope=\"top\" kind=wire width=1 range=none",
-        ))
+        .stderr(predicate::str::contains("2 source declarations"))
         .stderr(predicate::str::contains("no candidate was selected"));
 }
 

@@ -190,9 +190,12 @@ impl<'a> StrictParser<'a> {
                 self.index += 1;
                 Ok((BasicEventAst::AnyTracked { span: token_span }, token_span))
             }
-            TokenKind::Identifier => {
+            TokenKind::Identifier | TokenKind::PathIdentifier => {
                 let name = std::mem::take(&mut self.tokens[self.index].lexeme);
-                if let Some((offset, ch)) = invalid_name_char(name.as_str()) {
+                if let Some((offset, ch)) = (token_kind != TokenKind::PathIdentifier)
+                    .then(|| invalid_name_char(name.as_str()))
+                    .flatten()
+                {
                     let message = format!("unexpected character '{ch}' in signal name");
                     return Err(parse_diag(
                         "EXPR-PARSE-EVENT-LEX-CHAR",
@@ -261,7 +264,10 @@ impl<'a> StrictParser<'a> {
             ));
         };
 
-        if name_token.kind != TokenKind::Identifier {
+        if !matches!(
+            name_token.kind,
+            TokenKind::Identifier | TokenKind::PathIdentifier
+        ) {
             let name_span = name_token.span;
             let diagnostic = match name_token.kind {
                 TokenKind::LeftParen => parse_diag(
@@ -287,8 +293,12 @@ impl<'a> StrictParser<'a> {
         }
 
         let name_span = name_token.span;
+        let is_path = name_token.kind == TokenKind::PathIdentifier;
         let name = std::mem::take(&mut self.tokens[self.index].lexeme);
-        if let Some((offset, ch)) = invalid_name_char(name.as_str()) {
+        if let Some((offset, ch)) = (!is_path)
+            .then(|| invalid_name_char(name.as_str()))
+            .flatten()
+        {
             let message = format!("unexpected character '{ch}' in signal name");
             return Err(parse_diag(
                 "EXPR-PARSE-EVENT-LEX-CHAR",
@@ -651,11 +661,22 @@ impl<'a> LogicalParser<'a> {
     }
 
     fn parse_postfix_expr(&mut self) -> Result<LogicalExprNode, ExprDiagnostic> {
+        let mut explicit_path = matches!(self.current().kind, LogicalTokenKind::PathIdentifier(_));
         let mut node = self.parse_primary_expr()?;
 
         loop {
             match self.current().kind {
                 LogicalTokenKind::LeftBracket => {
+                    // Bind an explicit path before applying expression selection;
+                    // it cannot become a different declaration named path[index].
+                    if explicit_path {
+                        let span = node.span();
+                        node = LogicalExprNode::Parenthesized {
+                            expr: Box::new(node),
+                            span,
+                        };
+                        explicit_path = false;
+                    }
                     let selection = self.parse_selection_suffix(node)?;
                     node = selection;
                 }
@@ -871,7 +892,7 @@ impl<'a> LogicalParser<'a> {
 
         let token = self.current().clone();
         match token.kind {
-            LogicalTokenKind::Identifier(name) => {
+            LogicalTokenKind::Identifier(name) | LogicalTokenKind::PathIdentifier(name) => {
                 self.index += 1;
                 Ok(LogicalExprNode::OperandRef {
                     name,
@@ -968,7 +989,7 @@ impl<'a> LogicalParser<'a> {
         self.index += 1;
 
         let operand = match self.current().clone().kind {
-            LogicalTokenKind::Identifier(operand) => {
+            LogicalTokenKind::Identifier(operand) | LogicalTokenKind::PathIdentifier(operand) => {
                 let span = self.current().span;
                 self.index += 1;
                 (operand, span)
@@ -1269,7 +1290,8 @@ impl<'a> LogicalParser<'a> {
                 let open = self.current().span;
                 self.index += 1;
                 let (operand, operand_span) = match self.current().clone().kind {
-                    LogicalTokenKind::Identifier(operand) => {
+                    LogicalTokenKind::Identifier(operand)
+                    | LogicalTokenKind::PathIdentifier(operand) => {
                         let span = self.current().span;
                         self.index += 1;
                         (operand, span)
@@ -1472,7 +1494,32 @@ fn parse_diag(code: &'static str, message: &str, span: Span, notes: &[&str]) -> 
 }
 
 fn invalid_name_char(name: &str) -> Option<(usize, char)> {
-    name.char_indices().find(|(_, ch)| !is_name_char(*ch))
+    let (mut quoted, mut escaped, mut verilog) = (false, false, false);
+    for (index, ch) in name.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        if quoted {
+            if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                quoted = false;
+            }
+        } else if verilog {
+            if ch.is_whitespace() {
+                verilog = false;
+            }
+        } else {
+            match ch {
+                '"' => quoted = true,
+                '\\' => verilog = true,
+                _ if !is_name_char(ch) => return Some((index, ch)),
+                _ => {}
+            }
+        }
+    }
+    None
 }
 
 fn is_name_char(ch: char) -> bool {

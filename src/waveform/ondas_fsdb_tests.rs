@@ -23,8 +23,8 @@ fn fsdb_recursive_listing_uses_structural_depth_for_escaped_scopes() {
             .collect::<Vec<_>>(),
         ["top.block.inside"]
     );
-    let sibling = backend.signals_in_scope("top.block.dot").unwrap();
-    assert_eq!(sibling[0].path, "top.block.dot.outside");
+    let sibling = backend.signals_in_scope(r#"top."\\block.dot""#).unwrap();
+    assert_eq!(sibling[0].path, r#"top."\\block.dot".outside"#);
     let bounded = backend
         .signals_in_scope_recursive_report("top", Some(1))
         .unwrap();
@@ -34,7 +34,7 @@ fn fsdb_recursive_listing_uses_structural_depth_for_escaped_scopes() {
             .iter()
             .map(|entry| entry.path.as_str())
             .collect::<Vec<_>>(),
-        ["top.block.inside", "top.block.dot.outside"]
+        [r#"top."\\block.dot".outside"#, "top.block.inside"]
     );
 }
 
@@ -47,10 +47,13 @@ fn fsdb_scope_escape_markers_are_not_public_path_components() {
         index
             .scopes
             .iter()
-            .any(|scope| scope.path == "top.block[0]")
+            .any(|scope| scope.path == r#"top."block[0]""#)
     );
-    assert!(index.by_path.contains_key("top.block[0].flag"));
-    assert_eq!(index.declarations[0].parent, "top.block[0]");
+    assert!(
+        index
+            .by_path
+            .contains_key(&ondas::HierarchyPath::parse(r#"top."block[0]".flag"#).unwrap())
+    );
 }
 
 const HIERARCHY_VCD: &str = "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$scope module mem $end\n$var wire 1 # ready $end\n$upscope $end\n$scope module cpu $end\n$var reg 1 \" valid $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n0\"\n0#\n";
@@ -194,7 +197,7 @@ fn fsdb_repeated_scope_declarations_preserve_sibling_subtrees() {
             .iter()
             .map(|scope| scope.path.as_str())
             .collect::<Vec<_>>(),
-        ["top", "top.bus[0]", "top.wrapped", "top.wrapped.vif"]
+        ["top", r#"top."bus[0]""#, "top.wrapped", "top.wrapped.vif"]
     );
     let entries = backend
         .signals_in_scope_recursive_report("top", None)
@@ -205,7 +208,7 @@ fn fsdb_repeated_scope_declarations_preserve_sibling_subtrees() {
             .iter()
             .map(|entry| entry.path.as_str())
             .collect::<Vec<_>>(),
-        ["top.bus[0].value"]
+        [r#"top."bus[0]".value"#]
     );
 }
 
@@ -243,8 +246,8 @@ fn fsdb_hierarchy_preserves_escaped_range_looking_local_names() {
     assert_eq!(
         backend.signals_in_scope("top").unwrap(),
         vec![crate::waveform::SignalEntry {
-            name: "range.dot[31:0]".into(),
-            path: "top.range.dot[31:0]".into(),
+            name: r#""range.dot[31:0]""#.into(),
+            path: r#"top."range.dot[31:0]""#.into(),
             kind: "wire".into(),
             width: Some(32)
         }]
@@ -261,8 +264,8 @@ fn fsdb_hierarchy_preserves_scalar_array_element_suffixes() {
     let expected = ["flags[0:0]", "flags[0]", "flags[3]", "mem[3]"]
         .into_iter()
         .map(|name| crate::waveform::SignalEntry {
-            name: name.into(),
-            path: format!("top.{name}"),
+            name: ondas::HierarchyPath::from_components([name]).to_string(),
+            path: ondas::HierarchyPath::from_components(["top", name]).to_string(),
             kind: "wire".into(),
             width: Some(1),
         })
@@ -276,18 +279,18 @@ fn fsdb_hierarchy_preserves_escaped_local_names_with_separators() {
         "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! \\dot.name  $end\n$var wire 1 \" \\slash/name  $end\n$var wire 32 # \\wide.dot[0]  $end\n$var wire 32 $ \\wide/slash[0]  $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n0\"\nb1 #\nb10 $\n",
     );
     let mut backend = OndasBackend::open(fixture.path()).unwrap();
-    let signal = backend.resolve_expr_signal("top.wide.dot[0]").unwrap();
+    let signal = backend.resolve_expr_signal(r#"top."wide.dot[0]""#).unwrap();
     assert!(backend.index.get().is_none());
     let expected = [
         ("dot.name", 1),
-        ("slash/name", 1),
         ("wide.dot[0]", 32),
         ("wide/slash[0]", 32),
+        ("slash/name", 1),
     ]
     .into_iter()
     .map(|(name, width)| crate::waveform::SignalEntry {
-        name: name.into(),
-        path: format!("top.{name}"),
+        name: ondas::HierarchyPath::from_components([name]).to_string(),
+        path: ondas::HierarchyPath::from_components(["top", name]).to_string(),
         kind: "wire".into(),
         width: Some(width),
     })
@@ -325,7 +328,7 @@ fn fsdb_ambiguous_exact_paths_are_quarantined() {
         );
         assert_eq!(listing.omitted_ambiguous_paths, ["top.opcode"]);
     }
-    let expected = "fatal: signal: signal 'top.opcode' is ambiguous in FSDB hierarchy; candidates: 1: scope=\"top\" kind=reg width=1 range=none, 2: scope=\"top\" kind=reg width=1 range=none; no candidate was selected";
+    let expected = "fatal: signal: signal 'top.opcode' is ambiguous in dump: 2 source declarations; no candidate was selected";
     let direct = backend.resolve_signals(&["top.opcode".into()]).unwrap_err();
     assert!(matches!(direct, crate::error::WavepeekError::Signal(_)));
     assert_eq!(direct.to_string(), expected);
@@ -352,7 +355,7 @@ fn fsdb_ambiguous_candidate_descriptions_are_order_independent() {
         "$var wire 8 ! opcode [7:0] $end\n$var reg 1 \" opcode $end\n",
         "$var reg 1 \" opcode $end\n$var wire 8 ! opcode [7:0] $end\n",
     ];
-    let expected = "fatal: signal: signal 'top.opcode' is ambiguous in FSDB hierarchy; candidates: 1: scope=\"top\" kind=reg width=1 range=none, 2: scope=\"top\" kind=wire width=8 range=[7:0]; no candidate was selected";
+    let expected = "fatal: signal: signal 'top.opcode' is ambiguous in dump: 2 source declarations; no candidate was selected";
     for declarations in declarations {
         let source = format!(
             "$timescale 1ns $end\n$scope module top $end\n{declarations}$upscope $end\n$enddefinitions $end\n#0\nb0 !\n1\"\n"
@@ -366,32 +369,24 @@ fn fsdb_ambiguous_candidate_descriptions_are_order_independent() {
 }
 
 #[test]
-fn fsdb_scope_slashes_use_public_dots_and_reject_collisions() {
-    let source = "$timescale 1ns $end\n$scope module \\top/a  $end\n$var wire 1 ! first $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n";
+fn fsdb_scope_slashes_and_dots_remain_distinct_components() {
+    let source = "$timescale 1ns $end\n$scope module \\top/a  $end\n$var wire 1 ! first $end\n$upscope $end\n$scope module \\top.a  $end\n$var wire 1 \" second $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n1\"\n";
     let fixture = GeneratedFsdbFixture::from_contents(source);
-    let backend = OndasBackend::open(fixture.path()).unwrap();
-    assert_eq!(backend.scopes_depth_first(None).unwrap()[0].path, "top.a");
-    assert_eq!(
-        backend.signals_in_scope("top.a").unwrap()[0].path,
-        "top.a.first"
-    );
+    let mut backend = OndasBackend::open(fixture.path()).unwrap();
 
-    let collision = source.replace(
-        "$enddefinitions",
-        "$scope module \\top.a  $end\n$var wire 1 \" second $end\n$upscope $end\n$enddefinitions",
-    );
-    let fixture = GeneratedFsdbFixture::from_contents(&collision);
-    let error = OndasBackend::open(fixture.path()).unwrap_err();
-    assert_eq!(error.fatal_code(), Some("WPK-F0002"));
-    assert_eq!(error.exit_code(), 2);
+    let paths = [r#""\\top/a".first"#.into(), r#""\\top.a".second"#.into()];
     assert_eq!(
-        error.to_string(),
-        "fatal: file: FSDB hierarchy contains ambiguous canonical scope path 'top.a'"
+        backend.signals_in_scope(r#""\\top/a""#).unwrap()[0].path,
+        paths[0]
     );
-    // Metadata-only info does not load or validate the declaration hierarchy.
-    let metadata = crate::waveform::Waveform::read_metadata(fixture.path()).unwrap();
-    assert_eq!(metadata.time_unit, "1ns");
-    assert_eq!(metadata.time_end, "0ns");
+    assert_eq!(
+        backend.signals_in_scope(r#""\\top.a""#).unwrap()[0].path,
+        paths[1]
+    );
+    let signals = backend.resolve_signals(&paths).unwrap();
+    let values = backend.sample_resolved_optional(&signals, 0).unwrap();
+    assert_eq!(values[0].bits.as_deref(), Some("0"));
+    assert_eq!(values[1].bits.as_deref(), Some("1"));
 }
 
 #[test]
@@ -415,51 +410,26 @@ fn fsdb_paths_colliding_across_owning_scopes_are_ambiguous() {
     let fixture = GeneratedFsdbFixture::from_contents(
         "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! \\child.opcode  $end\n$scope module child $end\n$var wire 1 \" opcode $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n1\"\n",
     );
-    let cold = OndasBackend::open(fixture.path()).unwrap();
-    assert!(cold.matching_signals(|_, name| name == "opcode").is_empty());
-    assert!(
-        cold.matching_signals(|_, name| name == "child.opcode")
-            .is_empty()
-    );
-    let backend = OndasBackend::open(fixture.path()).unwrap();
-    let path = "top.child.opcode";
-    assert_eq!(
-        backend
-            .resolve_signals(&[path.into()])
-            .unwrap_err()
-            .fatal_code(),
-        Some("WPK-F0004")
-    );
-    let prepared = OndasBackend::open(fixture.path()).unwrap();
-    prepared.prepare_value_signals(&[path.into(), "top.missing".into()]);
-    assert_eq!(
-        prepared
-            .resolve_signals(&[path.into()])
-            .unwrap_err()
-            .fatal_code(),
-        Some("WPK-F0004")
-    );
-    let direct = backend
-        .signals_in_scope_recursive_report("top", None)
-        .unwrap();
-    assert!(direct.entries.iter().all(|entry| entry.path != path));
-    assert_eq!(direct.omitted_ambiguous_paths, [path]);
-    assert!(backend.signals_in_scope("top.child").unwrap().is_empty());
+    let mut backend = OndasBackend::open(fixture.path()).unwrap();
+    let paths = [r#"top."child.opcode""#.into(), "top.child.opcode".into()];
+    for path in &paths {
+        assert_eq!(
+            backend
+                .matching_signals(|candidate, _| candidate == path)
+                .len(),
+            1
+        );
+    }
+    let resolved = backend.resolve_signals(&paths).unwrap();
+    let samples = backend.sample_resolved_optional(&resolved, 0).unwrap();
+    assert_eq!(samples[0].bits.as_deref(), Some("0"));
+    assert_eq!(samples[1].bits.as_deref(), Some("1"));
     assert!(
         backend
-            .matching_signals(|_, name| name == "opcode")
+            .signals_in_scope_recursive_report("top", None)
+            .unwrap()
+            .omitted_ambiguous_paths
             .is_empty()
-    );
-    assert_eq!(
-        backend
-            .resolve_signals(&[path.into()])
-            .unwrap_err()
-            .fatal_code(),
-        Some("WPK-F0004")
-    );
-    assert_eq!(
-        backend.resolve_expr_signal(path).unwrap_err().fatal_code(),
-        Some("WPK-F0004")
     );
 }
 
@@ -489,7 +459,7 @@ fn fsdb_reader_metadata_smoke() {
     let reader = OndasBackend::open(&cpu_fsdb_path()).expect("FSDB open failed");
     assert_eq!(reader.format_name(), "fsdb");
     assert!(!reader.metadata().unwrap().time_unit.is_empty());
-    let span = reader.inner.metadata().time_span().unwrap();
+    let span = reader.inner.borrow().metadata().time_span().unwrap();
     assert!(span.last() >= span.first());
 }
 
@@ -508,7 +478,7 @@ fn fsdb_hierarchy_excludes_hidden_subtrees() {
     assert!(
         scopes
             .iter()
-            .all(|scope| !scope.path.ends_with(".mvsim_flag"))
+            .any(|scope| scope.path.ends_with(".mvsim_flag") && scope.kind == "struct")
     );
     for hidden in ["$attribute_root", "$_fsdbgate_"] {
         let prefix = format!("{hidden}.");
@@ -522,38 +492,36 @@ fn fsdb_hierarchy_excludes_hidden_subtrees() {
 }
 
 #[test]
-fn fsdb_memory_elements_use_public_array_scopes() {
-    let backend = OndasBackend::open(&cpu_fsdb_path()).unwrap();
-    let scope = "system.i_cpu.i_CCU.i_maprom.maprom";
-    let resolved = backend.resolve_signals(&[format!("{scope}.[0]")]).unwrap();
+fn fsdb_memory_elements_remain_exact_declarations() {
+    let mut backend = OndasBackend::open(&cpu_fsdb_path()).unwrap();
+    let scope = "system.i_cpu.i_CCU.i_maprom";
+    let path = format!("{scope}.\"maprom[0]\"");
+    let resolved = backend
+        .resolve_signals(std::slice::from_ref(&path))
+        .unwrap();
     assert_eq!(resolved[0].width, 8);
     assert!(backend.index.get().is_none());
     assert!(
-        backend
+        !backend
             .scopes_depth_first(None)
             .unwrap()
             .iter()
-            .any(|entry| entry.path == scope)
-    );
-    let signals = backend.signals_in_scope(scope).unwrap();
-    assert!(
-        signals
-            .iter()
-            .any(|entry| entry.path == format!("{scope}.[0]") && entry.width == Some(8))
+            .any(|entry| entry.path == format!("{scope}.maprom"))
     );
     assert!(
-        !backend
-            .signals_in_scope("system.i_cpu.i_CCU.i_maprom")
+        backend
+            .signals_in_scope(scope)
             .unwrap()
             .iter()
-            .any(|entry| entry.name == "maprom[0]")
+            .any(|entry| entry.path == path)
     );
+    assert!(backend.sample_resolved_optional(&resolved, 0).is_ok());
 }
 
 #[test]
 fn fsdb_hierarchy_datatype_enum_overrides_signal_kind() {
     let mut backend = OndasBackend::open(&cpu_fsdb_path()).unwrap();
-    let entries = backend.signals_in_scope("system").unwrap();
+    let entries = backend.signals_in_scope("system.mvsim_flag").unwrap();
     let entry = entries
         .iter()
         .find(|entry| entry.name == "assertControlType")
@@ -561,11 +529,11 @@ fn fsdb_hierarchy_datatype_enum_overrides_signal_kind() {
     assert_eq!(entry.kind, "enum");
     assert_eq!(entry.width, Some(2));
     let direct = backend
-        .resolve_signals(&["system.assertControlType".into()])
+        .resolve_signals(&["system.mvsim_flag.assertControlType".into()])
         .unwrap();
     assert_eq!(direct[0].width, 2);
     let signal = backend
-        .resolve_expr_signal("system.assertControlType")
+        .resolve_expr_signal("system.mvsim_flag.assertControlType")
         .unwrap();
     let SampledValue::Integral { bits, .. } = backend.sample_expr_value(&signal, 0).unwrap() else {
         panic!("enum must retain integral value encoding");
@@ -577,10 +545,10 @@ fn fsdb_hierarchy_datatype_enum_overrides_signal_kind() {
 fn fsdb_hierarchy_datatype_enum_metadata_drives_expression_type() {
     let backend = OndasBackend::open(&cpu_fsdb_path()).unwrap();
     let resolved = backend
-        .resolve_expr_signal("system.assertControlType")
+        .resolve_expr_signal("system.mvsim_flag.assertControlType")
         .unwrap();
     assert!(backend.index.get().is_none());
-    let entries = backend.signals_in_scope("system").unwrap();
+    let entries = backend.signals_in_scope("system.mvsim_flag").unwrap();
     let entry = entries
         .iter()
         .find(|entry| entry.name == "assertControlType")

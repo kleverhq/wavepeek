@@ -25,17 +25,33 @@ use crate::error::WavepeekError;
 use crate::output::{self, JsonlWriter};
 use crate::output_mode::OutputMode;
 
+pub(crate) fn signal_token(text: &str) -> String {
+    if text.contains('\\')
+        && let Ok(path) = ondas::HierarchyPath::parse(text.trim_start())
+    {
+        return crate::waveform::format_path(&path);
+    }
+    text.trim().to_string()
+}
+
 pub(crate) fn scoped_signal_path(name: &str, scope: Option<&str>) -> String {
-    match scope {
+    let canonical = |text: &str| {
+        ondas::HierarchyPath::parse(text.trim_start())
+            .map(|path| crate::waveform::format_path(&path))
+            .unwrap_or_else(|_| text.trim().to_string())
+    };
+    let name = canonical(name);
+    match scope.map(canonical) {
+        Some(scope) if scope.is_empty() => name,
         Some(scope)
             if name
-                .strip_prefix(scope)
+                .strip_prefix(&scope)
                 .is_some_and(|suffix| suffix.starts_with('.')) =>
         {
-            name.to_string()
+            name
         }
         Some(scope) => format!("{scope}.{name}"),
-        None => name.to_string(),
+        None => name,
     }
 }
 

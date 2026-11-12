@@ -76,7 +76,12 @@ fn run_change_json_with_mode(
         .output()
         .expect("change should execute");
 
-    assert!(output.status.success());
+    assert!(
+        output.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
     parse_json(&output.stdout)
 }
 

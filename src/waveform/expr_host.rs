@@ -9,6 +9,12 @@ use crate::expr::{
 };
 use crate::waveform::{ExprResolvedSignal, Waveform};
 
+pub(crate) trait RuntimeExpressionHost: ExpressionHost {
+    fn take_waveform_error(&self) -> Option<WavepeekError> {
+        None
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct WaveformExprHost {
     waveform: Rc<RefCell<Waveform>>,
@@ -16,6 +22,7 @@ pub(crate) struct WaveformExprHost {
     handles_by_name: RefCell<HashMap<String, SignalHandle>>,
     signals_by_handle: RefCell<HashMap<SignalHandle, Rc<ExprResolvedSignal>>>,
     next_handle: Cell<u32>,
+    read_error: RefCell<Option<WavepeekError>>,
 }
 
 impl WaveformExprHost {
@@ -39,7 +46,20 @@ impl WaveformExprHost {
             handles_by_name: RefCell::new(HashMap::new()),
             signals_by_handle: RefCell::new(HashMap::new()),
             next_handle: Cell::new(1),
+            read_error: RefCell::new(None),
         }
+    }
+
+    fn read_diagnostic(&self, error: WavepeekError, code: &'static str) -> ExprDiagnostic {
+        let diagnostic = ExprDiagnostic {
+            layer: DiagnosticLayer::Runtime,
+            code,
+            message: error.to_string(),
+            primary_span: Span::new(0, 0),
+            notes: vec![],
+        };
+        self.read_error.replace(Some(error));
+        diagnostic
     }
 
     fn resolved_signal(
@@ -67,6 +87,12 @@ impl WaveformExprHost {
             .resolved_signal(handle)
             .map_err(|diagnostic| WavepeekError::Internal(diagnostic.message))?)
         .clone())
+    }
+}
+
+impl RuntimeExpressionHost for WaveformExprHost {
+    fn take_waveform_error(&self) -> Option<WavepeekError> {
+        self.read_error.take()
     }
 }
 
@@ -118,13 +144,7 @@ impl ExpressionHost for WaveformExprHost {
         self.waveform
             .borrow_mut()
             .sample_expr_value(&resolved, timestamp)
-            .map_err(|error| ExprDiagnostic {
-                layer: DiagnosticLayer::Runtime,
-                code: "HOST-SAMPLE-ERROR",
-                message: error.to_string(),
-                primary_span: Span::new(0, 0),
-                notes: vec![],
-            })
+            .map_err(|error| self.read_diagnostic(error, "HOST-SAMPLE-ERROR"))
     }
 
     fn event_occurred(&self, handle: SignalHandle, timestamp: u64) -> Result<bool, ExprDiagnostic> {
@@ -132,13 +152,7 @@ impl ExpressionHost for WaveformExprHost {
         self.waveform
             .borrow_mut()
             .expr_event_occurred(&resolved, timestamp)
-            .map_err(|error| ExprDiagnostic {
-                layer: DiagnosticLayer::Runtime,
-                code: "HOST-EVENT-ERROR",
-                message: error.to_string(),
-                primary_span: Span::new(0, 0),
-                notes: vec![],
-            })
+            .map_err(|error| self.read_diagnostic(error, "HOST-EVENT-ERROR"))
     }
 }
 

@@ -7,11 +7,8 @@
 
 #[allow(dead_code)]
 pub(crate) mod expr_host;
-#[cfg(not(feature = "fsdb"))]
-mod fsdb_disabled;
-#[cfg(feature = "fsdb")]
-mod fsdb_output;
 mod ondas_backend;
+mod ondas_error;
 mod types;
 
 use std::cell::RefCell;
@@ -95,13 +92,6 @@ impl Waveform {
         } else {
             ondas_backend::OndasBackend::open(path)
         };
-        #[cfg(not(feature = "fsdb"))]
-        let result = result.map_err(|error| {
-            if fsdb_disabled::should_report_disabled_support(path, &error) {
-                return fsdb_disabled::disabled_support_error();
-            }
-            error
-        });
         result.map(|backend| Self { backend })
     }
 
@@ -121,15 +111,7 @@ impl Waveform {
         if invocation_waveform(path).is_some() {
             return Self::open(path)?.metadata();
         }
-        let result = ondas_backend::OndasBackend::read_metadata(path);
-        #[cfg(not(feature = "fsdb"))]
-        let result = result.map_err(|error| {
-            if fsdb_disabled::should_report_disabled_support(path, &error) {
-                return fsdb_disabled::disabled_support_error();
-            }
-            error
-        });
-        result
+        ondas_backend::OndasBackend::read_metadata(path)
     }
 
     pub fn scopes_depth_first(

@@ -10,7 +10,7 @@ On success, a command writes its main payload to stdout. Without `--summary`, em
 - `--json` carries non-fatal diagnostics inside one JSON result.
 - `--jsonl` writes one JSON object per stdout line and carries diagnostics as stream records.
 
-If a downstream consumer intentionally closes stdout early, `wavepeek` stops writing and exits successfully. Human-mode failures leave stdout empty and write the fatal error to stderr. Machine-mode failures write a fatal object to stdout and do not duplicate it on stderr. With `DEBUG=1`, debug telemetry remains JSON on stderr in every mode.
+If a downstream consumer intentionally closes stdout early, `wavepeek` stops writing and exits successfully. Human-mode failures leave stdout empty and write the fatal error to stderr. Machine-mode failures write a fatal object to stdout and do not duplicate it on stderr. Native readers may also write diagnostics to stderr in any mode. Ondas suppresses FSDB reader stdout. With `DEBUG=1`, WavePeek debug telemetry remains JSON on stderr in every mode.
 
 ## 2. JSON envelopes
 
@@ -290,7 +290,7 @@ fatal: <category>: <message>
 `--json` instead writes exactly one flat object to stdout:
 
 ```json
-{"type":"fatal","code":"WPK-F0002","message":"cannot open 'missing.vcd': No such file or directory"}
+{"type":"fatal","code":"WPK-F0002","message":"cannot read metadata from 'missing.vcd': I/O error: No such file or directory"}
 ```
 
 `--jsonl` writes the same flat fields plus `seq`. A failure before `begin` has `seq: 0`. A failure after records have been written uses the next sequence number, is the last record, and replaces `end`. Fatal records never contain `command`.
@@ -312,6 +312,8 @@ The stable fatal codes are:
 | `WPK-F0007` | unimplemented operation |
 
 The `message` is the error text without the human `fatal: <category>:` prefix. Fatal objects are never wrapped in a JSON success envelope. A successful JSON invocation still emits exactly one result; a successful JSONL stream still ends with exactly one `end`.
+
+Waveform failures are classified from typed reader errors before path and operation context are added. I/O, unknown format, missing backend or runtime, malformed data, unsupported input or source features, and unclassified backend failures use `WPK-F0002`; their messages preserve the distinct causes. Unsupported signal encodings and non-ASCII string samples use `WPK-F0004`. Invalid handles, selections, query times, trace coverage, compositions, or backend choices made by WavePeek use `WPK-F0006`. A file extension never overrides the reader's cause. Message wording and native diagnostic text are not recovery codes; fatal fields, categories, and exit codes are stable.
 
 Exit codes do not depend on output mode:
 

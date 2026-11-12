@@ -10,7 +10,7 @@ use tempfile::NamedTempFile;
 mod common;
 use common::wavepeek_cmd;
 
-const FSDB_DISABLED_STDERR: &str = "fatal: file: FSDB support is currently Linux x86_64 only; FSDB input requires a wavepeek binary built with --features fsdb and a licensed VERDI_HOME\n";
+const FSDB_DISABLED_CAUSE: &str = "no available backend for Fsdb; FSDB input requires Linux x86_64, --features fsdb, and a licensed VERDI_HOME";
 
 fn write_temp_file(bytes: &[u8], suffix: &str) -> NamedTempFile {
     let mut file = tempfile::Builder::new()
@@ -72,7 +72,7 @@ fn assert_disabled_for_command(path: &Path, case: &DisabledFsdbCase) {
         .failure()
         .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::eq(FSDB_DISABLED_STDERR));
+        .stderr(predicate::str::contains(FSDB_DISABLED_CAUSE));
 }
 
 fn assert_info_disabled_for_path(path: &Path) {
@@ -101,7 +101,7 @@ fn extract_generic_reports_feature_required_for_invalid_fsdb_suffix() {
         .failure()
         .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::eq(FSDB_DISABLED_STDERR));
+        .stderr(predicate::str::contains(FSDB_DISABLED_CAUSE));
 }
 
 #[test]
@@ -121,14 +121,21 @@ fn info_reports_feature_required_for_invalid_uppercase_fsdb_suffix() {
 }
 
 #[test]
-fn info_reports_feature_required_for_invalid_fsdb_gz_suffix() {
+fn info_reports_unknown_format_for_unrecognized_fsdb_gz_suffix() {
     let file = write_temp_file(b"not-a-waveform", ".fsdb.gz");
 
-    assert_info_disabled_for_path(file.path());
+    wavepeek_cmd()
+        .args(["info", "--waves"])
+        .arg(file.path())
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("unknown waveform format"))
+        .stderr(predicate::str::contains("--features fsdb").not());
 }
 
 #[test]
-fn info_missing_fsdb_suffix_keeps_cannot_open_error() {
+fn info_missing_fsdb_suffix_keeps_io_error() {
     let dir = tempfile::tempdir().expect("tempdir should be created");
     let missing = dir.path().join("missing.fsdb");
     let missing = missing.to_string_lossy().into_owned();
@@ -140,7 +147,7 @@ fn info_missing_fsdb_suffix_keeps_cannot_open_error() {
         .failure()
         .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: file: cannot open"))
+        .stderr(predicate::str::contains("I/O error:"))
         .stderr(predicate::str::contains("FSDB input requires").not());
 }
 
@@ -164,7 +171,7 @@ fn info_directory_fsdb_suffix_keeps_regular_file_error() {
 }
 
 #[test]
-fn info_unrelated_invalid_suffix_keeps_parse_error() {
+fn info_unrelated_invalid_suffix_keeps_unknown_format_error() {
     let file = write_temp_file(b"not-a-waveform", ".notfsdb");
     let path = file.path().to_string_lossy().into_owned();
 
@@ -175,7 +182,7 @@ fn info_unrelated_invalid_suffix_keeps_parse_error() {
         .failure()
         .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: file: cannot parse"))
+        .stderr(predicate::str::contains("unknown waveform format"))
         .stderr(predicate::str::contains("FSDB input requires").not());
 }
 
@@ -196,4 +203,39 @@ fn info_valid_vcd_with_fsdb_suffix_still_succeeds() {
         .stdout(predicate::str::contains("time_start: 0ns"))
         .stdout(predicate::str::contains("time_end: 10ns"))
         .stderr(predicate::str::is_empty());
+}
+
+#[test]
+fn unavailable_fsdb_reader_keeps_file_code_in_machine_modes() {
+    let file = write_temp_file(b"not-a-waveform", ".fsdb");
+    for command in ["info", "scope"] {
+        for mode in ["--json", "--jsonl"] {
+            let output = wavepeek_cmd()
+                .args([command, "--waves"])
+                .arg(file.path())
+                .arg(mode)
+                .output()
+                .unwrap();
+            assert_eq!(output.status.code(), Some(2));
+            assert!(output.stderr.is_empty());
+            let fatal: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+            assert_eq!(fatal["type"], "fatal");
+            assert_eq!(fatal["code"], "WPK-F0002");
+            assert!(
+                fatal["message"]
+                    .as_str()
+                    .unwrap()
+                    .contains(FSDB_DISABLED_CAUSE)
+            );
+            assert!(
+                fatal["message"]
+                    .as_str()
+                    .unwrap()
+                    .contains(file.path().to_str().unwrap())
+            );
+            if mode == "--jsonl" {
+                assert_eq!(fatal["seq"], 0);
+            }
+        }
+    }
 }

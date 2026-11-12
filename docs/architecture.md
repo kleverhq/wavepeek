@@ -114,8 +114,7 @@ src/
 │   ├── ondas_backend.rs # Ondas hierarchy adaptation, batched samples, and cached traces
 │   ├── ondas_tests.rs   # Waveform facade regression tests
 │   ├── ondas_fsdb_tests.rs # Feature-gated SDK-backed regression tests
-│   ├── fsdb_disabled.rs # Default-build diagnostics for FSDB-looking inputs
-│   ├── fsdb_output.rs   # SDK startup output suppression
+│   ├── ondas_error.rs   # Typed reader errors mapped to CLI categories
 │   └── expr_host.rs     # Waveform-backed expression host bridge
 ├── output.rs            # Shared output formatting (human, JSON envelope, JSONL)
 └── error.rs             # `WavepeekError` enum and exit mapping
@@ -136,7 +135,7 @@ src/
 
 | Crate | Version | Purpose | Notes |
 |-------|---------|---------|-------|
-| `ondas` | =1.1.1 | VCD/FST parsing and optional FSDB/SHM access | Native features forward to `ondas/fsdb-lib` and `ondas/shm-lib`; VCD/FST support byte input for WASM |
+| `ondas` | =2.1.0 | VCD/FST parsing and optional FSDB/SHM access | Native features forward to `ondas/fsdb-lib` and `ondas/shm-lib`; VCD/FST support byte input for WASM |
 | `clap` | ~4 | CLI argument parsing | Derive API for declarative CLI definitions |
 | `serde` | ~1 | Serialization | Used for machine-readable output structures |
 | `serde_json` | ~1 | JSON output | Envelope and JSONL record rendering |
@@ -158,7 +157,7 @@ The main components are:
 - **Lexer and parser** for event and logical expression text.
 - **AST and semantic types** that give the rest of the system a stable internal representation.
 - **Typed binder and evaluator** that resolve names against waveform metadata and compute runtime results.
-- **Waveform-backed host bridge** in `src/waveform/expr_host.rs` that exposes dump metadata and sampled values to the typed runtime without widening the public facade unnecessarily.
+- **Waveform-backed host bridge** in `src/waveform/expr_host.rs` that exposes dump metadata and sampled values to the typed runtime without widening the public facade unnecessarily. The bridge retains typed read failures until the engine completes that expression evaluation; the expression module remains independent of CLI error categories.
 
 The current implementation status is:
 

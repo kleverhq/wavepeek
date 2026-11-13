@@ -168,7 +168,7 @@ Behavior:
 - Matches `--filter` against signal names and reports each signal's name, kind, and available metadata such as width.
 - Lists direct signals by default. `--recursive` also visits child scopes in stable depth-first order.
 - Reports normalized signal kinds for wires and other recorded objects.
-- Omits ambiguous FSDB paths instead of choosing a backing record and produces a coded diagnostic.
+- Omits ambiguous signal paths instead of choosing a source declaration and produces a coded diagnostic.
 - Truncation produces a coded diagnostic. An empty text result prints a short message unless `--summary` is set.
 
 Examples:
@@ -191,7 +191,7 @@ Input options:
           Path to a VCD, FST, or FSDB file, or an SHM database directory (for example, dump.fst)
 
       --scope <SCOPE>
-          Exact scope path (for example, top.cpu)
+          Exact scope path (for example, top.cpu); empty selects root-level declarations
 
 Output options:
       --max <MAX>

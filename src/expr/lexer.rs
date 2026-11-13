@@ -4,6 +4,7 @@ use crate::expr::diagnostic::{DiagnosticLayer, ExprDiagnostic, Span};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TokenKind {
     Identifier,
+    PathIdentifier,
     KeywordOr,
     KeywordIff,
     KeywordPosedge,
@@ -20,6 +21,46 @@ pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
     pub lexeme: String,
+}
+
+// Explicit path operands keep quoted root names distinct from string values.
+fn path_operand(
+    source: &str,
+    start: usize,
+    offset: usize,
+) -> Result<Option<(String, usize)>, ExprDiagnostic> {
+    let Some(input) = source[start..].strip_prefix("$signal(") else {
+        return Ok(None);
+    };
+    let mut strings = serde_json::Deserializer::from_str(input).into_iter::<String>();
+    let path = strings.next().and_then(Result::ok);
+    let end = start + "$signal(".len() + strings.byte_offset();
+    if let Some(path) = path
+        && source[end..].starts_with(')')
+    {
+        return Ok(Some((path, end + 1)));
+    }
+    Err(ExprDiagnostic {
+        layer: DiagnosticLayer::Parse,
+        code: "EXPR-PARSE-PATH",
+        message: "expected $signal(\"path\") with a JSON string and closing ')'".to_string(),
+        primary_span: Span::new(offset + start, offset + end),
+        notes: vec![],
+    })
+}
+
+fn quoted_component_end(source: &str, start: usize) -> usize {
+    let mut escaped = false;
+    for (offset, ch) in source[start + 1..].char_indices() {
+        if escaped {
+            escaped = false;
+        } else if ch == '\\' {
+            escaped = true;
+        } else if ch == '"' {
+            return start + 1 + offset + 1;
+        }
+    }
+    source.len()
 }
 
 pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
@@ -41,6 +82,16 @@ pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
 
         if ch.is_whitespace() {
             index += ch_len;
+            continue;
+        }
+
+        if let Some((path, end)) = path_operand(source, index, 0)? {
+            tokens.push(Token {
+                kind: TokenKind::PathIdentifier,
+                span: Span::new(index, end),
+                lexeme: path,
+            });
+            index = end;
             continue;
         }
 
@@ -73,6 +124,24 @@ pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
                     primary_span: Span::new(index, index),
                     notes: vec![],
                 })?;
+            if current == '"' {
+                index = quoted_component_end(source, index);
+                continue;
+            }
+            if current == '\\' {
+                index += 1;
+                while index < source.len() && !source[index..].starts_with(char::is_whitespace) {
+                    index += source[index..].chars().next().map_or(0, char::len_utf8);
+                }
+                while index < source.len() && source[index..].starts_with(char::is_whitespace) {
+                    index += source[index..].chars().next().map_or(0, char::len_utf8);
+                }
+                if source[index..].starts_with('.') {
+                    index += 1;
+                    continue;
+                }
+                break;
+            }
             if current.is_whitespace() || matches!(current, '*' | ',' | '(' | ')') {
                 break;
             }
@@ -101,6 +170,7 @@ pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum LogicalTokenKind {
     Identifier(String),
+    PathIdentifier(String),
     KeywordInside,
     IntegralLiteral(IntegralLiteral),
     RealLiteral(RealLiteral),
@@ -200,6 +270,15 @@ impl<'a> LogicalLexer<'a> {
                 continue;
             }
 
+            if let Some((path, end)) = path_operand(self.source, self.index, self.span_offset)? {
+                tokens.push(LogicalToken {
+                    kind: LogicalTokenKind::PathIdentifier(path),
+                    span: self.span(self.index, end),
+                });
+                self.index = end;
+                continue;
+            }
+
             if ch.is_ascii_digit() {
                 let token = self.lex_numeric_literal()?;
                 let span = match &token {
@@ -230,7 +309,9 @@ impl<'a> LogicalLexer<'a> {
                 continue;
             }
 
-            if ch == '"' {
+            if ch == '"'
+                && !self.source[quoted_component_end(self.source, self.index)..].starts_with('.')
+            {
                 let literal = self.lex_string_literal()?;
                 let span = literal.span;
                 tokens.push(LogicalToken {
@@ -240,11 +321,28 @@ impl<'a> LogicalLexer<'a> {
                 continue;
             }
 
-            if logical_identifier_start(ch) {
+            if logical_identifier_start(ch) || matches!(ch, '"' | '\\') {
                 let start = self.index;
-                self.bump_char();
                 while let Some(next) = self.peek_char() {
                     if next == '.' && self.peek_triggered_call_suffix() {
+                        break;
+                    }
+                    if next == '"' {
+                        self.index = quoted_component_end(self.source, self.index);
+                        continue;
+                    }
+                    if next == '\\' {
+                        self.bump_char();
+                        while self.peek_char().is_some_and(|ch| !ch.is_whitespace()) {
+                            self.bump_char();
+                        }
+                        while self.peek_char().is_some_and(char::is_whitespace) {
+                            self.bump_char();
+                        }
+                        if self.peek_char() == Some('.') {
+                            self.bump_char();
+                            continue;
+                        }
                         break;
                     }
                     if logical_identifier_char(next) {

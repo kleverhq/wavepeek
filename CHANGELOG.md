@@ -7,10 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add `$signal("path")` expression operands for explicit canonical signal names.
+
 ### Changed
+- Use exact Ondas hierarchy paths with quoted components and metadata-backed signal composition. Unconfirmed array-like names remain declarations.
 - Update Ondas to 2.1.0. FSDB native diagnostics remain visible on stderr while stdout retains the command output contract.
 
 ### Fixed
+- Keep literal dots and brackets addressable across listing, selections, and expressions; report ambiguous source declarations independently of format.
 - Preserve typed waveform error causes regardless of file extension and classify unsupported values and invalid internal requests separately from file failures.
 
 ## [3.2.0] - 2026-10-17

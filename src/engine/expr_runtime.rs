@@ -19,6 +19,10 @@ use crate::waveform::{ExprResolvedSignal, Waveform};
 
 pub(crate) type SharedWaveform = Rc<RefCell<Waveform>>;
 
+pub(crate) fn signal_operand(path: &str) -> String {
+    format!("$signal({})", serde_json::Value::String(path.to_owned()))
+}
+
 pub(crate) fn open_shared_waveform(path: &Path) -> Result<SharedWaveform, WavepeekError> {
     Ok(Rc::new(RefCell::new(Waveform::open(path)?)))
 }

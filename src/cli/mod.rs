@@ -116,7 +116,7 @@ Behavior:
 - Matches `--filter` against signal names and reports each signal's name, kind, and available metadata such as width.
 - Lists direct signals by default. `--recursive` also visits child scopes in stable depth-first order.
 - Reports normalized signal kinds for wires and other recorded objects.
-- Omits ambiguous FSDB paths instead of choosing a backing record and produces a coded diagnostic.
+- Omits ambiguous signal paths instead of choosing a source declaration and produces a coded diagnostic.
 - Truncation produces a coded diagnostic. An empty text result prints a short message unless `--summary` is set.
 
 Examples:
@@ -821,14 +821,57 @@ fn dispatch(
     output::write_result_to(result, stdout, stderr).map_err(Into::into)
 }
 
+// Commas separate selections only outside quoted or Verilog-escaped components.
+fn signal_list(tokens: &[String]) -> Vec<String> {
+    let mut result = Vec::new();
+    for token in tokens {
+        let (mut quoted, mut escaped, mut verilog, mut start) = (false, false, false, 0);
+        for (index, ch) in token.char_indices() {
+            if escaped {
+                escaped = false;
+                continue;
+            }
+            if quoted {
+                if ch == '\\' {
+                    escaped = true;
+                } else if ch == '"' {
+                    quoted = false;
+                }
+            } else if verilog {
+                if ch.is_whitespace() {
+                    verilog = false;
+                }
+            } else {
+                match ch {
+                    '"' => quoted = true,
+                    '\\' => verilog = true,
+                    ',' => {
+                        result.push(token[start..index].to_string());
+                        start = index + 1;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        result.push(token[start..].to_string());
+    }
+    result
+}
+
 fn into_engine_command(command: Command) -> EngineCommand {
     match command {
         Command::Waveform(command) => match command {
             WaveformCommand::Info(args) => EngineCommand::Info(args),
             WaveformCommand::Scope(args) => EngineCommand::Scope(args),
             WaveformCommand::Signal(args) => EngineCommand::Signal(args),
-            WaveformCommand::Value(args) => EngineCommand::Value(args),
-            WaveformCommand::Change(args) => EngineCommand::Change(args),
+            WaveformCommand::Value(mut args) => {
+                args.signals = signal_list(&args.signals);
+                EngineCommand::Value(args)
+            }
+            WaveformCommand::Change(mut args) => {
+                args.signals = signal_list(&args.signals);
+                EngineCommand::Change(args)
+            }
             WaveformCommand::Property(args) => EngineCommand::Property(args),
             WaveformCommand::Extract(command) => match command {
                 extract::ExtractCommand::Ahb(args) => EngineCommand::ExtractAhb(*args),
@@ -836,7 +879,10 @@ fn into_engine_command(command: Command) -> EngineCommand {
                 extract::ExtractCommand::Atb(args) => EngineCommand::ExtractAtb(*args),
                 extract::ExtractCommand::Axi(args) => EngineCommand::ExtractAxi(*args),
                 extract::ExtractCommand::AxiStream(args) => EngineCommand::ExtractAxiStream(*args),
-                extract::ExtractCommand::Generic(args) => EngineCommand::ExtractGeneric(*args),
+                extract::ExtractCommand::Generic(mut args) => {
+                    args.payload = args.payload.map(|paths| signal_list(&paths));
+                    EngineCommand::ExtractGeneric(*args)
+                }
                 extract::ExtractCommand::Help(_) => {
                     unreachable!("help commands are handled before dispatch")
                 }

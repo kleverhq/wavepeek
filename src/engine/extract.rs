@@ -640,7 +640,8 @@ fn normalize_payload(payload: Vec<String>) -> Result<Vec<String>, WavepeekError>
     payload
         .into_iter()
         .map(|token| {
-            let trimmed = token.trim();
+            let normalized = crate::engine::signal_token(&token);
+            let trimmed = normalized.as_str();
             if trimmed.is_empty() {
                 Err(WavepeekError::Args(
                     "payload signal names must not be empty. See 'wavepeek extract generic --help'."
@@ -1107,7 +1108,7 @@ fn build_payload_value(
     requested: &PayloadSignal,
     sampled: SampledSignalState,
 ) -> Result<ExtractPayloadValue, WavepeekError> {
-    let sampled = requested.selected.project_sample(sampled)?;
+    let sampled = requested.selected.project_sample(sampled);
     let bits = sampled.bits.as_ref().ok_or_else(|| {
         WavepeekError::Signal(format!(
             "signal '{}' has no value at or before requested time",

@@ -21,7 +21,6 @@ pub struct ValueArgs {
     /// Signal paths or flat projections, comma-separated or repeated (for example, state,pc or status[7:4])
     #[arg(
         long,
-        value_delimiter = ',',
         num_args = 1..,
         required = true,
         help_heading = "Selection options"

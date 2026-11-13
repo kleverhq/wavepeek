@@ -9,7 +9,7 @@ pub struct SignalArgs {
     /// Path to a VCD, FST, or FSDB file, or an SHM database directory (for example, dump.fst)
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
-    /// Exact scope path (for example, top.cpu)
+    /// Exact scope path (for example, top.cpu); empty selects root-level declarations
     #[arg(long, help_heading = "Input options")]
     pub scope: String,
     /// Maximum number of entries (`unlimited` disables truncation, value must be > 0)

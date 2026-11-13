@@ -180,17 +180,44 @@ fn real_expressions_match_vcd() {
 }
 
 #[test]
-fn escaped_names_and_array_paths_match_vcd() {
-    assert_parity(
-        "rich_names",
+fn escaped_names_and_array_declarations_preserve_source_paths_and_values() {
+    let vcd = run_json(
+        &fixture_path("rich_names.vcd"),
         &[
             "value",
             "--signals",
-            "top.\\block.dot.\\data.bus,top.memory.[0]",
+            r#"top."block.dot"."data.bus",top."memory[0]""#,
             "--at",
             "5ns",
         ],
     );
+    let paths = r#"top."\\block.dot"."\\data.bus",top."memory[0]""#;
+    let shm = run_json(
+        &shm_path("rich_names"),
+        &["value", "--signals", paths, "--at", "5ns"],
+    );
+    let values = |result: &Value| {
+        result["data"][0]["signals"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|signal| signal["value"].clone())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(values(&shm), values(&vcd));
+    let listing = run_json(
+        &shm_path("rich_names"),
+        &["signal", "--scope", "top", "--recursive"],
+    );
+    for signal in shm["data"][0]["signals"].as_array().unwrap() {
+        assert!(
+            listing["data"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|entry| entry["path"] == signal["path"])
+        );
+    }
 }
 
 #[test]

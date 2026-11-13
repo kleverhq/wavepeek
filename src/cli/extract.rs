@@ -772,7 +772,6 @@ pub struct GenericArgs {
     /// Payload paths or flat projections, comma-separated or repeated (for example, data,last or status[7:4])
     #[arg(
         long,
-        value_delimiter = ',',
         num_args = 1..,
         value_name = "SIGNAL[,SIGNAL...]",
         help_heading = "Selection options"

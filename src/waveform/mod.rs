@@ -3,15 +3,18 @@
 //! Canonical path policy:
 //! - Paths are emitted as dot-separated full hierarchy paths.
 //! - Scope traversal and depth follow hierarchy components, not path punctuation.
-//! - Ondas components are adapted to the facade's public path spelling.
+//! - Exact Ondas components use round-trippable canonical quoting.
 
 #[allow(dead_code)]
 pub(crate) mod expr_host;
 mod ondas_backend;
 mod ondas_error;
+pub(crate) mod selection;
 mod types;
+pub(crate) use selection::format_path;
 
 use std::cell::RefCell;
+#[cfg(test)]
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -159,6 +162,7 @@ impl Waveform {
             .signals_in_scope_recursive_report(scope_path, max_depth)
     }
 
+    #[cfg(test)]
     pub fn sample_signals_at_time(
         &mut self,
         canonical_paths: &[String],
@@ -166,13 +170,19 @@ impl Waveform {
     ) -> Result<Vec<SampledSignal>, WavepeekError> {
         let (unique_paths, projection) = duplicate_preserving_projection(canonical_paths);
         let resolved = self.resolve_signals(&unique_paths)?;
-        let sampled_unique = self.sample_resolved_optional(&resolved, query_time_raw)?;
-
-        let sampled = projection
+        let sampled_unique = self.sample_resolved_at_time(&resolved, query_time_raw)?;
+        Ok(projection
             .iter()
             .map(|unique_idx| sampled_unique[*unique_idx].clone())
-            .collect::<Vec<_>>();
+            .collect())
+    }
 
+    pub fn sample_resolved_at_time(
+        &mut self,
+        resolved: &[ResolvedSignal],
+        query_time_raw: u64,
+    ) -> Result<Vec<SampledSignal>, WavepeekError> {
+        let sampled = self.sample_resolved_optional(resolved, query_time_raw)?;
         sampled
             .into_iter()
             .map(|entry| {
@@ -200,6 +210,15 @@ impl Waveform {
         canonical_paths: &[String],
     ) -> Result<Vec<ResolvedSignal>, WavepeekError> {
         self.backend.resolve_signals(canonical_paths)
+    }
+
+    pub(crate) fn project_signal(
+        &self,
+        source: &ResolvedSignal,
+        msb: u32,
+        lsb: u32,
+    ) -> Result<ResolvedSignal, WavepeekError> {
+        self.backend.project_signal(source, msb, lsb)
     }
 
     pub(crate) fn prepare_value_signals(&self, canonical_paths: &[String]) {
@@ -579,7 +598,13 @@ impl Waveform {
 }
 
 pub(crate) fn display_signal_path<'a>(canonical_path: &'a str, scope: Option<&str>) -> &'a str {
+    let scope = scope.map(|scope| {
+        ondas::HierarchyPath::parse(scope)
+            .map(|path| format_path(&path))
+            .unwrap_or_else(|_| scope.to_string())
+    });
     scope
+        .as_deref()
         .and_then(|scope| canonical_path.strip_prefix(scope))
         .and_then(|path| path.strip_prefix('.'))
         .unwrap_or(canonical_path)
@@ -610,6 +635,7 @@ fn levenshtein_with_limit(left: &[char], right: &str, limit: usize) -> Option<us
     (previous[right.len()] <= limit).then_some(previous[right.len()])
 }
 
+#[cfg(test)]
 fn duplicate_preserving_projection(canonical_paths: &[String]) -> (Vec<String>, Vec<usize>) {
     let mut unique_paths = Vec::with_capacity(canonical_paths.len());
     let mut projection = Vec::with_capacity(canonical_paths.len());

@@ -1709,7 +1709,7 @@ fn project_rolling_samples(
             Ok(SampledSignalState {
                 path: requested.selected.path.clone(),
                 width: requested.selected.width(),
-                bits: requested.selected.project_bits(bits)?,
+                bits: bits.map(str::to_string),
             })
         })
         .collect()
@@ -1724,11 +1724,11 @@ fn project_samples(
             "requested signal and sample counts do not match".to_string(),
         ));
     }
-    requested_signals
+    Ok(requested_signals
         .iter()
         .zip(samples)
         .map(|(requested, sample)| requested.selected.project_sample(sample))
-        .collect()
+        .collect())
 }
 
 fn selected_value_changed(previous: &[SampledSignalState], current: &[SampledSignalState]) -> bool {
@@ -1887,7 +1887,8 @@ fn resolve_requested_signals(
 
     let mut resolved = Vec::with_capacity(args.signals.len());
     for token in &args.signals {
-        let display = token.trim();
+        let normalized = crate::engine::signal_token(token);
+        let display = normalized.as_str();
         if display.is_empty() {
             return Err(WavepeekError::Args(
                 "signal names must not be empty. See 'wavepeek change --help'.".to_string(),

@@ -61,14 +61,14 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
         || serde_json::json!({"times": query_times_raw.len()}),
     );
 
-    let source_paths = requested_signals
+    let sources = requested_signals
         .iter()
-        .map(|signal| signal.selected.source.path.clone())
+        .map(|signal| signal.selected.source.clone())
         .collect::<Vec<_>>();
     let mut snapshots = Vec::with_capacity(query_times_raw.len());
 
     for query_time_raw in query_times_raw {
-        let sampled = waveform.sample_signals_at_time(&source_paths, query_time_raw)?;
+        let sampled = waveform.sample_resolved_at_time(&sources, query_time_raw)?;
         let signals = requested_signals
             .iter()
             .zip(sampled)
@@ -77,7 +77,7 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
                     path: sampled.path,
                     width: sampled.width,
                     bits: Some(sampled.bits),
-                })?;
+                });
                 let bits = sampled.bits.expect("value sampling always returns bits");
                 let display =
                     display_signal_path(sampled.path.as_str(), args.scope.as_deref()).to_string();
@@ -103,7 +103,7 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
     debug.event("value.sample.done", || {
         serde_json::json!({
             "snapshots": snapshots.len(),
-            "signals": source_paths.len(),
+            "signals": sources.len(),
         })
     });
 
@@ -168,7 +168,8 @@ fn resolve_requested_signals(
 
     let mut resolved = Vec::with_capacity(args.signals.len());
     for token in &args.signals {
-        let display = token.trim();
+        let normalized = crate::engine::signal_token(token);
+        let display = normalized.as_str();
         if display.is_empty() {
             return Err(WavepeekError::Args(
                 "signal names must not be empty. See 'wavepeek value --help'.".to_string(),

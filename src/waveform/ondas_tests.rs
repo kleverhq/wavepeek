@@ -53,12 +53,15 @@ fn global_matching_preserves_scope_order_and_split_width() {
         "global-array.vcd",
     );
     let waveform = Waveform::open(fixture.path()).unwrap();
-    let entries = waveform.matching_signals(|_, name| name == "[0]");
+    let entries = waveform.matching_signals(|_, name| name == r#""memory[0]""#);
     assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].path, "top.memory.[0]");
+    assert_eq!(entries[0].path, r#"top."memory[0]""#);
     assert_eq!(entries[0].width, Some(8));
-    waveform.signals_in_scope("top.memory").unwrap();
-    assert_eq!(waveform.matching_signals(|_, name| name == "[0]"), entries);
+    waveform.signals_in_scope("top").unwrap();
+    assert_eq!(
+        waveform.matching_signals(|_, name| name == r#""memory[0]""#),
+        entries
+    );
 }
 
 #[test]
@@ -81,7 +84,7 @@ fn vcd_backslash_components_do_not_alias_separator_components() {
     let listing = waveform
         .signals_in_scope_recursive_report("top", None)
         .unwrap();
-    let paths = ["top.\\a.b", "top.\\\\a.b"].map(str::to_owned);
+    let paths = [r#"top."a.b""#, r#"top."\\a".b"#].map(str::to_owned);
     assert_eq!(
         listing
             .entries
@@ -107,10 +110,10 @@ fn vcd_preserves_escaped_simple_declaration_spelling() {
     let fixture = write_fixture(source, "escaped-simple.vcd");
     let mut waveform = Waveform::open(fixture.path()).unwrap();
     let entries = waveform.signals_in_scope("top").unwrap();
-    assert_eq!(entries[0].name, "\\plain");
-    assert_eq!(entries[0].path, "top.\\plain");
+    assert_eq!(entries[0].name, "plain");
+    assert_eq!(entries[0].path, "top.plain");
     let values = waveform
-        .sample_signals_at_time(&["top.\\plain".into()], 0)
+        .sample_signals_at_time(&["top.plain".into()], 0)
         .unwrap();
     assert_eq!(values[0].bits, "0");
 }
@@ -124,9 +127,9 @@ fn vcd_escaped_components_remain_distinct_from_nested_paths() {
         .signals_in_scope_recursive_report("top", None)
         .unwrap();
     let paths = [
-        "top.\\foo.bar",
-        "top.\\foo/bar",
-        "top.\\block.dot.value",
+        r#"top."foo.bar""#,
+        "top.foo/bar",
+        r#"top."block.dot".value"#,
         "top.foo.bar",
     ]
     .map(str::to_owned);
@@ -144,7 +147,7 @@ fn vcd_escaped_components_remain_distinct_from_nested_paths() {
         .unwrap();
     assert_eq!(bounded.entries, listing.entries);
     assert_eq!(
-        waveform.signals_in_scope("top.\\block.dot").unwrap()[0].name,
+        waveform.signals_in_scope(r#"top."block.dot""#).unwrap()[0].name,
         "value"
     );
     let values = waveform.sample_signals_at_time(&paths, 0).unwrap();
@@ -587,7 +590,7 @@ fn streaming_candidate_collection_rejects_derived_signals() {
         waveform.collect_change_times(&resolved, 5, 10).unwrap(),
         vec![5, 10]
     );
-    assert!(!waveform.ensure_indexed_signals_loaded(&[resolved[0].id]));
+    assert!(waveform.ensure_indexed_signals_loaded(&[resolved[0].id]));
     assert!(
         waveform
             .collect_change_times_with_mode(&resolved, 5, 10, ChangeCandidateCollectionMode::Stream)
@@ -596,28 +599,23 @@ fn streaming_candidate_collection_rejects_derived_signals() {
 }
 
 #[test]
-fn vcd_inline_scalar_indices_form_packed_vector() {
+fn inline_indices_without_range_metadata_remain_exact_declarations() {
     let vcd = DERIVED_SPLIT_VCD.replace("split [", "split[");
     let fixture = write_fixture(&vcd, "inline-split.vcd");
     let mut waveform = Waveform::open(fixture.path()).unwrap();
     let signals = waveform.signals_in_scope("top").unwrap();
-    assert_eq!(signals.len(), 1);
-    assert_eq!(signals[0].path, "top.split");
-    assert_eq!(signals[0].width, Some(2));
-    assert!(
-        !waveform
-            .scopes_depth_first(None)
-            .unwrap()
-            .iter()
-            .any(|scope| scope.path == "top.split")
-    );
-    let resolved = waveform.resolve_signals(&["top.split".into()]).unwrap();
     assert_eq!(
-        waveform.sample_resolved_optional(&resolved, 10).unwrap()[0]
-            .bits
-            .as_deref(),
-        Some("11")
+        signals
+            .iter()
+            .map(|entry| entry.path.as_str())
+            .collect::<Vec<_>>(),
+        [r#"top."split[0]""#, r#"top."split[1]""#]
     );
+    assert!(waveform.resolve_signals(&["top.split".into()]).is_err());
+    for entry in signals {
+        let values = waveform.sample_signals_at_time(&[entry.path], 10).unwrap();
+        assert_eq!(values[0].bits, "1");
+    }
 }
 
 #[test]
@@ -765,10 +763,10 @@ fn fst_array_path_uses_full_index_spelling() {
     );
     let wave = ondas::open(fixture.path()).unwrap();
     let variable = wave.hierarchy().variables().next().unwrap();
-    let direct = super::public_fst_variable_path(&variable);
+    let direct = Some(variable.path().to_string());
     let full = super::HierarchyIndex::new(wave.hierarchy(), ondas::Format::Fst, false);
-    assert_eq!(direct.as_deref(), Some("top.memory.[0]"));
-    assert!(full.by_path.contains_key(direct.as_deref().unwrap()));
+    assert_eq!(direct.as_deref(), Some(r#"top."memory[0]""#));
+    assert!(full.by_path.contains_key(&variable.path()));
 }
 
 #[test]
@@ -787,26 +785,12 @@ fn fst_batch_array_alias_remains_ambiguous() {
             .unwrap()
             .success()
     );
-    let path = "top.memory.[0]";
-    assert!(
-        OndasBackend::open(&fst)
-            .unwrap()
-            .matching_signals(|candidate, _| candidate == path)
-            .is_empty()
-    );
-    let single = OndasBackend::open(&fst)
-        .unwrap()
-        .resolve_signals(&[path.into()])
-        .unwrap_err();
-    let batch = OndasBackend::open(&fst).unwrap();
-    batch.prepare_value_signals(&[path.into(), path.into()]);
-    assert_eq!(
-        batch
-            .resolve_signals(&[path.into()])
-            .unwrap_err()
-            .to_string(),
-        single.to_string()
-    );
+    let mut backend = OndasBackend::open(&fst).unwrap();
+    let paths = [r#"top."memory[0]""#.into(), r#"top.memory."[0]""#.into()];
+    let signals = backend.resolve_signals(&paths).unwrap();
+    let values = backend.sample_resolved_optional(&signals, 0).unwrap();
+    assert_eq!(values[0].bits.as_deref(), Some("00000001"));
+    assert_eq!(values[1].bits.as_deref(), Some("00000010"));
 }
 
 #[test]
@@ -1428,12 +1412,9 @@ fn helper_functions_exercise_invalid_paths_and_timescales() {
     let fixture = write_fixture(EXPR_VCD, "expr-helpers.vcd");
     let backend = OndasBackend::open(fixture.path()).expect("fixture should open");
     for path in ["", "top."] {
-        assert!(
-            backend
-                .resolve_expr_signal(path)
-                .unwrap_err()
-                .to_string()
-                .contains("not found in dump")
+        assert_eq!(
+            backend.resolve_expr_signal(path).unwrap_err().exit_code(),
+            1
         );
     }
     assert!(
@@ -1648,30 +1629,6 @@ fn waveform_sampling_and_scope_error_helpers_exercise_public_error_paths() {
 }
 
 #[test]
-fn packed_fst_ranges_are_not_unpacked_array_indices() {
-    for (name, width, expected) in [
-        ("q_err[3:0]", 4, Some(("q_err", 3, 0))),
-        ("q_err[3]", 1, Some(("q_err", 3, 3))),
-        ("memory[0][7:0]", 8, Some(("memory[0]", 7, 0))),
-        ("word[-2:-9]", 8, Some(("word", -2, -9))),
-        ("memory[0]", 8, None),
-        ("q_err[3:0]", 8, None),
-        ("literal[name]", 4, None),
-    ] {
-        assert_eq!(
-            super::packed_name_range(name, width).map(|(name, range)| (
-                name,
-                range.msb(),
-                range.lsb()
-            )),
-            expected
-        );
-    }
-    assert_eq!(super::array_name_parts("q_err[3:0]"), ["q_err[3:0]"]);
-    assert_eq!(super::array_name_parts("literal[name]"), ["literal[name]"]);
-}
-
-#[test]
 fn unpacked_array_names_preserve_public_scope_components() {
     let fixture = write_fixture(
         "$timescale 1ns $end\n$scope module top $end\n$var wire 8 ! memory[0] [7:0] $end\n$var wire 8 \" memory[1] [7:0] $end\n$var wire 8 # matrix[2][3] [7:0] $end\n$upscope $end\n$enddefinitions $end\n#0\nb00000001 !\nb00000010 \"\nb00000011 #\n",
@@ -1679,9 +1636,9 @@ fn unpacked_array_names_preserve_public_scope_components() {
     );
     let mut waveform = Waveform::open(fixture.path()).unwrap();
     for (path, expected) in [
-        ("top.memory.[0]", "00000001"),
-        ("top.memory.[1]", "00000010"),
-        ("top.matrix.[2].[3]", "00000011"),
+        (r#"top."memory[0]""#, "00000001"),
+        (r#"top."memory[1]""#, "00000010"),
+        (r#"top."matrix[2][3]""#, "00000011"),
     ] {
         let signal = waveform.resolve_expr_signal(path).unwrap();
         assert_eq!(
@@ -1692,13 +1649,13 @@ fn unpacked_array_names_preserve_public_scope_components() {
             }
         );
     }
-    let entries = waveform.signals_in_scope("top.memory").unwrap();
+    let entries = waveform.signals_in_scope("top").unwrap();
     assert_eq!(
         entries
             .iter()
             .map(|entry| entry.name.as_str())
             .collect::<Vec<_>>(),
-        ["[0]", "[1]"]
+        [r#""matrix[2][3]""#, r#""memory[0]""#, r#""memory[1]""#]
     );
 }
 
@@ -1780,17 +1737,10 @@ fn escaped_unpacked_array_keeps_escape_on_base_component() {
             .unwrap()
             .success()
     );
-    let fst_wave = ondas::open(&fst).unwrap();
     let paths = [
-        ("top.\\x.[0]", "00000001"),
-        ("top.\\matrix.[2].[3]", "00000010"),
+        (r#"top."x[0]""#, "00000001"),
+        (r#"top."matrix[2][3]""#, "00000010"),
     ];
-    for (variable, (path, _)) in fst_wave.hierarchy().variables().zip(paths) {
-        assert_eq!(
-            super::public_fst_variable_path(&variable).as_deref(),
-            Some(path)
-        );
-    }
     for path in [source.path(), fst.as_path()] {
         let mut waveform = Waveform::open(path).unwrap();
         for (signal_path, expected) in paths {
@@ -1803,11 +1753,7 @@ fn escaped_unpacked_array_keeps_escape_on_base_component() {
                 }
             );
         }
-        assert_eq!(waveform.signals_in_scope("top.\\x").unwrap()[0].name, "[0]");
-        assert_eq!(
-            waveform.signals_in_scope("top.\\matrix.[2]").unwrap()[0].name,
-            "[3]"
-        );
+        assert_eq!(waveform.scopes_depth_first(None).unwrap().len(), 1);
     }
 }
 
@@ -1819,4 +1765,150 @@ fn write_fixture(contents: &str, filename: &str) -> NamedTempFile {
     file.write_all(contents.as_bytes())
         .expect("fixture should be written");
     file
+}
+
+#[test]
+fn common_composition_and_slices_preserve_partial_and_all_missing() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 4 ! bus [7:4] $end\n$var wire 4 \" bus [3:0] $end\n$var wire 4 # asc [0:3] $end\n$var wire 4 $ asc [4:7] $end\n$upscope $end\n$enddefinitions $end\n#0\n#5\nb0110 \"\nb1100 #\n#10\nb1010 !\nb0011 $\n#15\nbxxxx !\n",
+        "composition-missing.vcd",
+    );
+    let mut waveform = Waveform::open(fixture.path()).unwrap();
+    let bus = waveform
+        .resolve_signals(&["top.bus".into()])
+        .unwrap()
+        .remove(0);
+    let high = waveform.project_signal(&bus, 7, 4).unwrap();
+    let cross = waveform.project_signal(&bus, 5, 2).unwrap();
+    let asc = waveform
+        .resolve_signals(&["top.asc".into()])
+        .unwrap()
+        .remove(0);
+    let resolved = [bus, high, cross, asc];
+    for (time, expected) in [
+        (0, [None, None, None, None]),
+        (
+            5,
+            [
+                Some("xxxx0110"),
+                Some("xxxx"),
+                Some("xx01"),
+                Some("1100xxxx"),
+            ],
+        ),
+        (
+            10,
+            [
+                Some("10100110"),
+                Some("1010"),
+                Some("1001"),
+                Some("11000011"),
+            ],
+        ),
+    ] {
+        let samples = waveform.sample_resolved_optional(&resolved, time).unwrap();
+        assert_eq!(
+            samples
+                .iter()
+                .map(|sample| sample.bits.as_deref())
+                .collect::<Vec<_>>(),
+            expected
+        );
+    }
+    let expr = waveform.resolve_expr_signal("top.bus").unwrap();
+    assert_eq!(
+        waveform.sample_expr_value(&expr, 0).unwrap(),
+        crate::expr::SampledValue::Integral {
+            bits: None,
+            label: None
+        }
+    );
+    waveform
+        .preload_resolved_value_changes(&resolved, 0, 15)
+        .unwrap();
+    assert_eq!(
+        waveform.sample_resolved_optional(&resolved, 5).unwrap()[1]
+            .bits
+            .as_deref(),
+        Some("xxxx")
+    );
+    assert_eq!(
+        waveform
+            .collect_change_times(&resolved[..1], 0, 15)
+            .unwrap(),
+        [5, 10, 15]
+    );
+}
+
+#[test]
+fn listing_include_and_direct_lookup_share_exact_declarations_and_alias_history() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$var wire 1 ! \\root.name $end\n$scope module top $end\n$var wire 1 ! alias $end\n$var wire 1 \" \\literal[7:0] $end\n$var wire 1 # \\literal $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n1\"\n0#\n",
+        "include-exact.vcd",
+    );
+    let mut backend = OndasBackend::open(fixture.path()).unwrap();
+    let entries = backend.matching_signals(|_, _| true);
+    assert!(backend.index.get().is_none());
+    assert_eq!(entries.len(), 4);
+    for entry in entries {
+        let found = backend.matching_signals(|path, _| path == entry.path);
+        assert_eq!(found, std::slice::from_ref(&entry));
+        let signals = backend
+            .resolve_signals(std::slice::from_ref(&entry.path))
+            .unwrap();
+        let expr = backend.resolve_expr_signal(&entry.path).unwrap();
+        assert_eq!(signals[0].id, expr.id);
+        assert_eq!(
+            backend.sample_resolved_optional(&signals, 0).unwrap()[0]
+                .bits
+                .as_deref(),
+            Some(if entry.path == r#"top."literal[7:0]""# {
+                "1"
+            } else {
+                "0"
+            })
+        );
+    }
+    let aliases = backend
+        .resolve_signals(&[r#""root.name""#.into(), "top.alias".into()])
+        .unwrap();
+    assert_eq!(aliases[0].id, aliases[1].id);
+}
+
+#[test]
+fn repeated_scope_names_keep_their_declarations_in_their_own_scope() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$scope module child $end\n$var wire 1 ! a $end\n$upscope $end\n$scope module child $end\n$var wire 1 \" b $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n1\"\n",
+        "duplicate-scope.vcd",
+    );
+    let mut backend = OndasBackend::open(fixture.path()).unwrap();
+    let listing = backend
+        .signals_in_scope_recursive_report("top", None)
+        .unwrap();
+    assert_eq!(
+        listing
+            .entries
+            .iter()
+            .map(|entry| entry.path.as_str())
+            .collect::<Vec<_>>(),
+        ["top.child.a", "top.child.b"]
+    );
+    let resolved = backend
+        .resolve_signals(
+            &listing
+                .entries
+                .iter()
+                .map(|entry| entry.path.clone())
+                .collect::<Vec<_>>(),
+        )
+        .unwrap();
+    assert_eq!(
+        backend
+            .sample_resolved_optional(&resolved, 0)
+            .unwrap()
+            .iter()
+            .map(|sample| sample.bits.as_deref())
+            .collect::<Vec<_>>(),
+        [Some("0"), Some("1")]
+    );
 }

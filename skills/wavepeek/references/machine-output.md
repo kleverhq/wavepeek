@@ -36,7 +36,7 @@ Protocol extractors put command-wide metadata in `context` and rows directly in 
 {"type":"result","command":"extract apb","context":{"name":"apb","profile":"apb4","issue":"E","pready_mode":"mapped","include_wait":false,"mappings":{"pclk":{"path":"top.uart_apb_p_clk_i"},"penable":{"path":"top.uart_apb_penable_o"},"pready":{"path":"top.uart_apb_pready_i"},"psel":{"path":"top.uart_apb_psel_o"},"pwrite":{"path":"top.uart_apb_pwrite_o"}}},"data":[{"time":"5ns","sample_time":"4ns","profile":"apb4","event":"setup","direction":"write","payload":{"pwrite":"1'h1"}}],"summary":{"complete":true,"returned":1,"limit":50,"total":1},"diagnostics":[]}
 ```
 
-Machine-readable `path` fields are canonical. For a flat `[msb:lsb]` projection in `value`, `change`, or `extract generic`, `path` is the canonical source path plus the range and `relative_path` is the scoped relative source path plus the same range; no separate projection field is emitted. Scoped `signal`, `value`, `change`, and `extract generic` results include the exact selected scope in `context.scope`, including when `data` is empty. Their signal or payload rows also include `relative_path`; immediate children use a basename and descendants retain their child scope components. Without `--scope`, `value`, `change`, and `extract generic` omit both `context` and `relative_path` in JSON; their JSONL `begin` records also omit `context`. Command-specific context and row fields are defined below. Waveform commands support JSON envelopes. Unsupported `--json` combinations fail as argument errors.
+Machine-readable `path` fields are canonical. For a flat `[msb:lsb]` projection in `value`, `change`, or `extract generic`, `path` is the source selector plus the range; its final base component is quoted when needed to distinguish a projection from a literal declaration. `relative_path` omits the selected scope from that selector. No separate projection field is emitted. See [path resolution](paths.md). Scoped `signal`, `value`, `change`, and `extract generic` results include the exact selected scope in `context.scope`, including when `data` is empty. Their signal or payload rows also include `relative_path`; immediate children use a basename and descendants retain their child scope components. Without `--scope`, `value`, `change`, and `extract generic` omit both `context` and `relative_path` in JSON; their JSONL `begin` records also omit `context`. Command-specific context and row fields are defined below. Waveform commands support JSON envelopes. Unsupported `--json` combinations fail as argument errors.
 
 ### Command data contracts
 
@@ -267,7 +267,7 @@ With `--summary`, JSONL still emits `begin`, optional context, diagnostics, and 
 
 ## 4. Diagnostics
 
-Diagnostics do not change the exit code. Common cases are truncation, unmatched protocol extraction candidates, and ambiguous FSDB signals. Explicitly unlimited limits do not emit diagnostics, and valid queries with no matching rows do not emit an empty-result diagnostic; machine clients distinguish those outcomes through `summary.limit`, available data, and the result counts.
+Diagnostics do not change the exit code. Common cases are truncation, unmatched protocol extraction candidates, and ambiguous source declarations. Explicitly unlimited limits do not emit diagnostics, and valid queries with no matching rows do not emit an empty-result diagnostic; machine clients distinguish those outcomes through `summary.limit`, available data, and the result counts.
 
 Human-readable diagnostics use:
 

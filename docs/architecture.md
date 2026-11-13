@@ -53,7 +53,7 @@ Key architectural consequences:
 - Execution is stateless. Every command opens the dump and runs once; the native wrapper exits, while the browser worker returns stdout, stderr, and status. The plain-JavaScript terminal keeps only in-tab command navigation and a bounded newest-first visible transcript.
 - Local preview composes the separately generated current Playground and documentation under `/wavepeek/` and `/wavepeek/latest/`; production uses the same paths while Mike retains historical documentation versions.
 - The engine is format-agnostic for waveform commands. Ondas format handling and optional native reader access stay behind the waveform facade.
-- The lazy hierarchy index maps scope paths and groups declarations by owning scope. Direct listings visit that scope's declarations; global include matching reuses that index or builds temporary metadata for selected canonical paths, retaining all declarations of each path for ambiguity and split-vector handling.
+- The lazy hierarchy index keys scopes and declarations by exact Ondas component paths. Direct lookup uses the same components without building a second full index. Confirmed contiguous declaration ranges define Ondas concatenations; samples, traces, and projections use their common signal handles. Quoted canonical paths are formatted for output and parsed by selections and expressions.
 - The skill helper keeps its source of truth in packaged files instead of duplicated Rust string tables.
 - JSON and JSONL contracts are covered by direct serialization and command-runtime tests.
 
@@ -127,7 +127,7 @@ src/
 | `cli/` | clap, dispatch, help text | waveform parsing internals, output serialization details |
 | `engine/` | domain logic, waveform API, shared semantics helpers | clap parsing flow |
 | `expr/` | expression AST, types, evaluation | CLI, output formatting, `ondas` |
-| `waveform/` | Ondas access, public hierarchy normalization, query caching | CLI behavior, output formatting |
+| `waveform/` | Ondas access, exact hierarchy paths, query caching | CLI behavior, output formatting |
 | `output` | JSON and human rendering | waveform access, clap parsing |
 | `error` | all stable error variants | everything else |
 

@@ -306,3 +306,74 @@ fn bits_sample(timestamp: u64, bits: &str, label: Option<&str>) -> SignalSample 
         string: None,
     }
 }
+
+#[test]
+fn nine_state_truth_equality_enum_constants_and_edges_share_one_interpretation() {
+    let fixture: SignalFixture = serde_json::from_value(serde_json::json!({
+        "name": "sig",
+        "ty": {"kind":"enum_core", "storage":"scalar", "width":1, "is_four_state":true, "is_signed":false,
+               "enum_type_id":"logic_t", "enum_labels":[{"name":"WEAK_HIGH", "bits":"h"}]},
+        "samples": [{"timestamp":0,"bits":"l"},{"timestamp":1,"bits":"h"},{"timestamp":2,"bits":"1"},
+                    {"timestamp":3,"bits":"u"},{"timestamp":4,"bits":"w"},{"timestamp":5,"bits":"-"},
+                    {"timestamp":6,"bits":"z"},{"timestamp":7,"bits":"x"}]
+    })).unwrap();
+    let host = InMemoryExprHost::from_fixtures(&[fixture]);
+    for (time, bit) in [
+        (0, "0"),
+        (1, "1"),
+        (2, "1"),
+        (3, "x"),
+        (4, "x"),
+        (5, "x"),
+        (6, "z"),
+        (7, "x"),
+    ] {
+        assert_eq!(
+            eval_logical_expr_source_at("sig", &host, time)
+                .unwrap()
+                .payload,
+            ExprValuePayload::Integral {
+                bits: bit.into(),
+                label: None
+            }
+        );
+        let expected = if bit == "1" { "1" } else { "0" };
+        assert_eq!(
+            eval_logical_expr_source_at("sig === 1'b1", &host, time)
+                .unwrap()
+                .payload,
+            ExprValuePayload::Integral {
+                bits: expected.into(),
+                label: None
+            }
+        );
+    }
+    for source in ["sig ? 1'b1 : 1'b0", "sig == type(sig)::WEAK_HIGH"] {
+        assert_eq!(
+            eval_logical_expr_source_at(source, &host, 1)
+                .unwrap()
+                .payload,
+            ExprValuePayload::Integral {
+                bits: "1".into(),
+                label: None
+            }
+        );
+    }
+    for (source, time, expected) in [
+        ("posedge sig", 1, true),
+        ("edge sig", 2, false),
+        ("sig", 4, false),
+    ] {
+        let expr = bind_event_expr(source, &host).unwrap();
+        let frame = EventEvalFrame {
+            timestamp: time,
+            previous_timestamp: Some(time - 1),
+            tracked_signals: &[],
+        };
+        assert_eq!(
+            event_matches_at(&expr, &host, &frame).unwrap(),
+            expected,
+            "{source}@{time}"
+        );
+    }
+}

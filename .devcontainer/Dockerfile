@@ -15,10 +15,14 @@ RUN set -eu; \
     mkdir -p /tmp/ondas-fixtures "${ONDAS_FIXTURES_DIR}"; \
     tar -xzf /tmp/ondas-fixtures.tar.gz -C /tmp/ondas-fixtures --strip-components=1; \
     cd /tmp/ondas-fixtures; \
-    python3 -B scripts/install.py ${WAVEPEEK_ONDAS_FIXTURES}; \
+    python3 -B scripts/install.py ${WAVEPEEK_ONDAS_FIXTURES} ${WAVEPEEK_ONDAS_FSDB_FIXTURES}; \
     for fixture in ${WAVEPEEK_ONDAS_FIXTURES}; do \
         mkdir -p "${ONDAS_FIXTURES_DIR}/${fixture}"; \
         cp "${fixture}/fixture.json" "${fixture}/waveform.fst" "${ONDAS_FIXTURES_DIR}/${fixture}/"; \
+    done; \
+    for fixture in ${WAVEPEEK_ONDAS_FSDB_FIXTURES}; do \
+        mkdir -p "${ONDAS_FIXTURES_DIR}/${fixture}"; \
+        cp "${fixture}/fixture.json" "${fixture}/waveform.fsdb" "${ONDAS_FIXTURES_DIR}/${fixture}/"; \
     done; \
     cp -a LICENSES "${ONDAS_FIXTURES_DIR}/"; \
     rm -rf /tmp/ondas-fixtures /tmp/ondas-fixtures.tar.gz

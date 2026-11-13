@@ -994,12 +994,6 @@ fn build_ahb(args: &AhbArgs) -> Result<BuiltAhb, WavepeekError> {
     let resolved = waveform
         .borrow()
         .resolve_signals(canonical_paths.as_slice())?;
-    let expr_resolved = waveform
-        .borrow()
-        .resolve_expr_signals(canonical_paths.as_slice())?;
-    waveform
-        .borrow()
-        .validate_expr_values_supported(expr_resolved.as_slice())?;
     let resolved_mappings = ordered_mappings
         .iter()
         .cloned()

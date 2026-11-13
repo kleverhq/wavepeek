@@ -16,11 +16,11 @@ references such as `type(enum_operand_reference)::LABEL` (for example,
 
 Boolean expressions operate on typed operands. Operands may carry 2-state or
 4-state values internally; final property decisions are reduced to 2-state.
-The supported groups match the values and type metadata recoverable from VCD
-and FST waveform dumps, and from FSDB waveform dumps in FSDB-enabled builds.
-Dump-derived operands remain limited to the digital bit-vector and integral
-surfaces that the active backend can recover; `real` and `string` support
-follows only the explicit literal, cast, and operator caveats below.
+Dump-derived operands use the encoding, width and type metadata supplied by
+Ondas. Supported expression operations on integral, real and ASCII string
+values apply to every supported input format, including FSDB and SHM.
+The bit-oriented `value`, `change` row values and extraction payloads do not
+accept real or string values.
 
 - `bit-vector`
   - `bit` - width `1`, sign `unsigned`, states `2-state`
@@ -58,6 +58,30 @@ follows only the explicit literal, cast, and operator caveats below.
   - raw `event` is not a value expression and does not
     participate directly in casts, implicit conversions, operators, selection,
     concatenation, or replication
+
+### Dump metadata and logic interpretation
+
+Known signedness and logic domain take precedence over type defaults. The
+stored bit width is retained even when the declaration has an integer-like
+kind. With unknown signedness, ordinary vectors and enums are unsigned;
+recognized integer-like kinds use the signedness listed above. Use
+`signed'(value)` or `unsigned'(value)` to override it. An unknown logic domain
+is evaluated as four-state, including when a declaration kind suggests a
+two-state type. These are language defaults; the source metadata stays unknown.
+Explicit cast targets retain their declared widths and state domains.
+
+Nine-state samples use `l -> 0`, `h -> 1`, and `u/w/- -> x`; `0/1/x/z` stay
+unchanged. This rule applies to truth, equality, change/edge detection and bit
+rendering. It does not introduce full VHDL semantics. Enum identity uses
+available enumeration metadata independently of the declaration kind. Labels
+match the original full-width nine-state key before conversion; labels may be
+unavailable or absent for a value. Enum constants use the same conversion when
+evaluated. Selections use normalized bit positions; declaration ranges remain
+metadata for hierarchy composition, as described in [paths](paths.md).
+
+Missing samples remain distinct from observed `x` at the reading boundary.
+An integral expression with no sample evaluates to unknown bits; missing real
+or string operands report a runtime error.
 
 ## 1.2 Operand Forms
 

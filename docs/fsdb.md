@@ -21,7 +21,7 @@ wavepeek change   --waves dump.fsdb --scope top.u0 --signals state --on 'posedge
 wavepeek property --waves dump.fsdb --scope top.u0 --on 'posedge clk' --eval 'valid && ready'
 ```
 
-Supported FSDB command coverage is digital bit-vector/integral data for `info`, `scope`, `signal`, `value`, `change`, and `property`. Real and string FSDB value decoding are not supported; commands that need those values fail with the existing `signal` error category.
+FSDB supports hierarchy inspection, integral value rows, and the existing expression operations on real and ASCII string values in `property`, `iff` and `when`. Real/string `value`, `change` rows and extraction payloads fail with the `signal` error category.
 
 When Ondas recognizes FSDB but no reader is available, WavePeek reports the missing backend and the required `fsdb` Cargo feature and local Verdi SDK. File extensions do not override a detected error cause.
 
@@ -85,6 +85,8 @@ Do not commit generated `.fsdb` fixtures. `just prepare-fsdb-fixtures` creates i
 
 - VCD test fixtures under `tests/fixtures/hand/` and `tests/fixtures/generated/`, written to `tests/fixtures/fsdb/`;
 - Selected Ondas FST fixtures under `ONDAS_FIXTURES_DIR/fst/<fixture-id>/waveform.fst`, written as neighboring `waveform.fsdb` files for benchmark parity. If a current persistent `waveform.vcd` already exists beside the FST, the converter reuses it; otherwise it creates and removes a temporary VCD. Smoke selection matches fixture directory IDs.
+
+The image also provisions published typed-value and nine-state FSDB fixtures from the pinned Ondas corpus for native string and logic regressions. They are separate from converted VCD inputs.
 
 `just prepare-fsdb-test-fixtures` limits preparation to the VCD-derived test fixtures. Source-backed VCD fixtures are regenerated first by `just prepare-waveform-fixtures`. FSDB benchmark smoke recipes prepare the narrower RTL subset they execute; full FSDB benchmark helpers prepare and verify the generated FSDB benchmark catalog before applying any gate-local runnable-catalog filtering.
 

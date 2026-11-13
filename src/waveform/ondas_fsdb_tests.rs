@@ -8,6 +8,54 @@ use crate::waveform::{
 };
 
 #[test]
+fn fsdb_nine_state_samples_and_enum_keys_remain_raw() {
+    let path = PathBuf::from(std::env::var_os("ONDAS_FIXTURES_DIR").unwrap())
+        .join("fsdb/fsdb0020-nine-state-ranges/waveform.fsdb");
+    let mut backend = OndasBackend::open(&path).unwrap();
+    let mut resolved = backend
+        .resolve_expr_signal("RICH_LOGIC.RESOLVED_BIT")
+        .unwrap();
+    assert_eq!(resolved.expr_type.width, 1);
+    assert!(resolved.expr_type.is_four_state);
+    resolved.expr_type.kind = ExprTypeKind::EnumCore;
+    resolved.expr_type.enum_labels = Some(vec![
+        crate::expr::EnumLabelInfo {
+            name: "ONE".into(),
+            bits: "1".into(),
+        },
+        crate::expr::EnumLabelInfo {
+            name: "WEAK_HIGH".into(),
+            bits: "h".into(),
+        },
+    ]);
+    assert_eq!(
+        backend.sample_expr_value(&resolved, 70).unwrap(),
+        SampledValue::Integral {
+            bits: Some("h".into()),
+            label: Some("WEAK_HIGH".into()),
+        }
+    );
+    let payload = backend.resolve_signals(&[resolved.path.clone()]).unwrap();
+    assert_eq!(
+        backend.sample_resolved_optional(&payload, 70).unwrap()[0]
+            .bits
+            .as_deref(),
+        Some("1")
+    );
+    assert_eq!(
+        backend.sample_expr_value(&resolved, 70).unwrap(),
+        SampledValue::Integral {
+            bits: Some("h".into()),
+            label: Some("WEAK_HIGH".into()),
+        }
+    );
+    assert_eq!(
+        resolved.expr_type.enum_labels.as_ref().unwrap()[1].bits,
+        "h"
+    );
+}
+
+#[test]
 fn fsdb_recursive_listing_uses_structural_depth_for_escaped_scopes() {
     let source = "$timescale 1ns $end\n$scope module top $end\n$scope module block $end\n$var wire 1 ! inside $end\n$upscope $end\n$scope module \\block.dot $end\n$var wire 1 \" outside $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n1\"\n";
     let fixture = GeneratedFsdbFixture::from_contents(source);
@@ -42,7 +90,7 @@ fn fsdb_recursive_listing_uses_structural_depth_for_escaped_scopes() {
 fn fsdb_scope_escape_markers_are_not_public_path_components() {
     let source: std::sync::Arc<[u8]> = b"$timescale 1ns $end\n$scope module top $end\n$scope module \\block[0] $end\n$var wire 1 ! flag $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n".as_slice().into();
     let wave = ondas::open_bytes("scope.vcd", source).unwrap();
-    let index = super::HierarchyIndex::new(wave.hierarchy(), ondas::Format::Fsdb, false);
+    let index = super::HierarchyIndex::new(wave.hierarchy(), false);
     assert!(
         index
             .scopes

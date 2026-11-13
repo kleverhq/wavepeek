@@ -186,9 +186,6 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
     debug.event("expression.bind.done", || serde_json::json!({}));
     let eval_signal_handles = referenced_signal_handles(&bound_eval);
     let eval_sources = candidate_sources_for_handles(&host, eval_signal_handles.as_slice())?;
-    waveform
-        .borrow()
-        .validate_expr_values_supported(eval_sources.as_slice())?;
 
     let tracked_signal_handles = if event_expr_contains_wildcard(&bound_event) {
         if eval_signal_handles.is_empty() && event_expr_is_any_tracked_only(&bound_event) {

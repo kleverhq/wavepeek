@@ -1898,11 +1898,10 @@ fn normalize_edge_bit(bit: BoundBit) -> char {
 
 fn bits_from_sample(raw: &str) -> Vec<BoundBit> {
     raw.chars()
-        .map(|bit| match bit.to_ascii_lowercase() {
+        .map(|bit| match crate::logic::four_state(bit) {
             '0' => BoundBit::Zero,
             '1' => BoundBit::One,
             'z' => BoundBit::Z,
-            'x' | 'h' | 'u' | 'w' | 'l' | '-' => BoundBit::X,
             _ => BoundBit::X,
         })
         .collect()
@@ -2475,7 +2474,7 @@ mod tests {
             vec![
                 BoundBit::One,
                 BoundBit::Zero,
-                BoundBit::X,
+                BoundBit::One,
                 BoundBit::X,
                 BoundBit::X,
                 BoundBit::X,

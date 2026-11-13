@@ -1444,7 +1444,7 @@ fn bit_from_char(ch: char) -> Option<BoundBit> {
 
 fn bits_from_sample(raw: &str) -> Vec<BoundBit> {
     raw.chars()
-        .map(|ch| bit_from_char(ch).unwrap_or(BoundBit::X))
+        .map(|ch| bit_from_char(crate::logic::four_state(ch)).unwrap_or(BoundBit::X))
         .collect()
 }
 

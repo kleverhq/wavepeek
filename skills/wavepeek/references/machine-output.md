@@ -92,6 +92,12 @@ port sparse_array real_time real_parameter bit logic int
 short_int long_int byte enum short_real boolean bit_vector
 ```
 
+Signal kind aliases normalize declaration spellings, including `shortint` to
+`short_int`, `longint` to `long_int` and VHDL logic spellings to `logic` or
+`bit_vector`. They do not determine numeric semantics. Raw events have
+`kind: "event"` and `width: 0` in every format. Their bit-oriented display is
+`0'h0`; occurrence tests belong to event expressions, not that display.
+
 Protocol extractors use a common mapping form:
 
 ```text

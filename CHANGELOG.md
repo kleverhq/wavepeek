@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `$signal("path")` expression operands for explicit canonical signal names.
 
 ### Changed
+- Evaluate FSDB real and ASCII string values in existing expressions; bit-oriented outputs remain integral.
+- Use declaration metadata for expression types and preserve stored widths. Unknown signedness defaults to unsigned for ordinary vectors, and unknown logic domains use four-state evaluation.
+- Interpret weak logic states as L=0 and H=1 across expressions, edges and output; keep raw enum label matching. Events use width 0 across formats.
 - Use exact Ondas hierarchy paths with quoted components and metadata-backed signal composition. Unconfirmed array-like names remain declarations.
 - Update Ondas to 2.1.0. FSDB native diagnostics remain visible on stderr while stdout retains the command output contract.
 

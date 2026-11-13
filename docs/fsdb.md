@@ -21,7 +21,7 @@ wavepeek change   --waves dump.fsdb --scope top.u0 --signals state --on 'posedge
 wavepeek property --waves dump.fsdb --scope top.u0 --on 'posedge clk' --eval 'valid && ready'
 ```
 
-FSDB supports hierarchy inspection, integral value rows, and the existing expression operations on real and ASCII string values in `property`, `iff` and `when`. Real/string `value`, `change` rows and extraction payloads fail with the `signal` error category.
+FSDB supports hierarchy inspection, integral value rows, and the existing expression operations on real and ASCII string values in `property`, `iff` and `when`. Real/string `value`, `change` rows and extraction payloads fail with the `signal` error category. Selected values may be decoded before a predicate matches; a non-ASCII string in that decoded portion is a value-support error even when a later value is ASCII.
 
 When Ondas recognizes FSDB but no reader is available, WavePeek reports the missing backend and the required `fsdb` Cargo feature and local Verdi SDK. File extensions do not override a detected error cause.
 

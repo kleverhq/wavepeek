@@ -33,6 +33,12 @@ pub struct BoundLogicalExpr {
     pub(crate) root: BoundLogicalNode,
 }
 
+impl BoundLogicalExpr {
+    pub(crate) fn validate_boolean_context(&self) -> Result<(), ExprDiagnostic> {
+        ensure_boolean_context_type(&self.root.ty, self.root.span, "waveform predicate")
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct BoundLogicalNode {
     pub ty: ExprType,

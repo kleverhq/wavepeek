@@ -121,6 +121,14 @@ check-ondas-fixtures: require-container
             printf '%s\n' "error: file: required fixture missing at ${ONDAS_FIXTURES_DIR}/$fixture/waveform.fst" >&2; \
             exit 1; \
         fi; \
+    done; \
+    for fixture in $WAVEPEEK_ONDAS_FSDB_FIXTURES; do \
+        for file in waveform.fsdb fixture.json; do \
+            if [ ! -f "${ONDAS_FIXTURES_DIR}/$fixture/$file" ]; then \
+                printf '%s\n' "error: file: required fixture missing at ${ONDAS_FIXTURES_DIR}/$fixture/$file (rebuild the devcontainer image and run ./dev --recreate true)" >&2; \
+                exit 1; \
+            fi; \
+        done; \
     done
 
 # Regenerate source-backed waveform fixtures under tests/fixtures/generated
@@ -306,7 +314,7 @@ check-fsdb-build: require-verdi
     cargo test --features fsdb --lib fsdb_reader_hierarchy_smoke -- --nocapture
 
 # Run optional FSDB build smoke tests
-test-fsdb: check-fsdb-build prepare-fsdb-test-fixtures
+test-fsdb: check-ondas-fixtures check-fsdb-build prepare-fsdb-test-fixtures
     @export CARGO_TARGET_DIR=target/fsdb; \
     cargo test --features fsdb --lib && \
     cargo test --features fsdb --test fsdb_cli --test fsdb_output_cli --test waveform_errors_cli

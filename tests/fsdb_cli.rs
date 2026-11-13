@@ -1152,6 +1152,9 @@ fn fsdb_raw_event_property_matches_vcd_when_converter_preserves_events() {
         "unlimited",
         "--json",
     ]);
+    for entry in signal_listing["data"].as_array().unwrap() {
+        assert_signal_entry(entry);
+    }
     assert_eq!(
         signal_listing["data"],
         json!([
@@ -1599,8 +1602,10 @@ fn assert_signal_entry(entry: &Value) {
     );
     if let Some(width) = entry.get("width") {
         assert!(
-            width.as_u64().is_some_and(|width| width > 0),
-            "signal width should be a positive integer when present"
+            width
+                .as_u64()
+                .is_some_and(|width| width > 0 || kind == "event"),
+            "signal width must be an integer; only events may have width zero"
         );
     }
 }
@@ -1802,4 +1807,41 @@ fn bundled_cpu_fsdb_path() -> String {
 
 fn path_str(path: &Path) -> String {
     path.to_string_lossy().into_owned()
+}
+
+#[test]
+fn fsdb_native_string_requires_an_explicit_boolean_expression() {
+    let fixture = typed_fsdb_path("fsdb0019-typed-values");
+    for command in ["property", "extract"] {
+        let mut args = if command == "property" {
+            vec![
+                "property",
+                "--eval",
+                "text",
+                "--on",
+                "*",
+                "--sample-mode",
+                "native",
+            ]
+        } else {
+            vec![
+                "extract",
+                "generic",
+                "--when",
+                "text",
+                "--on",
+                "posedge a",
+                "--payload",
+                "a",
+            ]
+        };
+        args.extend([
+            "--scope", "values", "--from", "10ns", "--to", "90ns", "--json", "--waves", &fixture,
+        ]);
+        wavepeek_cmd()
+            .args(args)
+            .assert()
+            .code(1)
+            .stdout(predicate::str::contains("EXPR-SEMANTIC-BOOLEAN-CONTEXT"));
+    }
 }

@@ -1,4 +1,9 @@
+/// Formats the waveform facade's normalized four-state bits.
 pub(crate) fn format_verilog_literal(width: u32, bits: &str) -> String {
+    debug_assert!(
+        bits.bytes()
+            .all(|byte| matches!(byte, b'0' | b'1' | b'x' | b'z'))
+    );
     if width == 0 {
         return "0'h0".to_string();
     }
@@ -21,17 +26,14 @@ pub(crate) fn format_verilog_literal(width: u32, bits: &str) -> String {
 }
 
 fn bits_chunk_to_hex_digit(chunk: &str) -> char {
-    if chunk.chars().all(|ch| crate::logic::four_state(ch) == 'z') {
+    if chunk.chars().all(|ch| ch == 'z') {
         return 'z';
     }
-    if chunk
-        .chars()
-        .all(|ch| matches!(crate::logic::four_state(ch), '0' | '1'))
-    {
+    if chunk.chars().all(|ch| matches!(ch, '0' | '1')) {
         let mut value = 0u8;
         for ch in chunk.chars() {
             value = (value << 1)
-                + match crate::logic::four_state(ch) {
+                + match ch {
                     '0' => 0,
                     '1' => 1,
                     _ => unreachable!("binary chunk must contain only 0/1"),
@@ -61,9 +63,5 @@ mod tests {
         assert_eq!(bits_chunk_to_hex_digit("1010"), 'a');
         assert_eq!(bits_chunk_to_hex_digit("zz"), 'z');
         assert_eq!(bits_chunk_to_hex_digit("z1"), 'x');
-        assert_eq!(bits_chunk_to_hex_digit("h"), '1');
-        assert_eq!(format_verilog_literal(8, "LHlhHLhl"), "8'h5a");
-        assert_eq!(format_verilog_literal(4, "ZZZZ"), "4'hz");
-        assert_eq!(format_verilog_literal(4, "UW-x"), "4'hx");
     }
 }

@@ -647,7 +647,7 @@ fn fsdb_reader_hierarchy_smoke() {
         assert!(!signal.path.contains('/'));
         assert!(STABLE_SIGNAL_KIND_ALIASES.contains(&signal.kind.as_str()));
         if let Some(width) = signal.width {
-            assert!(width > 0);
+            assert!(width > 0 || signal.kind == "event");
         }
     }
 }

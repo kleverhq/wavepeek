@@ -1221,3 +1221,36 @@ fn property_runtime_manifest_cases_pass() {
         }
     }
 }
+
+#[test]
+fn string_values_are_rejected_as_property_and_extract_predicates() {
+    let fixture = fixture_path("change_property_real_output.vcd");
+    for command in ["property", "extract"] {
+        let mut args = if command == "property" {
+            vec!["property", "--eval", "\"hello\""]
+        } else {
+            vec![
+                "extract",
+                "generic",
+                "--when",
+                "\"hello\"",
+                "--payload",
+                "clk",
+            ]
+        };
+        args.extend([
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--json",
+            "--waves",
+            fixture.to_str().unwrap(),
+        ]);
+        wavepeek_cmd()
+            .args(args)
+            .assert()
+            .code(1)
+            .stdout(predicate::str::contains("EXPR-SEMANTIC-BOOLEAN-CONTEXT"));
+    }
+}

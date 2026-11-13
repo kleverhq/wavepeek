@@ -13,11 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Evaluate FSDB real and ASCII string values in existing expressions; bit-oriented outputs remain integral.
 - Use declaration metadata for expression types and preserve stored widths. Unknown signedness defaults to unsigned for ordinary vectors, and unknown logic domains use four-state evaluation.
-- Interpret weak logic states as L=0 and H=1 across expressions, edges and output; keep raw enum label matching. Events use width 0 across formats.
+- Interpret weak logic states as L=0 and H=1 across expressions, edges and output; keep raw enum label matching. Raw events use kind `event` and width 0 across formats.
 - Use exact Ondas hierarchy paths with quoted components and metadata-backed signal composition. Unconfirmed array-like names remain declarations.
 - Update Ondas to 2.1.0. FSDB native diagnostics remain visible on stderr while stdout retains the command output contract.
 
 ### Fixed
+- Reject string-valued `property --eval` and extraction `--when` predicates; string comparisons remain supported.
+- Preserve agreed enum labels when merging identical branches under an unknown condition.
 - Keep literal dots and brackets addressable across listing, selections, and expressions; report ambiguous source declarations independently of format.
 - Preserve typed waveform error causes regardless of file extension and classify unsupported values and invalid internal requests separately from file failures.
 

@@ -40,7 +40,17 @@ fn expression_metadata_overrides_kind_defaults_without_changing_width() {
     assert!(!ty.is_signed);
     assert!(!ty.is_four_state);
 
-    for kind in ["byte", "short-int", "short_int", "longint", "integer"] {
+    for kind in [
+        "byte",
+        "shortint",
+        "short-int",
+        "short_int",
+        "int",
+        "longint",
+        "long-int",
+        "long_int",
+        "integer",
+    ] {
         let ty = super::expression_value_type(bits, kind, None, None, false).unwrap();
         assert_eq!(ty.width, 7, "{kind}");
         assert!(ty.is_signed, "{kind}");
@@ -1141,6 +1151,14 @@ fn stable_kind_aliases_cover_full_inventory() {
             ("shortint", "short_int"),
             ("longint", "long_int"),
             ("shortreal", "short_real"),
+            ("std_logic", "logic"),
+            ("std_ulogic", "logic"),
+            ("std_logic_vector", "bit_vector"),
+            ("std_ulogic_vector", "bit_vector"),
+            ("std-logic", "logic"),
+            ("std-logic-vector", "bit_vector"),
+            ("short-int", "short_int"),
+            ("long-int", "long_int"),
             ("stdlogic", "logic"),
             ("stdulogic", "logic"),
             ("stdlogicvector", "bit_vector"),

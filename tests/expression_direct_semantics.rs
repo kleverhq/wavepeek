@@ -377,3 +377,73 @@ fn nine_state_truth_equality_enum_constants_and_edges_share_one_interpretation()
         );
     }
 }
+
+#[test]
+fn unknown_conditional_preserves_only_agreed_enum_labels() {
+    for include_one in [false, true] {
+        let mut labels = vec![serde_json::json!({"name":"WEAK_HIGH", "bits":"h"})];
+        if include_one {
+            labels.push(serde_json::json!({"name":"ONE", "bits":"1"}));
+        }
+        let fixture: SignalFixture = serde_json::from_value(serde_json::json!({
+            "name":"sig", "ty":{"kind":"enum_core", "storage":"scalar", "width":1,
+                "is_four_state":true,"is_signed":false,"enum_type_id":"logic_t","enum_labels":labels},
+            "samples":[{"timestamp":0,"bits":"h","label":"WEAK_HIGH"}]
+        })).unwrap();
+        let host = InMemoryExprHost::from_fixtures(&[fixture]);
+        for source in ["sig ? sig : sig", "1'bx ? sig : sig"] {
+            assert_eq!(
+                eval_logical_expr_source_at(source, &host, 0)
+                    .unwrap()
+                    .payload,
+                ExprValuePayload::Integral {
+                    bits: "1".into(),
+                    label: Some("WEAK_HIGH".into())
+                },
+                "{source}"
+            );
+        }
+        if include_one {
+            for (source, label) in [
+                ("1'bx ? sig : type(sig)::ONE", None),
+                ("1'bx ? type(sig)::ONE : type(sig)::ONE", Some("ONE")),
+                ("type(sig)'(1'b1)", Some("ONE")),
+                ("1'bx ? type(sig)'(1'b1) : type(sig)'(1'b1)", Some("ONE")),
+            ] {
+                assert_eq!(
+                    eval_logical_expr_source_at(source, &host, 0)
+                        .unwrap()
+                        .payload,
+                    ExprValuePayload::Integral {
+                        bits: "1".into(),
+                        label: label.map(str::to_owned)
+                    },
+                    "{source}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn unknown_conditional_does_not_label_different_bits_with_duplicate_names() {
+    let make = |name: &str, bits: &str| {
+        serde_json::from_value::<SignalFixture>(serde_json::json!({
+            "name":name,"ty":{"kind":"enum_core","storage":"scalar","width":1,"is_four_state":true,
+            "is_signed":false,"enum_type_id":"state_t","enum_labels":[
+                {"name":"DUP","bits":"0"},{"name":"DUP","bits":"1"},{"name":"UNKNOWN","bits":"x"}]},
+            "samples":[{"timestamp":0,"bits":bits,"label":"DUP"}]
+        }))
+        .unwrap()
+    };
+    let host = InMemoryExprHost::from_fixtures(&[make("a", "0"), make("b", "1")]);
+    assert_eq!(
+        eval_logical_expr_source_at("1'bx ? a : b", &host, 0)
+            .unwrap()
+            .payload,
+        ExprValuePayload::Integral {
+            bits: "x".into(),
+            label: None
+        }
+    );
+}

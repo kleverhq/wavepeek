@@ -73,8 +73,10 @@ Explicit cast targets retain their declared widths and state domains.
 Nine-state samples use `l -> 0`, `h -> 1`, and `u/w/- -> x`; `0/1/x/z` stay
 unchanged. This rule applies to truth, equality, change/edge detection and bit
 rendering. It does not introduce full VHDL semantics. Enum identity uses
-available enumeration metadata independently of the declaration kind. Labels
-match the original full-width nine-state key before conversion; labels may be
+available enumeration metadata independently of the declaration kind. A known
+`enum` declaration without a recovered table retains its category; operations
+requiring unavailable type or label information report a metadata error.
+Explicit vector casts still operate on the underlying bits. Labels match the original full-width nine-state key before conversion; labels may be
 unavailable or absent for a value. Enum constants use the same conversion when
 evaluated. Selections use normalized bit positions; declaration ranges remain
 metadata for hierarchy composition, as described in [paths](paths.md).

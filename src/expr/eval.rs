@@ -735,15 +735,18 @@ fn eval_conditional(
                 result_ty.kind,
                 ExprTypeKind::BitVector | ExprTypeKind::IntegerLike(_) | ExprTypeKind::EnumCore
             ) {
-                let (lhs_bits, _) = expect_integral_bits(&lhs)?;
-                let (rhs_bits, _) = expect_integral_bits(&rhs)?;
+                let (lhs_bits, lhs_label) = expect_integral_bits(&lhs)?;
+                let (rhs_bits, rhs_label) = expect_integral_bits(&rhs)?;
                 let bits = lhs_bits
                     .iter()
                     .zip(rhs_bits.iter())
                     .map(|(lhs, rhs)| if lhs == rhs { *lhs } else { BoundBit::X })
                     .collect::<Vec<_>>();
-                let label = if matches!(result_ty.kind, ExprTypeKind::EnumCore) {
-                    enum_label_for_bits(result_ty, bits.as_slice())
+                let label = if matches!(result_ty.kind, ExprTypeKind::EnumCore)
+                    && lhs_bits == rhs_bits
+                    && lhs_label == rhs_label
+                {
+                    lhs_label.map(str::to_owned)
                 } else {
                     None
                 };

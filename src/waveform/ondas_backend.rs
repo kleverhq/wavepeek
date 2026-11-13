@@ -130,14 +130,7 @@ struct HierarchyIndex {
 impl OndasBackend {
     pub fn open(path: &Path) -> Result<Self, WavepeekError> {
         let inner = ondas::open(path).map_err(|error| open_error(path, error))?;
-        if !matches!(
-            inner.format(),
-            Format::Vcd | Format::Fst | Format::Fsdb | Format::Shm
-        ) {
-            return Err(WavepeekError::File(
-                "WavePeek supports VCD, FST, FSDB and SHM waveforms".into(),
-            ));
-        }
+        // Available readers and declared product support are separate concerns.
         Ok(Self::new(inner, path))
     }
 
@@ -1135,7 +1128,13 @@ impl HierarchyIndex {
                 entry: SignalEntry {
                     name: format_path(&ondas::HierarchyPath::from_components([variable.name()])),
                     path: format_path(&path),
-                    kind: var_type_alias(variable.kind()),
+                    kind: if signal
+                        .is_some_and(|signal| matches!(signal.encoding(), Encoding::Event))
+                    {
+                        "event".into()
+                    } else {
+                        var_type_alias(variable.kind())
+                    },
                     width: signal.and_then(|signal| match signal.encoding() {
                         Encoding::Bits { width } => Some(width),
                         Encoding::Event => Some(0),
@@ -1234,18 +1233,18 @@ where
 }
 
 fn interpreted_bits(bits: ondas::BitsRef<'_>) -> String {
-    bits.iter_msb()
-        .map(|bit| {
-            crate::logic::four_state(match bit {
-                ondas::Logic::Zero => '0',
-                ondas::Logic::One => '1',
-                ondas::Logic::Z => 'z',
-                ondas::Logic::L => 'l',
-                ondas::Logic::H => 'h',
-                _ => 'x',
-            })
-        })
-        .collect()
+    let text = bits.to_string();
+    if text
+        .bytes()
+        .all(|byte| matches!(byte, b'0' | b'1' | b'x' | b'z'))
+    {
+        return text;
+    }
+    let mut bytes = text.into_bytes();
+    for byte in &mut bytes {
+        *byte = crate::logic::four_state(char::from(*byte)) as u8;
+    }
+    String::from_utf8(bytes).expect("four-state logic is ASCII")
 }
 
 fn expression_type(variable: &ondas::Variable<'_>, signal: ondas::Signal) -> Option<ExprType> {
@@ -1285,11 +1284,11 @@ fn expression_value_type(
         Encoding::String => (ExprTypeKind::String, 0, true, false),
         Encoding::Event => (ExprTypeKind::Event, 0, true, false),
         Encoding::Bits { width } => {
-            let integer = match var_type_alias(declaration_kind).as_str() {
+            let integer = match declaration_kind {
                 "byte" => Some(IntegerLikeKind::Byte),
-                "short_int" => Some(IntegerLikeKind::Shortint),
+                "shortint" | "short-int" | "short_int" => Some(IntegerLikeKind::Shortint),
                 "int" => Some(IntegerLikeKind::Int),
-                "long_int" => Some(IntegerLikeKind::Longint),
+                "longint" | "long-int" | "long_int" => Some(IntegerLikeKind::Longint),
                 "integer" => Some(IntegerLikeKind::Integer),
                 "time" => Some(IntegerLikeKind::Time),
                 _ => None,
@@ -1353,7 +1352,7 @@ fn var_type_alias(kind: &str) -> String {
         "bitvector" | "stdlogicvector" | "stdulogicvector" | "std_logic_vector"
         | "std_ulogic_vector" => "bit_vector".into(),
         "stdlogic" | "stdulogic" | "std_logic" | "std_ulogic" => "logic".into(),
-        _ => kind.replace('-', "_"),
+        _ => normalized,
     };
     if super::types::STABLE_SIGNAL_KIND_ALIASES.contains(&kind.as_str()) {
         kind

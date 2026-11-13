@@ -52,7 +52,7 @@ Key architectural consequences:
 
 - Execution is stateless. Every command opens the dump and runs once; the native wrapper exits, while the browser worker returns stdout, stderr, and status. The plain-JavaScript terminal keeps only in-tab command navigation and a bounded newest-first visible transcript.
 - Local preview composes the separately generated current Playground and documentation under `/wavepeek/` and `/wavepeek/latest/`; production uses the same paths while Mike retains historical documentation versions.
-- Shared `src/logic.rs` defines four-state interpretation for expressions, edges and bit rendering; Ondas samples and enum keys retain their original states.
+- Shared `src/logic.rs` defines four-state interpretation for expressions, edges and bit-output sampling. Renderers consume normalized samples; raw expression samples and enum keys retain their original states.
 - The engine is format-agnostic for waveform commands. Ondas format handling and optional native reader access stay behind the waveform facade.
 - The lazy hierarchy index keys scopes and declarations by exact Ondas component paths. Direct lookup uses the same components without building a second full index. Confirmed contiguous declaration ranges define Ondas concatenations; samples, traces, and projections use their common signal handles. Quoted canonical paths are formatted for output and parsed by selections and expressions.
 - The skill helper keeps its source of truth in packaged files instead of duplicated Rust string tables.

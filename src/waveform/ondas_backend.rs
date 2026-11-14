@@ -7,13 +7,13 @@ mod fsdb_tests;
 #[path = "ondas_tests.rs"]
 mod tests;
 
-use std::cell::{Cell, OnceCell, RefCell};
+use std::cell::{OnceCell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use ondas::{Encoding, Format, Time, TimeRange, Trace, Value, ValueRef};
+use ondas::{Encoding, Format, SampleRef, Time, TimeRange, Trace, Value, ValueRef};
 
 use crate::error::WavepeekError;
 use crate::expr::{
@@ -32,8 +32,8 @@ pub(super) struct OndasBackend {
     path: PathBuf,
     index: OnceCell<HierarchyIndex>,
     direct: RefCell<DirectSignals>,
-    traces: HashMap<SignalId, CachedTrace>,
-    sampling_window: Option<(u64, u64)>,
+    traces: HashMap<SignalId, Trace>,
+    indexed_window: Option<(u64, u64)>,
     indexed_times: Option<Vec<u64>>,
     compositions: RefCell<HashMap<SignalId, ondas::Signal>>,
 }
@@ -108,11 +108,6 @@ fn declaration_order(left: &Declaration, right: &Declaration) -> std::cmp::Order
         .then_with(|| left.entry.name.cmp(&right.entry.name))
 }
 
-struct CachedTrace {
-    trace: Trace,
-    cursor: Cell<usize>,
-}
-
 enum SignalSource {
     Signal(ondas::Signal),
     Concat(Vec<ondas::Signal>),
@@ -152,7 +147,7 @@ impl OndasBackend {
             index: OnceCell::new(),
             direct: RefCell::new(DirectSignals::default()),
             traces: HashMap::new(),
-            sampling_window: None,
+            indexed_window: None,
             indexed_times: None,
             compositions: RefCell::new(HashMap::new()),
         }
@@ -579,69 +574,28 @@ impl OndasBackend {
         }
     }
 
-    fn cached_value(&self, id: SignalId, time: u64) -> Option<Option<ValueRef<'_>>> {
-        let cached = self.traces.get(&id)?;
-        let trace = &cached.trace;
-        if !covers(trace, time, time) {
-            return None;
-        }
-        let changes = trace.changes();
-        let cursor = cached.cursor.get();
-        let index = if changes
-            .get(cursor)
-            .is_some_and(|next| next.time().ticks() <= time)
-        {
-            if changes
-                .get(cursor + 1)
-                .is_some_and(|next| next.time().ticks() <= time)
-            {
-                cursor + changes[cursor..].partition_point(|change| change.time().ticks() <= time)
-            } else {
-                cursor + 1
-            }
-        } else if cursor > 0 && changes[cursor - 1].time().ticks() > time {
-            if cursor > 1 && changes[cursor - 2].time().ticks() > time {
-                changes[..cursor].partition_point(|change| change.time().ticks() <= time)
-            } else {
-                cursor - 1
-            }
-        } else {
-            cursor
+    fn cached_value(
+        &self,
+        id: SignalId,
+        time: u64,
+    ) -> Result<Option<Option<ValueRef<'_>>>, WavepeekError> {
+        let Some(trace) = self.traces.get(&id) else {
+            return Ok(None);
         };
-        cached.cursor.set(index);
-        if matches!(trace.signal().encoding(), Encoding::Event) {
-            return Some(Some(
-                index
-                    .checked_sub(1)
-                    .and_then(|index| {
-                        let change = &changes[index];
-                        (change.time().ticks() == time).then(|| change.value())
-                    })
-                    .unwrap_or(ValueRef::Event { occurrences: 0 }),
-            ));
+        if !covers(trace, time, time) {
+            return Ok(None);
         }
-        Some(
-            index
-                .checked_sub(1)
-                .map(|index| changes[index].value())
-                .or_else(|| trace.initial().map(|initial| initial.value())),
-        )
+        trace
+            .sample(Time::from_ticks(time))
+            .map(|sample| Some(sample_value(sample)))
+            .map_err(|error| read_error(&self.path, "sample saved trace from", error))
     }
 
     fn values(&mut self, ids: &[SignalId], time: u64) -> Result<Vec<Option<Value>>, WavepeekError> {
-        // Range commands revisit the same signals at many candidate ticks. Ondas
-        // selections do not retain FST histories between queries; load each new
-        // signal batch once for this command's window instead of replaying it.
-        if let Some((from, to)) = self.sampling_window
-            && self.inner.borrow().format() != Format::Fsdb
-            && (from..=to).contains(&time)
-        {
-            self.preload(ids, from, to)?;
-        }
         let mut result = Vec::with_capacity(ids.len());
         let mut missing = Vec::new();
         for (index, id) in ids.iter().enumerate() {
-            if let Some(value) = self.cached_value(*id, time) {
+            if let Some(value) = self.cached_value(*id, time)? {
                 result.push(value.map(ValueRef::to_owned));
             } else {
                 result.push(None);
@@ -690,19 +644,49 @@ impl OndasBackend {
         let values = self.values(&ids, time)?;
         resolved
             .iter()
-            .zip(values)
-            .map(|(signal, value)| {
-                let bits = match value.as_ref().map(Value::as_ref) {
-                    Some(ValueRef::Bits(bits)) => Some(interpreted_bits(bits)),
-                    Some(ValueRef::Event { .. }) => Some(String::new()),
-                    None => None,
-                    _ => return Err(unsupported(&signal.path)),
-                };
-                Ok(SampledSignalState {
-                    path: signal.path.clone(),
-                    width: signal.width,
-                    bits,
-                })
+            .zip(&values)
+            .map(|(signal, value)| sampled_signal(signal, value.as_ref().map(Value::as_ref)))
+            .collect()
+    }
+
+    pub fn sample_resolved_optional_at_times(
+        &mut self,
+        resolved: &[ResolvedSignal],
+        times: &[u64],
+    ) -> Result<Vec<Vec<SampledSignalState>>, WavepeekError> {
+        if !resolved.is_empty()
+            && self
+                .inner
+                .borrow()
+                .metadata()
+                .time_span()
+                .is_some_and(|span| times.iter().any(|time| *time < span.first().ticks()))
+        {
+            return Err(WavepeekError::Internal(
+                "query time is before first dump timestamp".into(),
+            ));
+        }
+        let signals = resolved
+            .iter()
+            .map(|signal| self.signal(signal.id))
+            .collect::<Result<Vec<_>, _>>()?;
+        let times = times
+            .iter()
+            .copied()
+            .map(Time::from_ticks)
+            .collect::<Vec<_>>();
+        let rows = self
+            .inner
+            .borrow_mut()
+            .samples_at(&signals, &times)
+            .map_err(|error| read_error(&self.path, "read samples from", error))?;
+        rows.iter()
+            .map(|(_, samples)| {
+                resolved
+                    .iter()
+                    .zip(samples)
+                    .map(|(signal, sample)| sampled_signal(signal, sample_value(sample.as_ref())))
+                    .collect()
             })
             .collect()
     }
@@ -784,7 +768,7 @@ impl OndasBackend {
         if ids.iter().all(|id| {
             self.traces
                 .get(id)
-                .is_some_and(|cached| covers(&cached.trace, from, to))
+                .is_some_and(|cached| covers(cached, from, to))
         }) {
             return Ok(());
         }
@@ -795,7 +779,7 @@ impl OndasBackend {
                 && !self
                     .traces
                     .get(id)
-                    .is_some_and(|cached| covers(&cached.trace, from, to))
+                    .is_some_and(|cached| covers(cached, from, to))
             {
                 missing.push((*id, self.signal(*id)?));
             }
@@ -816,13 +800,7 @@ impl OndasBackend {
             )
             .map_err(|error| read_error(&self.path, "read traces from", error))?;
         for ((id, _), trace) in missing.into_iter().zip(traces) {
-            self.traces.insert(
-                id,
-                CachedTrace {
-                    trace,
-                    cursor: Cell::new(0),
-                },
-            );
+            self.traces.insert(id, trace);
         }
         Ok(())
     }
@@ -833,7 +811,7 @@ impl OndasBackend {
         from: u64,
         to: u64,
     ) -> Result<(), WavepeekError> {
-        self.sampling_window = Some((from, to));
+        self.indexed_window = Some((from, to));
         self.preload(ids, from, to)
     }
 
@@ -874,7 +852,7 @@ impl OndasBackend {
         }) {
             return false;
         }
-        let window = self.sampling_window.or_else(|| {
+        let window = self.indexed_window.or_else(|| {
             self.inner
                 .borrow()
                 .metadata()
@@ -898,7 +876,6 @@ impl OndasBackend {
             if let Some(cached) = self.traces.get(id) {
                 times.extend(
                     cached
-                        .trace
                         .changes()
                         .iter()
                         .map(|change| change.time().ticks())
@@ -916,7 +893,7 @@ impl OndasBackend {
 
     pub fn indexed_signal_offset_at(&self, id: SignalId, index: u32) -> Option<SignalOffsetData> {
         let time = *self.indexed_times.as_ref()?.get(index as usize)?;
-        let trace = &self.traces.get(&id)?.trace;
+        let trace = self.traces.get(&id)?;
         let position = trace
             .changes()
             .partition_point(|change| change.time().ticks() <= time);
@@ -945,7 +922,7 @@ impl OndasBackend {
             .as_ref()
             .and_then(|times| times.get(index as usize))
             .ok_or_else(missing)?;
-        let value = self.cached_value(resolved.id, *time).ok_or_else(missing)?;
+        let value = self.cached_value(resolved.id, *time)?.ok_or_else(missing)?;
         let bits = match value {
             Some(ValueRef::Bits(bits)) => Some(interpreted_bits(bits)),
             None => None,
@@ -977,14 +954,13 @@ impl OndasBackend {
             ));
         }
         let sample_from = from.saturating_sub(1);
-        self.sampling_window = Some((sample_from, to));
+        self.indexed_window = Some((sample_from, to));
         self.preload(ids, sample_from, to)?;
         let mut times = Vec::new();
         for id in ids {
             if let Some(cached) = self.traces.get(id) {
                 times.extend(
                     cached
-                        .trace
                         .changes()
                         .iter()
                         .map(|change| change.time().ticks())
@@ -1359,6 +1335,31 @@ fn var_type_alias(kind: &str) -> String {
     } else {
         "bit_vector".into()
     }
+}
+
+fn sample_value(sample: SampleRef<'_>) -> Option<ValueRef<'_>> {
+    match sample {
+        SampleRef::Value { value, .. } => Some(value),
+        SampleRef::Event { occurrences, .. } => Some(ValueRef::Event { occurrences }),
+        _ => None,
+    }
+}
+
+fn sampled_signal(
+    signal: &ResolvedSignal,
+    value: Option<ValueRef<'_>>,
+) -> Result<SampledSignalState, WavepeekError> {
+    let bits = match value {
+        Some(ValueRef::Bits(bits)) => Some(interpreted_bits(bits)),
+        Some(ValueRef::Event { .. }) => Some(String::new()),
+        None => None,
+        _ => return Err(unsupported(&signal.path)),
+    };
+    Ok(SampledSignalState {
+        path: signal.path.clone(),
+        width: signal.width,
+        bits,
+    })
 }
 
 fn covers(trace: &Trace, from: u64, to: u64) -> bool {

@@ -662,7 +662,7 @@ fn fsdb_signal_session_reads_value_changes() {
         .unwrap();
     assert_eq!(reader.traces.len(), 1);
     assert_eq!(signal[0].width, 1);
-    let trace = &reader.traces[&signal[0].id].trace;
+    let trace = &reader.traces[&signal[0].id];
     let ondas::ValueRef::Bits(initial) = trace.initial().unwrap().value() else {
         panic!("expected integral initial value")
     };
@@ -729,7 +729,7 @@ fn fsdb_timeline_cache_serves_expr_samples() {
         .unwrap();
     assert_eq!(backend.traces.len(), 1);
     for (time, bits) in [(1, "0"), (12, "1"), (20, "0")] {
-        assert!(backend.cached_value(armed.id, time).is_some());
+        assert!(backend.cached_value(armed.id, time).unwrap().is_some());
         assert_eq!(
             backend.sample_expr_value(&armed, time).unwrap(),
             SampledValue::Integral {

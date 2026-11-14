@@ -144,6 +144,7 @@ Behavior:
 - Exact waveform paths take precedence over projection syntax.
 - Text values use Verilog literals such as `8'h0f`, including `x` and `z` digits.
 - The command fails if a signal cannot be resolved or a requested time is finer than the dump resolution.
+- The whole command fails if a selected persistent signal has no observation at or before a requested time.
 
 Examples:
   wavepeek value --waves dump.fst \

@@ -53,8 +53,9 @@ Key architectural consequences:
 - Execution is stateless. Every command opens the dump and runs once; the native wrapper exits, while the browser worker returns stdout, stderr, and status. The plain-JavaScript terminal keeps only in-tab command navigation and a bounded newest-first visible transcript.
 - Local preview composes the separately generated current Playground and documentation under `/wavepeek/` and `/wavepeek/latest/`; production uses the same paths while Mike retains historical documentation versions.
 - Shared `src/logic.rs` defines four-state interpretation for expressions, edges and bit-output sampling. Renderers consume normalized samples; raw expression samples and enum keys retain their original states.
-- The engine is format-agnostic for waveform commands. Ondas format handling and optional native reader access stay behind the waveform facade.
+- Ondas owns format-specific reading and optional native reader access behind the waveform facade. Transitional range-engine policies are listed below.
 - The lazy hierarchy index keys scopes and declarations by exact Ondas component paths. Direct lookup uses the same components without building a second full index. Confirmed contiguous declaration ranges define Ondas concatenations; samples, traces, and projections use their common signal handles. Quoted canonical paths are formatted for output and parsed by selections and expressions.
+- `value` submits all selected signals to one Ondas point query for a single requested time, or one `samples_at` query for multiple times. Both paths preserve request order and duplicates. Expression and range consumers use explicit saved traces when covered and otherwise request point samples from Ondas. Saved values are looked up through `Trace::sample`; point reads do not preload histories by format.
 - The skill helper keeps its source of truth in packaged files instead of duplicated Rust string tables.
 - JSON and JSONL contracts are covered by direct serialization and command-runtime tests.
 
@@ -185,6 +186,22 @@ The current implementation status is:
 - Exit code `2` means file-level failures such as open or parse errors.
 
 Non-fatal diagnostics do not change the exit code.
+
+## Transitional Range Access
+
+The waveform facade retains explicit `preload_signal_ids`,
+`preload_expr_value_changes`, `preload_resolved_value_changes`, candidate-time
+collection and indexed timestamp/offset/decode helpers during the query migration.
+Their saved traces and candidate grids belong to one command's `Waveform`.
+The indexed offset is a change-position equality token; value decoding uses
+`Trace::sample`.
+
+Consumers are `property`, `change` engines, generic `extract` and its
+APB/ATB/AXI/AXIS adapters, and AHB warm-up and transaction tracking. Engine
+dispatch remains in these consumers. Paths with explicit preloads retain their
+histories; bounded `property` and `extract` paths read uncached operands point by
+point. These interfaces remain temporary until the consumers use Ondas queries
+directly.
 
 ## `change` Command Execution Architecture
 

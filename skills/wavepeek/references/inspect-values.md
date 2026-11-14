@@ -23,6 +23,12 @@ wavepeek value --waves dump.fst \
   --signals state --signals pc
 ```
 
+Snapshots follow the requested time order, including repeated and unsorted times.
+Each snapshot preserves signal order, repeated operands, and alias paths. A point
+uses the final recorded state at that tick, holding the last observation on quiet
+ticks. If a selected persistent signal has no observation at or before a requested
+time, the whole command fails; a recorded X remains a value.
+
 Use a static projection when only part of a flat vector matters:
 
 ```text

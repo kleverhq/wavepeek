@@ -478,7 +478,7 @@ fn fsdb_value_json_matches_vcd_sampling_contract() {
         "--signals",
         "data[7:4],clk,data[0:0],nibble[3:2],status[1:0],asc[3:2]",
         "--at",
-        "7ns",
+        "7ns,0ns,7ns,10ns",
         "--json",
     ];
     let fsdb_value = run_json_success_with_waves(fsdb_fixture.as_str(), &args);
@@ -488,6 +488,9 @@ fn fsdb_value_json_matches_vcd_sampling_contract() {
     assert_eq!(fsdb_value["diagnostics"], json!([]));
     assert_eq!(fsdb_value["data"], vcd_value["data"]);
     assert_eq!(fsdb_value["data"][0]["time"], "7ns");
+    assert_eq!(fsdb_value["data"][1]["time"], "0ns");
+    assert_eq!(fsdb_value["data"][2], fsdb_value["data"][0]);
+    assert_eq!(fsdb_value["data"][3]["time"], "10ns");
     assert_eq!(
         fsdb_value["data"][0]["signals"],
         json!([

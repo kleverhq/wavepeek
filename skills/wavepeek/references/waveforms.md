@@ -1,6 +1,10 @@
 # Waveform formats
 
-This page describes the supported waveform dump formats.
+This page describes the supported waveform dump formats. CLI builds support
+VCD/FST by default and optional FSDB/SHM. The browser accepts VCD/FST only.
+Additional Ondas library readers do not imply WavePeek product support.
+Signal kind aliases describe declarations; expression semantics use value
+encoding and metadata, not the input format or its reader name.
 
 All dump-orientation and waveform-inspection commands require `--waves <FILE>` and operate on a single dump per invocation. The path can be a file or a complete SHM database directory. Default builds support VCD (Value Change Dump) and FST (Fast Signal Trace). FSDB and SHM support are optional and require source builds with local Verdi or Xcelium libraries; see [Quickstart](quickstart.md).
 
@@ -28,7 +32,7 @@ FSDB modport and interface-reference scopes use the normalized scope kind `inter
 
 This means an FSDB file can be far smaller than a VCD file and still take seconds per independent command. The requested value lookup itself may not be the expensive step; repeated setup can dominate.
 
-Note: FSDB real and string value decoding are not part of the current implementation.
+FSDB real and ASCII string values support the existing expression operations in `property`, `iff` and `when`. Bit-oriented value rows and extraction payloads require integral data.
 
 ## SHM
 

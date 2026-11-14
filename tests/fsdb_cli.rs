@@ -691,7 +691,7 @@ fn fsdb_missing_path_uses_backend_neutral_signal_suggestions() {
 }
 
 #[test]
-fn fsdb_missing_path_does_not_suggest_unsupported_events() {
+fn fsdb_missing_path_suggests_supported_events() {
     let dir = TempDir::new().expect("temporary directory should create");
     let fixture = path_str(&convert_vcd_fixture(
         dir.path(),
@@ -714,10 +714,7 @@ fn fsdb_missing_path_does_not_suggest_unsupported_events() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::contains(
-            "no dumped signal with basename 'tik'",
-        ))
-        .stderr(predicate::str::contains("closest query names:").not());
+        .stderr(predicate::str::contains("closest query names:\n  tick"));
 }
 
 #[test]
@@ -1155,11 +1152,14 @@ fn fsdb_raw_event_property_matches_vcd_when_converter_preserves_events() {
         "unlimited",
         "--json",
     ]);
+    for entry in signal_listing["data"].as_array().unwrap() {
+        assert_signal_entry(entry);
+    }
     assert_eq!(
         signal_listing["data"],
         json!([
             {"name": "armed", "path": "top.armed", "relative_path": "armed", "kind": "wire", "width": 1},
-            {"name": "tick", "path": "top.tick", "relative_path": "tick", "kind": "event", "width": 1}
+            {"name": "tick", "path": "top.tick", "relative_path": "tick", "kind": "event", "width": 0}
         ])
     );
 
@@ -1188,7 +1188,7 @@ fn fsdb_raw_event_property_matches_vcd_when_converter_preserves_events() {
 }
 
 #[test]
-fn fsdb_change_property_reject_unsupported_real_operands_clearly() {
+fn fsdb_real_expressions_preserve_bit_output_rejection() {
     let fixtures = GeneratedChangePropertyFsdbFixtures::new();
     let fixture = path_str(&fixtures.real_output());
 
@@ -1218,67 +1218,171 @@ fn fsdb_change_property_reject_unsupported_real_operands_clearly() {
             "signal 'top.temp' has unsupported non-bit-vector encoding",
         ));
 
-    for args in [
-        vec![
+    let value = run_json_success(&[
+        "property",
+        "--waves",
+        &fixture,
+        "--scope",
+        "top",
+        "--on",
+        "posedge clk",
+        "--sample-mode",
+        "native",
+        "--eval",
+        "temp > 1.0",
+        "--capture",
+        "match",
+        "--json",
+    ]);
+    assert_eq!(
+        value["data"],
+        json!([{"time":"5ns","sample_time":"5ns","kind":"match"}])
+    );
+    for on in ["*", "posedge clk"] {
+        let quiet = run_json_success(&[
             "property",
             "--waves",
-            fixture.as_str(),
+            &fixture,
             "--scope",
             "top",
+            "--from",
+            "6ns",
+            "--to",
+            "9ns",
             "--on",
-            "posedge clk",
+            on,
             "--sample-mode",
             "native",
             "--eval",
             "temp > 1.0",
+            "--json",
+        ]);
+        assert_eq!(quiet["data"], json!([]));
+    }
+}
+
+#[test]
+fn fsdb_native_ascii_string_supports_property_and_iff() {
+    let fixture = typed_fsdb_path("fsdb0019-typed-values");
+    for on in ["*", "text iff text == \"hello\""] {
+        let value = run_json_success(&[
+            "property",
+            "--waves",
+            &fixture,
+            "--scope",
+            "values",
+            "--from",
+            "10ns",
+            "--to",
+            "90ns",
+            "--on",
+            on,
+            "--sample-mode",
+            "native",
+            "--eval",
+            "text == \"hello\"",
             "--capture",
             "match",
-        ],
-        vec![
-            "property",
-            "--waves",
-            fixture.as_str(),
-            "--scope",
-            "top",
-            "--from",
-            "6ns",
-            "--to",
-            "9ns",
-            "--on",
-            "*",
-            "--sample-mode",
-            "native",
-            "--eval",
-            "temp > 1.0",
-        ],
-        vec![
-            "property",
-            "--waves",
-            fixture.as_str(),
-            "--scope",
-            "top",
-            "--from",
-            "6ns",
-            "--to",
-            "9ns",
-            "--on",
-            "posedge clk",
-            "--sample-mode",
-            "native",
-            "--eval",
-            "temp > 1.0",
-        ],
-    ] {
-        wavepeek_cmd()
-            .args(args)
-            .assert()
-            .failure()
-            .code(1)
-            .stdout(predicate::str::is_empty())
-            .stderr(predicate::str::contains(
-                "signal 'top.temp' has unsupported FSDB expression value encoding",
-            ));
+            "--json",
+        ]);
+        assert_eq!(
+            value["data"],
+            json!([{"time":"30ns","sample_time":"30ns","kind":"match"}])
+        );
     }
+    wavepeek_cmd()
+        .args([
+            "value",
+            "--waves",
+            &fixture,
+            "--signals",
+            "values.text",
+            "--at",
+            "30ns",
+        ])
+        .assert()
+        .code(1)
+        .stderr(predicate::str::contains(
+            "unsupported non-bit-vector encoding",
+        ));
+}
+
+#[test]
+fn fsdb_real_supports_extract_when_and_iff() {
+    let real = GeneratedChangePropertyFsdbFixtures::new();
+    let fixture = path_str(&real.real_output());
+    let value = run_json_success(&[
+        "extract",
+        "generic",
+        "--waves",
+        &fixture,
+        "--scope",
+        "top",
+        "--on",
+        "negedge clk iff temp > 1.0",
+        "--when",
+        "temp > 1.0",
+        "--payload",
+        "clk",
+        "--json",
+    ]);
+    assert_eq!(value["data"][0]["time"], "10ns");
+    assert_eq!(value["data"].as_array().unwrap().len(), 1);
+}
+
+#[test]
+fn fsdb_nine_state_rendering_and_edges_use_four_state_interpretation() {
+    let fixture = typed_fsdb_path("fsdb0020-nine-state-ranges");
+    let value = run_json_success(&[
+        "value",
+        "--waves",
+        &fixture,
+        "--signals",
+        "RICH_LOGIC.RESOLVED_BIT",
+        "--at",
+        "60ns,70ns,80ns",
+        "--json",
+    ]);
+    let values = value["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| row["signals"][0]["value"].as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(values, ["1'h0", "1'h1", "1'hx"]);
+    let property = run_json_success(&[
+        "property",
+        "--waves",
+        &fixture,
+        "--scope",
+        "RICH_LOGIC",
+        "--from",
+        "60ns",
+        "--to",
+        "70ns",
+        "--on",
+        "posedge RESOLVED_BIT",
+        "--sample-mode",
+        "native",
+        "--eval",
+        "RESOLVED_BIT == 1'b1",
+        "--capture",
+        "match",
+        "--json",
+    ]);
+    assert_eq!(
+        property["data"],
+        json!([{"time":"70ns","sample_time":"70ns","kind":"match"}])
+    );
+}
+
+fn typed_fsdb_path(name: &str) -> String {
+    PathBuf::from(std::env::var_os("ONDAS_FIXTURES_DIR").expect("ONDAS_FIXTURES_DIR is required"))
+        .join("fsdb")
+        .join(name)
+        .join("waveform.fsdb")
+        .to_string_lossy()
+        .into_owned()
 }
 
 #[test]
@@ -1498,8 +1602,10 @@ fn assert_signal_entry(entry: &Value) {
     );
     if let Some(width) = entry.get("width") {
         assert!(
-            width.as_u64().is_some_and(|width| width > 0),
-            "signal width should be a positive integer when present"
+            width
+                .as_u64()
+                .is_some_and(|width| width > 0 || kind == "event"),
+            "signal width must be an integer; only events may have width zero"
         );
     }
 }
@@ -1701,4 +1807,41 @@ fn bundled_cpu_fsdb_path() -> String {
 
 fn path_str(path: &Path) -> String {
     path.to_string_lossy().into_owned()
+}
+
+#[test]
+fn fsdb_native_string_requires_an_explicit_boolean_expression() {
+    let fixture = typed_fsdb_path("fsdb0019-typed-values");
+    for command in ["property", "extract"] {
+        let mut args = if command == "property" {
+            vec![
+                "property",
+                "--eval",
+                "text",
+                "--on",
+                "*",
+                "--sample-mode",
+                "native",
+            ]
+        } else {
+            vec![
+                "extract",
+                "generic",
+                "--when",
+                "text",
+                "--on",
+                "posedge a",
+                "--payload",
+                "a",
+            ]
+        };
+        args.extend([
+            "--scope", "values", "--from", "10ns", "--to", "90ns", "--json", "--waves", &fixture,
+        ]);
+        wavepeek_cmd()
+            .args(args)
+            .assert()
+            .code(1)
+            .stdout(predicate::str::contains("EXPR-SEMANTIC-BOOLEAN-CONTEXT"));
+    }
 }

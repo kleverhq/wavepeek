@@ -671,17 +671,7 @@ fn bind_extract_sources(
         if !event_expr_is_edge_only(&bound_event) {
             return Err(WavepeekError::Args(EDGE_ONLY_ON_MESSAGE.to_string()));
         }
-        let iff_signal_handles = event_iff_handles(&bound_event);
-        let iff_sources = candidate_sources_for_handles(&host, iff_signal_handles.as_slice())?;
-        waveform
-            .borrow()
-            .validate_expr_values_supported(iff_sources.as_slice())?;
         let bound_when = bind_waveform_logical_expr(&host, scope, source.when.as_str())?;
-        let eval_signal_handles = referenced_signal_handles(&bound_when);
-        let eval_sources = candidate_sources_for_handles(&host, eval_signal_handles.as_slice())?;
-        waveform
-            .borrow()
-            .validate_expr_values_supported(eval_sources.as_slice())?;
         let payload = resolve_payload_signals(
             waveform,
             scope,
@@ -716,18 +706,6 @@ fn resolve_payload_signals(
             .map(|token| resolve_projected_signal(&waveform, token, scope))
             .collect::<Result<Vec<_>, _>>()?
     };
-    let source_paths = selected
-        .iter()
-        .map(|selected| selected.source.path.clone())
-        .collect::<Vec<_>>();
-    let expr_resolved = waveform.borrow().resolve_expr_signals_with_diagnostics(
-        source_paths.as_slice(),
-        payload,
-        scope,
-    )?;
-    waveform
-        .borrow()
-        .validate_expr_values_supported(expr_resolved.as_slice())?;
     Ok(selected
         .into_iter()
         .map(|selected| {
@@ -859,7 +837,6 @@ fn preload_extract_value_changes(
 
     let mut waveform = waveform.borrow_mut();
     if waveform.format_name() == "vcd" {
-        waveform.validate_expr_values_supported(&expr_sources)?;
         let ids = expr_sources
             .iter()
             .map(|signal| signal.id)

@@ -41,8 +41,14 @@ use the previous sampled value strictly before the candidate timestamp and the
 current sampled value at that timestamp.
 
 Only the least-significant bit participates in edge classification. Nine-state
-waveform values `h`, `u`, `w`, `l`, and `-` are normalized to `x` before edge
-classification.
+values use `l -> 0`, `h -> 1`, and `u/w/- -> x`; `0/1/x/z` stay unchanged.
+The same conversion applies to named and wildcard value changes, so `h -> 1`
+is not a value change and `l -> h` is a positive edge.
+
+Raw event operands use observed occurrences at the exact tick, with no
+persistent state. `.triggered()` tests whether that count is positive; quiet
+ticks are false. Counts reflect the reader's observations, which may omit
+source occurrences.
 
 Edge classification follows SystemVerilog clocking-event semantics:
 

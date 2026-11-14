@@ -7,6 +7,7 @@ mod debug_trace;
 mod diagnostic;
 mod engine;
 mod error;
+mod logic;
 mod output;
 mod output_mode;
 mod skill;

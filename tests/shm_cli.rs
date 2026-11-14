@@ -223,6 +223,15 @@ fn escaped_names_and_array_declarations_preserve_source_paths_and_values() {
 #[test]
 fn native_string_real_and_event_values_are_available() {
     let path = shm_path("shm_rich");
+    let listing = run_json(&path, &["signal", "--scope", "top", "--recursive"]);
+    let event = listing["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|entry| entry["path"] == "top.tick")
+        .unwrap();
+    assert_eq!(event["kind"], "event");
+    assert_eq!(event["width"], 0);
     for expression in ["top.message == \"stop\"", "top.temperature > 1.0"] {
         let result = run_json(
             &path,

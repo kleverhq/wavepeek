@@ -22,6 +22,119 @@ const RECURSIVE_TEST_VCD: &str = "$date\n  2026-02-28\n$end\n$version\n  wavepee
 const DELAYED_VALUE_VCD: &str = "$date\n  2026-03-03\n$end\n$version\n  wavepeek-delayed-value\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! delayed $end\n$upscope $end\n$enddefinitions $end\n#0\n#5\n1!\n";
 
 #[test]
+fn expression_metadata_overrides_kind_defaults_without_changing_width() {
+    use crate::expr::{ExprTypeKind, IntegerLikeKind};
+    use ondas::{Encoding, LogicDomain, Signedness};
+
+    let bits = Encoding::Bits { width: 7 };
+    let ty = super::expression_value_type(
+        bits,
+        "int",
+        Some(Signedness::Unsigned),
+        Some(LogicDomain::TwoState),
+        false,
+    )
+    .unwrap();
+    assert_eq!(ty.kind, ExprTypeKind::IntegerLike(IntegerLikeKind::Int));
+    assert_eq!(ty.width, 7);
+    assert!(!ty.is_signed);
+    assert!(!ty.is_four_state);
+
+    for kind in [
+        "byte",
+        "shortint",
+        "short-int",
+        "short_int",
+        "int",
+        "longint",
+        "long-int",
+        "long_int",
+        "integer",
+    ] {
+        let ty = super::expression_value_type(bits, kind, None, None, false).unwrap();
+        assert_eq!(ty.width, 7, "{kind}");
+        assert!(ty.is_signed, "{kind}");
+        assert!(ty.is_four_state, "unknown domain: {kind}");
+    }
+    for kind in ["wire", "bit", "boolean", "vendor:unknown", "time"] {
+        let ty = super::expression_value_type(bits, kind, None, None, false).unwrap();
+        assert!(!ty.is_signed, "{kind}");
+        assert!(ty.is_four_state, "{kind}");
+    }
+    let enumeration = super::expression_value_type(
+        bits,
+        "wire",
+        Some(Signedness::Signed),
+        Some(LogicDomain::NineState),
+        true,
+    )
+    .unwrap();
+    assert_eq!(enumeration.kind, ExprTypeKind::EnumCore);
+    assert_eq!(enumeration.width, 7);
+    assert!(enumeration.is_signed && enumeration.is_four_state);
+    for (encoding, expected) in [
+        (Encoding::Real, ExprTypeKind::Real),
+        (Encoding::String, ExprTypeKind::String),
+        (Encoding::Event, ExprTypeKind::Event),
+    ] {
+        let ty = super::expression_value_type(encoding, "integer", None, None, false).unwrap();
+        assert_eq!(ty.kind, expected);
+        assert!(!ty.is_four_state && !ty.is_signed);
+    }
+}
+
+#[test]
+fn unknown_vector_metadata_uses_language_defaults_and_preserves_missing() {
+    use crate::expr::{
+        ExprValuePayload, ExpressionHost, bind_logical_expr_ast, eval_logical_expr_at,
+        parse_logical_expr_ast,
+    };
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 8 ! data $end\n$upscope $end\n$enddefinitions $end\n#0\n#1\nbxxxxxxxx !\n#2\nb11111111 !\n",
+        "unknown-metadata.vcd",
+    );
+    let raw = ondas::open(fixture.path()).unwrap();
+    let variable = raw.hierarchy().variable("top.data").unwrap();
+    assert_eq!(variable.signedness(), None);
+    assert_eq!(variable.logic_domain(), None);
+    let mut waveform = Waveform::open(fixture.path()).unwrap();
+    let resolved = waveform.resolve_expr_signal("top.data").unwrap();
+    assert_eq!(
+        waveform.sample_expr_value(&resolved, 0).unwrap(),
+        crate::expr::SampledValue::Integral {
+            bits: None,
+            label: None
+        }
+    );
+    assert_eq!(
+        waveform.sample_expr_value(&resolved, 1).unwrap(),
+        crate::expr::SampledValue::Integral {
+            bits: Some("xxxxxxxx".into()),
+            label: None
+        }
+    );
+    let host = crate::waveform::expr_host::WaveformExprHost::new(waveform);
+    for (source, expected) in [
+        ("top.data < 0", "0"),
+        ("signed'(top.data) < 0", "1"),
+        ("top.data === 8'hxx", "1"),
+    ] {
+        let expr = bind_logical_expr_ast(&parse_logical_expr_ast(source).unwrap(), &host).unwrap();
+        let time = if source.contains("===") { 1 } else { 2 };
+        assert_eq!(
+            eval_logical_expr_at(&expr, &host, time).unwrap().payload,
+            ExprValuePayload::Integral {
+                bits: expected.into(),
+                label: None
+            }
+        );
+    }
+    let handle = host.resolve_signal("top.data").unwrap();
+    assert!(host.signal_type(handle).unwrap().is_four_state);
+    assert_eq!(variable.signedness(), None);
+}
+
+#[test]
 fn global_matching_preserves_scope_order_and_split_width() {
     let fixture = write_fixture(TEST_VCD, "global-matching.vcd");
     let waveform = Waveform::open(fixture.path()).unwrap();
@@ -764,7 +877,7 @@ fn fst_array_path_uses_full_index_spelling() {
     let wave = ondas::open(fixture.path()).unwrap();
     let variable = wave.hierarchy().variables().next().unwrap();
     let direct = Some(variable.path().to_string());
-    let full = super::HierarchyIndex::new(wave.hierarchy(), ondas::Format::Fst, false);
+    let full = super::HierarchyIndex::new(wave.hierarchy(), false);
     assert_eq!(direct.as_deref(), Some(r#"top."memory[0]""#));
     assert!(full.by_path.contains_key(&variable.path()));
 }
@@ -976,8 +1089,9 @@ fn edge_classification_sv2023_matrix() {
 }
 
 #[test]
-fn edge_classification_ninestate_maps_to_x() {
-    assert!(classify_edge("h", "1").posedge);
+fn edge_classification_uses_weak_zero_and_one() {
+    assert!(!classify_edge("h", "1").edge());
+    assert!(classify_edge("l", "h").posedge);
     assert!(classify_edge("1", "l").negedge);
     assert!(classify_edge("u", "0").negedge);
     assert!(classify_edge("0", "w").posedge);
@@ -1037,6 +1151,14 @@ fn stable_kind_aliases_cover_full_inventory() {
             ("shortint", "short_int"),
             ("longint", "long_int"),
             ("shortreal", "short_real"),
+            ("std_logic", "logic"),
+            ("std_ulogic", "logic"),
+            ("std_logic_vector", "bit_vector"),
+            ("std_ulogic_vector", "bit_vector"),
+            ("std-logic", "logic"),
+            ("std-logic-vector", "bit_vector"),
+            ("short-int", "short_int"),
+            ("long-int", "long_int"),
             ("stdlogic", "logic"),
             ("stdulogic", "logic"),
             ("stdlogicvector", "bit_vector"),
@@ -1451,7 +1573,7 @@ fn helper_functions_exercise_invalid_paths_and_timescales() {
     let types = write_fixture(&types, "types.vcd");
     let types = Waveform::open(types.path()).unwrap();
     assert!(
-        !types
+        types
             .resolve_expr_signal("top.bitv")
             .unwrap()
             .expr_type
@@ -1511,10 +1633,10 @@ fn waveform_helper_tables_exercise_decode_timescale_and_extra_var_types() {
         assert_eq!(super::time_unit(unit).unwrap(), expected);
     }
     for (path, expected_width, expected_four_state, expected_signed) in [
-        ("top.bytev", 8, false, true),
-        ("top.shortv", 16, false, true),
-        ("top.intv", 32, false, true),
-        ("top.longv", 64, false, true),
+        ("top.bytev", 8, true, true),
+        ("top.shortv", 16, true, true),
+        ("top.intv", 32, true, true),
+        ("top.longv", 64, true, true),
         ("top.integerv", 32, true, true),
         ("top.timeval", 64, true, false),
     ] {

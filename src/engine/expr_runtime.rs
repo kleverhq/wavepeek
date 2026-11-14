@@ -89,7 +89,12 @@ pub(crate) fn bind_waveform_logical_expr(
     let scoped = ScopedExprHost::new(host, scope);
     let ast =
         parse_logical_expr_ast(source).map_err(|diagnostic| expr_diagnostic(source, diagnostic))?;
-    bind_logical_expr_ast(&ast, &scoped).map_err(|diagnostic| expr_diagnostic(source, diagnostic))
+    let bound = bind_logical_expr_ast(&ast, &scoped)
+        .map_err(|diagnostic| expr_diagnostic(source, diagnostic))?;
+    bound
+        .validate_boolean_context()
+        .map_err(|diagnostic| expr_diagnostic(source, diagnostic))?;
+    Ok(bound)
 }
 
 pub(crate) fn eval_bound_logical_truth(

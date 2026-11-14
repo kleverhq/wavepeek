@@ -130,6 +130,7 @@ struct HierarchyIndex {
 impl OndasBackend {
     pub fn open(path: &Path) -> Result<Self, WavepeekError> {
         let inner = ondas::open(path).map_err(|error| open_error(path, error))?;
+        // Available readers and declared product support are separate concerns.
         Ok(Self::new(inner, path))
     }
 
@@ -203,13 +204,8 @@ impl OndasBackend {
     }
 
     fn index(&self) -> &HierarchyIndex {
-        self.index.get_or_init(|| {
-            HierarchyIndex::new(
-                self.inner.borrow().hierarchy(),
-                self.inner.borrow().format(),
-                false,
-            )
-        })
+        self.index
+            .get_or_init(|| HierarchyIndex::new(self.inner.borrow().hierarchy(), false))
     }
 
     pub fn scopes_depth_first(
@@ -217,14 +213,7 @@ impl OndasBackend {
         max_depth: Option<usize>,
     ) -> Result<Vec<ScopeEntry>, WavepeekError> {
         let mut scopes = self.index.get().map_or_else(
-            || {
-                HierarchyIndex::new(
-                    self.inner.borrow().hierarchy(),
-                    self.inner.borrow().format(),
-                    true,
-                )
-                .scopes
-            },
+            || HierarchyIndex::new(self.inner.borrow().hierarchy(), true).scopes,
             |index| index.scopes.clone(),
         );
         scopes.retain(|scope| max_depth.is_none_or(|max| scope.depth <= max));
@@ -255,8 +244,7 @@ impl OndasBackend {
             if paths.is_empty() {
                 return Vec::new();
             }
-            temporary =
-                HierarchyIndex::build(inner.hierarchy(), inner.format(), false, Some(&paths));
+            temporary = HierarchyIndex::build(inner.hierarchy(), false, Some(&paths));
             &temporary
         };
         let mut entries = index
@@ -480,7 +468,7 @@ impl OndasBackend {
         let signal = variable.signal()?;
         let width = match signal.encoding() {
             Encoding::Bits { width } => width,
-            Encoding::Event if inner.format() != Format::Fsdb => 0,
+            Encoding::Event => 0,
             _ => return None,
         };
         Some(direct.insert(DirectSignal {
@@ -705,7 +693,7 @@ impl OndasBackend {
             .zip(values)
             .map(|(signal, value)| {
                 let bits = match value.as_ref().map(Value::as_ref) {
-                    Some(ValueRef::Bits(bits)) => Some(bits.to_string()),
+                    Some(ValueRef::Bits(bits)) => Some(interpreted_bits(bits)),
                     Some(ValueRef::Event { .. }) => Some(String::new()),
                     None => None,
                     _ => return Err(unsupported(&signal.path)),
@@ -730,7 +718,6 @@ impl OndasBackend {
                 resolved.path
             )));
         }
-        self.validate_expr_values_supported(std::slice::from_ref(resolved))?;
         let values = self.values(&[resolved.id], time)?;
         match values[0].as_ref().map(Value::as_ref) {
             Some(ValueRef::Bits(bits)) => {
@@ -786,33 +773,7 @@ impl OndasBackend {
         if declaration.entry.width.is_none() {
             return Err(unsupported(path));
         }
-        if self.inner.borrow().format() == Format::Fsdb {
-            let id = declaration.id.ok_or_else(|| unsupported(path))?;
-            if !matches!(self.signal(id)?.encoding(), Encoding::Bits { .. }) {
-                return Err(unsupported(path));
-            }
-        }
         Ok(declaration)
-    }
-
-    pub fn validate_expr_values_supported(
-        &self,
-        signals: &[ExprResolvedSignal],
-    ) -> Result<(), WavepeekError> {
-        if self.inner.borrow().format() == Format::Fsdb {
-            for signal in signals {
-                if matches!(
-                    signal.expr_type.kind,
-                    ExprTypeKind::Real | ExprTypeKind::String
-                ) {
-                    return Err(WavepeekError::Signal(format!(
-                        "signal '{}' has unsupported FSDB expression value encoding",
-                        signal.path
-                    )));
-                }
-            }
-        }
-        Ok(())
     }
 
     fn preload(&mut self, ids: &[SignalId], from: u64, to: u64) -> Result<(), WavepeekError> {
@@ -882,7 +843,6 @@ impl OndasBackend {
         from: u64,
         to: u64,
     ) -> Result<(), WavepeekError> {
-        self.validate_expr_values_supported(resolved)?;
         self.preload_signal_ids(
             &resolved.iter().map(|signal| signal.id).collect::<Vec<_>>(),
             from,
@@ -987,7 +947,7 @@ impl OndasBackend {
             .ok_or_else(missing)?;
         let value = self.cached_value(resolved.id, *time).ok_or_else(missing)?;
         let bits = match value {
-            Some(ValueRef::Bits(bits)) => Some(bits.to_string()),
+            Some(ValueRef::Bits(bits)) => Some(interpreted_bits(bits)),
             None => None,
             _ => return Err(unsupported(&resolved.path)),
         };
@@ -1083,13 +1043,12 @@ fn visible_scope(scope: &ondas::Scope<'_>) -> bool {
 }
 
 impl HierarchyIndex {
-    fn new(hierarchy: &ondas::Hierarchy, format: Format, scopes_only: bool) -> Self {
-        Self::build(hierarchy, format, scopes_only, None)
+    fn new(hierarchy: &ondas::Hierarchy, scopes_only: bool) -> Self {
+        Self::build(hierarchy, scopes_only, None)
     }
 
     fn build(
         hierarchy: &ondas::Hierarchy,
-        format: Format,
         scopes_only: bool,
         selected: Option<&HashSet<ondas::HierarchyPath>>,
     ) -> Self {
@@ -1169,10 +1128,16 @@ impl HierarchyIndex {
                 entry: SignalEntry {
                     name: format_path(&ondas::HierarchyPath::from_components([variable.name()])),
                     path: format_path(&path),
-                    kind: var_type_alias(variable.kind()),
+                    kind: if signal
+                        .is_some_and(|signal| matches!(signal.encoding(), Encoding::Event))
+                    {
+                        "event".into()
+                    } else {
+                        var_type_alias(variable.kind())
+                    },
                     width: signal.and_then(|signal| match signal.encoding() {
                         Encoding::Bits { width } => Some(width),
-                        Encoding::Event => Some(if format == Format::Fsdb { 1 } else { 0 }),
+                        Encoding::Event => Some(0),
                         _ => None,
                     }),
                 },
@@ -1267,67 +1232,83 @@ where
     Some(parts.into_iter().map(|part| part.2).collect())
 }
 
+fn interpreted_bits(bits: ondas::BitsRef<'_>) -> String {
+    let text = bits.to_string();
+    if text
+        .bytes()
+        .all(|byte| matches!(byte, b'0' | b'1' | b'x' | b'z'))
+    {
+        return text;
+    }
+    let mut bytes = text.into_bytes();
+    for byte in &mut bytes {
+        *byte = crate::logic::four_state(char::from(*byte)) as u8;
+    }
+    String::from_utf8(bytes).expect("four-state logic is ASCII")
+}
+
 fn expression_type(variable: &ondas::Variable<'_>, signal: ondas::Signal) -> Option<ExprType> {
-    let width = signal.width().unwrap_or(0);
-    let (kind, width, scalar, four_state, signed) = match variable.kind() {
-        "byte" => (
-            ExprTypeKind::IntegerLike(IntegerLikeKind::Byte),
-            8,
-            true,
-            false,
-            true,
-        ),
-        "shortint" | "short-int" => (
-            ExprTypeKind::IntegerLike(IntegerLikeKind::Shortint),
-            16,
-            true,
-            false,
-            true,
-        ),
-        "int" => (
-            ExprTypeKind::IntegerLike(IntegerLikeKind::Int),
-            32,
-            true,
-            false,
-            true,
-        ),
-        "longint" | "long-int" => (
-            ExprTypeKind::IntegerLike(IntegerLikeKind::Longint),
-            64,
-            true,
-            false,
-            true,
-        ),
-        "integer" => (
-            ExprTypeKind::IntegerLike(IntegerLikeKind::Integer),
-            32,
-            true,
-            true,
-            true,
-        ),
-        "time" => (
-            ExprTypeKind::IntegerLike(IntegerLikeKind::Time),
-            64,
-            true,
-            true,
-            false,
-        ),
-        "enum" => (ExprTypeKind::EnumCore, width, true, true, false),
-        _ => match signal.encoding() {
-            Encoding::Real => (ExprTypeKind::Real, 64, true, false, false),
-            Encoding::String => (ExprTypeKind::String, 0, true, false, false),
-            Encoding::Event => (ExprTypeKind::Event, 0, true, false, false),
-            Encoding::Bits { .. } => (
-                ExprTypeKind::BitVector,
-                width,
-                width <= 1,
-                !matches!(variable.kind(), "bit" | "boolean" | "bit-vector"),
-                false,
-            ),
-            _ => return None,
-        },
-    };
     let enumeration = variable.enumeration();
+    let mut ty = expression_value_type(
+        signal.encoding(),
+        variable.kind(),
+        variable.signedness(),
+        variable.logic_domain(),
+        enumeration.is_some(),
+    )?;
+    ty.enum_type_id = enumeration
+        .as_ref()
+        .and_then(|value| value.name())
+        .map(str::to_owned);
+    ty.enum_labels = enumeration.map(|value| {
+        value
+            .variants()
+            .map(|variant| EnumLabelInfo {
+                name: variant.label.to_owned(),
+                bits: variant.encoded.to_string(),
+            })
+            .collect()
+    });
+    Some(ty)
+}
+
+fn expression_value_type(
+    encoding: Encoding,
+    declaration_kind: &str,
+    signedness: Option<ondas::Signedness>,
+    logic_domain: Option<ondas::LogicDomain>,
+    has_enumeration: bool,
+) -> Option<ExprType> {
+    let (kind, width, scalar, signed) = match encoding {
+        Encoding::Real => (ExprTypeKind::Real, 64, true, false),
+        Encoding::String => (ExprTypeKind::String, 0, true, false),
+        Encoding::Event => (ExprTypeKind::Event, 0, true, false),
+        Encoding::Bits { width } => {
+            let integer = match declaration_kind {
+                "byte" => Some(IntegerLikeKind::Byte),
+                "shortint" | "short-int" | "short_int" => Some(IntegerLikeKind::Shortint),
+                "int" => Some(IntegerLikeKind::Int),
+                "longint" | "long-int" | "long_int" => Some(IntegerLikeKind::Longint),
+                "integer" => Some(IntegerLikeKind::Integer),
+                "time" => Some(IntegerLikeKind::Time),
+                _ => None,
+            };
+            if has_enumeration || declaration_kind == "enum" {
+                (ExprTypeKind::EnumCore, width, true, false)
+            } else if let Some(integer) = integer {
+                (
+                    ExprTypeKind::IntegerLike(integer),
+                    width,
+                    true,
+                    integer != IntegerLikeKind::Time,
+                )
+            } else {
+                (ExprTypeKind::BitVector, width, width <= 1, false)
+            }
+        }
+        _ => return None,
+    };
+    let integral = matches!(encoding, Encoding::Bits { .. });
     Some(ExprType {
         kind,
         width,
@@ -1336,25 +1317,12 @@ fn expression_type(variable: &ondas::Variable<'_>, signal: ondas::Signal) -> Opt
         } else {
             ExprStorage::PackedVector
         },
-        is_signed: variable
-            .signedness()
-            .map_or(signed, |value| value == ondas::Signedness::Signed),
-        is_four_state: variable
-            .logic_domain()
-            .map_or(four_state, |value| value != ondas::LogicDomain::TwoState),
-        enum_type_id: enumeration
-            .as_ref()
-            .and_then(|value| value.name())
-            .map(str::to_owned),
-        enum_labels: enumeration.map(|value| {
-            value
-                .variants()
-                .map(|variant| EnumLabelInfo {
-                    name: variant.label.to_owned(),
-                    bits: variant.encoded.to_string(),
-                })
-                .collect()
-        }),
+        is_signed: integral
+            && signedness.map_or(signed, |value| value == ondas::Signedness::Signed),
+        // An unavailable domain is a four-state language default, not recovered metadata.
+        is_four_state: integral && logic_domain != Some(ondas::LogicDomain::TwoState),
+        enum_type_id: None,
+        enum_labels: None,
     })
 }
 
@@ -1373,16 +1341,18 @@ fn scope_type_alias(kind: &str) -> String {
 }
 
 fn var_type_alias(kind: &str) -> String {
-    let kind = match kind {
+    let normalized = kind.replace('-', "_");
+    let kind = match normalized.as_str() {
         "shortint" => "short_int".into(),
         "longint" => "long_int".into(),
         "realtime" => "real_time".into(),
         "realparameter" => "real_parameter".into(),
         "shortreal" => "short_real".into(),
         "sparsearray" => "sparse_array".into(),
-        "bitvector" | "stdlogicvector" | "stdulogicvector" => "bit_vector".into(),
-        "stdlogic" | "stdulogic" => "logic".into(),
-        _ => kind.replace('-', "_"),
+        "bitvector" | "stdlogicvector" | "stdulogicvector" | "std_logic_vector"
+        | "std_ulogic_vector" => "bit_vector".into(),
+        "stdlogic" | "stdulogic" | "std_logic" | "std_ulogic" => "logic".into(),
+        _ => normalized,
     };
     if super::types::STABLE_SIGNAL_KIND_ALIASES.contains(&kind.as_str()) {
         kind

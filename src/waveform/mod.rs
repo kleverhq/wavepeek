@@ -414,15 +414,9 @@ impl Waveform {
     }
 
     fn signal_candidate_is_resolvable(&self, path: &String, kind: SignalLookupKind) -> bool {
-        let Ok(expr_signal) = self.resolve_expr_signal(path) else {
+        let Ok(_) = self.resolve_expr_signal(path) else {
             return false;
         };
-        if self
-            .validate_expr_values_supported(std::slice::from_ref(&expr_signal))
-            .is_err()
-        {
-            return false;
-        }
         match kind {
             SignalLookupKind::Direct => {
                 self.resolve_signals(std::slice::from_ref(path)).is_ok()
@@ -492,13 +486,6 @@ impl Waveform {
 
     pub(crate) fn debug_stats(&self) -> Option<serde_json::Value> {
         None
-    }
-
-    pub(crate) fn validate_expr_values_supported(
-        &self,
-        resolved: &[ExprResolvedSignal],
-    ) -> Result<(), WavepeekError> {
-        self.backend.validate_expr_values_supported(resolved)
     }
 
     pub(crate) fn preload_signal_ids(
@@ -702,11 +689,5 @@ pub(crate) fn classify_edge(previous_bits: &str, current_bits: &str) -> EdgeClas
 
 #[allow(dead_code)]
 fn normalize_to_four_state(bit: char) -> char {
-    match bit.to_ascii_lowercase() {
-        '0' => '0',
-        '1' => '1',
-        'z' => 'z',
-        'x' | 'h' | 'u' | 'w' | 'l' | '-' => 'x',
-        _ => 'x',
-    }
+    crate::logic::four_state(bit)
 }

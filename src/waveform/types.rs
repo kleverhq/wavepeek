@@ -52,6 +52,7 @@ pub(crate) struct SignalListing {
 pub struct SampledSignal {
     pub path: String,
     pub width: u32,
+    /// Four-state MSB-first bits (0/1/x/z); raw events use an empty string.
     pub bits: String,
 }
 
@@ -59,6 +60,7 @@ pub struct SampledSignal {
 pub struct SampledSignalState {
     pub path: String,
     pub width: u32,
+    /// Four-state MSB-first bits; None is Missing and events use an empty string.
     pub bits: Option<String>,
 }
 

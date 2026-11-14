@@ -20,6 +20,8 @@ use crate::expr::{
     EnumLabelInfo, ExprStorage, ExprType, ExprTypeKind, IntegerLikeKind, SampledValue,
 };
 
+use super::expr_host::RuntimeExpressionHost;
+use super::expr_query::{ExpressionQuery, ExpressionQueryTick};
 use super::ondas_error::{open_error, read_error};
 use super::selection::format_path;
 use super::types::{
@@ -703,34 +705,29 @@ impl OndasBackend {
             )));
         }
         let values = self.values(&[resolved.id], time)?;
-        match values[0].as_ref().map(Value::as_ref) {
-            Some(ValueRef::Bits(bits)) => {
-                let bits = bits.to_string();
-                let label = resolved
-                    .expr_type
-                    .enum_labels
-                    .as_ref()
-                    .and_then(|labels| labels.iter().find(|label| label.bits == bits))
-                    .map(|label| label.name.clone());
-                Ok(SampledValue::Integral {
-                    bits: Some(bits),
-                    label,
-                })
-            }
-            Some(ValueRef::Real(value)) => Ok(SampledValue::Real { value: Some(value) }),
-            Some(ValueRef::String(value)) => Ok(SampledValue::String {
-                value: Some(value.to_owned()),
-            }),
-            None => Ok(match resolved.expr_type.kind {
-                ExprTypeKind::Real => SampledValue::Real { value: None },
-                ExprTypeKind::String => SampledValue::String { value: None },
-                _ => SampledValue::Integral {
-                    bits: None,
-                    label: None,
-                },
-            }),
-            _ => Err(unsupported(&resolved.path)),
-        }
+        expression_value(resolved, values[0].as_ref().map(Value::as_ref))
+    }
+
+    pub(super) fn query_expressions(
+        &mut self,
+        query: &ExpressionQuery,
+        range: std::ops::RangeInclusive<u64>,
+        initialize: bool,
+        visitor: impl FnMut(
+            &dyn RuntimeExpressionHost,
+            ExpressionQueryTick,
+        ) -> Result<std::ops::ControlFlow<()>, WavepeekError>,
+    ) -> Result<(), WavepeekError> {
+        let signals = query
+            .signals
+            .iter()
+            .map(|signal| self.signal(signal.id))
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut waveform = self.inner.borrow_mut();
+        let mut selection = waveform
+            .select(&signals)
+            .map_err(|error| read_error(&self.path, "select expression signals from", error))?;
+        query.run(&mut selection, range, initialize, &self.path, visitor)
     }
 
     pub fn expr_event_occurred(
@@ -1382,6 +1379,53 @@ fn time_unit(unit: ondas::TimeUnit) -> Result<&'static str, WavepeekError> {
             ));
         }
     })
+}
+
+pub(super) fn expression_sample(
+    resolved: &ExprResolvedSignal,
+    sample: SampleRef<'_>,
+) -> Result<SampledValue, WavepeekError> {
+    expression_value(resolved, sample_value(sample))
+}
+
+fn expression_value(
+    resolved: &ExprResolvedSignal,
+    value: Option<ValueRef<'_>>,
+) -> Result<SampledValue, WavepeekError> {
+    if matches!(resolved.expr_type.kind, ExprTypeKind::Event) {
+        return Err(WavepeekError::Internal(format!(
+            "signal '{}' is a raw event and cannot be sampled as a value",
+            resolved.path
+        )));
+    }
+    match value {
+        Some(ValueRef::Bits(bits)) => {
+            let bits = bits.to_string();
+            let label = resolved
+                .expr_type
+                .enum_labels
+                .as_ref()
+                .and_then(|labels| labels.iter().find(|label| label.bits == bits))
+                .map(|label| label.name.clone());
+            Ok(SampledValue::Integral {
+                bits: Some(bits),
+                label,
+            })
+        }
+        Some(ValueRef::Real(value)) => Ok(SampledValue::Real { value: Some(value) }),
+        Some(ValueRef::String(value)) => Ok(SampledValue::String {
+            value: Some(value.to_owned()),
+        }),
+        None => Ok(match resolved.expr_type.kind {
+            ExprTypeKind::Real => SampledValue::Real { value: None },
+            ExprTypeKind::String => SampledValue::String { value: None },
+            _ => SampledValue::Integral {
+                bits: None,
+                label: None,
+            },
+        }),
+        _ => Err(unsupported(&resolved.path)),
+    }
 }
 
 fn unsupported(path: &str) -> WavepeekError {

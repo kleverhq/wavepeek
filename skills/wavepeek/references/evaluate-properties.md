@@ -33,6 +33,11 @@ $ wavepeek property --waves dump.fst \
 
 Use `--capture assert` or `--capture deassert` when only one transition matters. Use `--capture match` when every selected event where the expression is true should produce a row.
 
+Transition captures use the condition at `--from` as their baseline, even when
+the window has no events. The baseline creates no result row. In pre-edge mode,
+a transition capture skips an event exactly at `--from`; match capture can use
+its preceding tick when that tick is inside the dump.
+
 ## How many handshakes occurred?
 
 Count all matching clock events without printing them:
@@ -50,6 +55,12 @@ total: 37
 ```
 
 Use `--max unlimited` for an exact total. With a numeric limit, `total` can remain unknown if the scan stops early.
+
+A numeric limit counts result rows. After reaching it, `property` checks for
+another matching row or the end of the window. Exactly that many matches can
+therefore have `complete: true`. Selected operands can fail validation or
+decoding before an event matches; conditional evaluation does not guarantee
+deferred reader errors.
 
 ## Which requests targeted this address?
 

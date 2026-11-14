@@ -56,6 +56,7 @@ Key architectural consequences:
 - Ondas owns format-specific reading and optional native reader access behind the waveform facade. Transitional range-engine policies are listed below.
 - The lazy hierarchy index keys scopes and declarations by exact Ondas component paths. Direct lookup uses the same components without building a second full index. Confirmed contiguous declaration ranges define Ondas concatenations; samples, traces, and projections use their common signal handles. Quoted canonical paths are formatted for output and parsed by selections and expressions.
 - `value` submits all selected signals to one Ondas point query for a single requested time, or one `samples_at` query for multiple times. Both paths preserve request order and duplicates. Expression and range consumers use explicit saved traces when covered and otherwise request point samples from Ondas. Saved values are looked up through `Trace::sample`; point reads do not preload histories by format.
+- `property` binds drivers, guards and evaluation operands into one ordered Ondas selection. It evaluates candidates during `Selection::query`; a callback host reads only completed `t` and absolute `t - 1`. Transition captures first sample the window start once to establish their baseline, including quiet windows.
 - The skill helper keeps its source of truth in packaged files instead of duplicated Rust string tables.
 - JSON and JSONL contracts are covered by direct serialization and command-runtime tests.
 
@@ -117,7 +118,8 @@ src/
 │   ├── ondas_tests.rs   # Waveform facade regression tests
 │   ├── ondas_fsdb_tests.rs # Feature-gated SDK-backed regression tests
 │   ├── ondas_error.rs   # Typed reader errors mapped to CLI categories
-│   └── expr_host.rs     # Waveform-backed expression host bridge
+│   ├── expr_host.rs     # Waveform-backed binding and point-expression host
+│   └── expr_query.rs    # Selection mapping and expression values for one query tick
 ├── output.rs            # Shared output formatting (human, JSON envelope, JSONL)
 └── error.rs             # `WavepeekError` enum and exit mapping
 ```
@@ -160,6 +162,7 @@ The main components are:
 - **AST and semantic types** that give the rest of the system a stable internal representation.
 - **Typed binder and evaluator** that resolve names against waveform metadata and compute runtime results.
 - **Waveform-backed host bridge** in `src/waveform/expr_host.rs` that exposes dump metadata and sampled values to the typed runtime without widening the public facade unnecessarily. The bridge retains typed read failures until the engine completes that expression evaluation; the expression module remains independent of CLI error categories.
+- **Query host** in `src/waveform/expr_query.rs` that uses frozen binding metadata and selection positions. Its value cache lasts for one callback and contains only `t` and `t - 1`. Nested read failures and application errors stop the outer query through a typed `Break` payload; reader errors use the existing waveform error mapping. No callback reenters `Waveform` for point reads.
 
 The current implementation status is:
 
@@ -196,10 +199,10 @@ Their saved traces and candidate grids belong to one command's `Waveform`.
 The indexed offset is a change-position equality token; value decoding uses
 `Trace::sample`.
 
-Consumers are `property`, `change` engines, generic `extract` and its
+Consumers are `change` engines, generic `extract` and its
 APB/ATB/AXI/AXIS adapters, and AHB warm-up and transaction tracking. Engine
 dispatch remains in these consumers. Paths with explicit preloads retain their
-histories; bounded `property` and `extract` paths read uncached operands point by
+histories; bounded `extract` paths read uncached operands point by
 point. These interfaces remain temporary until the consumers use Ondas queries
 directly.
 

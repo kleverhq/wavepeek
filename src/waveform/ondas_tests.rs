@@ -2073,6 +2073,9 @@ fn batch_samples_preserve_aliases_projections_and_composition_missing() {
         assert_eq!(row[6].bits.as_deref(), Some("0110"));
     }
     assert_eq!(rows[0][0].bits.as_deref(), Some("10100110"));
+    assert_eq!(rows[0][2].bits.as_deref(), Some("0110"));
+    assert_eq!(rows[2][2].bits.as_deref(), Some("0110"));
+    assert_eq!(rows[2][2].path, "top.alias");
     assert_eq!(rows[1][0].bits, None);
     assert_eq!(rows[1][2].bits, None);
     assert_eq!(rows[2][0].bits.as_deref(), Some("xxxx0110"));

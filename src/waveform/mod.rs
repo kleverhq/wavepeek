@@ -196,7 +196,6 @@ impl Waveform {
             .collect())
     }
 
-    #[cfg(test)]
     pub fn sample_resolved_at_time(
         &mut self,
         resolved: &[ResolvedSignal],
@@ -211,6 +210,9 @@ impl Waveform {
         resolved: &[ResolvedSignal],
         query_times_raw: &[u64],
     ) -> Result<Vec<Vec<SampledSignal>>, WavepeekError> {
+        if let [time] = query_times_raw {
+            return Ok(vec![self.sample_resolved_at_time(resolved, *time)?]);
+        }
         self.backend
             .sample_resolved_optional_at_times(resolved, query_times_raw)?
             .into_iter()

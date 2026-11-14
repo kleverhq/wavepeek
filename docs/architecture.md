@@ -55,7 +55,7 @@ Key architectural consequences:
 - Shared `src/logic.rs` defines four-state interpretation for expressions, edges and bit-output sampling. Renderers consume normalized samples; raw expression samples and enum keys retain their original states.
 - Ondas owns format-specific reading and optional native reader access behind the waveform facade. Transitional range-engine policies are listed below.
 - The lazy hierarchy index keys scopes and declarations by exact Ondas component paths. Direct lookup uses the same components without building a second full index. Confirmed contiguous declaration ranges define Ondas concatenations; samples, traces, and projections use their common signal handles. Quoted canonical paths are formatted for output and parsed by selections and expressions.
-- `value` submits its complete ordered signal and time lists to one Ondas `samples_at` call. Single-point reads use explicit saved traces when covered and otherwise request samples from Ondas. Saved values are looked up through `Trace::sample`; point reads do not preload histories by format.
+- `value` submits all selected signals to one Ondas point query for a single requested time, or one `samples_at` query for multiple times. Both paths preserve request order and duplicates. Expression and range consumers use explicit saved traces when covered and otherwise request point samples from Ondas. Saved values are looked up through `Trace::sample`; point reads do not preload histories by format.
 - The skill helper keeps its source of truth in packaged files instead of duplicated Rust string tables.
 - JSON and JSONL contracts are covered by direct serialization and command-runtime tests.
 
@@ -187,9 +187,7 @@ The current implementation status is:
 
 Non-fatal diagnostics do not change the exit code.
 
-## `change` Command Execution Architecture
-
-### Transitional range access
+## Transitional Range Access
 
 The waveform facade retains explicit `preload_signal_ids`,
 `preload_expr_value_changes`, `preload_resolved_value_changes`, candidate-time
@@ -198,10 +196,14 @@ Their saved traces and candidate grids belong to one command's `Waveform`.
 The indexed offset is a change-position equality token; value decoding uses
 `Trace::sample`.
 
-Consumers migrate in order: `property` (W06), `change` engines (W07), generic
-`extract` and its APB/ATB/AXI/AXIS adapters (W08), and AHB warm-up and transaction
-tracking (W09). Their current engine dispatch and explicit preload policies remain
-until those migrations. W10 removes unused transition helpers.
+Consumers are `property`, `change` engines, generic `extract` and its
+APB/ATB/AXI/AXIS adapters, and AHB warm-up and transaction tracking. Engine
+dispatch remains in these consumers. Paths with explicit preloads retain their
+histories; bounded `property` and `extract` paths read uncached operands point by
+point. These interfaces remain temporary until the consumers use Ondas queries
+directly.
+
+## `change` Command Execution Architecture
 
 `change` keeps one user-visible contract while choosing among several internal execution strategies.
 

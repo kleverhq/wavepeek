@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `$signal("path")` expression operands for explicit canonical signal names.
 
 ### Changed
-- Batch all requested `value` signals and times through Ondas, preserving order and duplicates. Use saved Trace sampling for explicit range histories without implicit format-based preloading.
+- Read all requested `value` signals through one Ondas point query for a single time or one batch for multiple times, preserving order and duplicates. Use saved Trace sampling for explicit range histories without implicit format-based preloading.
 - Evaluate FSDB real and ASCII string values in existing expressions; bit-oriented outputs remain integral.
 - Use declaration metadata for expression types and preserve stored widths. Unknown signedness defaults to unsigned for ordinary vectors, and unknown logic domains use four-state evaluation.
 - Interpret weak logic states as L=0 and H=1 across expressions, edges and output; keep raw enum label matching. Raw events use kind `event` and width 0 across formats.

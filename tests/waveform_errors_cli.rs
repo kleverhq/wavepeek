@@ -172,3 +172,71 @@ fn lazy_fst_expression_reads_preserve_signal_failures_and_late_jsonl_framing() {
         }
     }
 }
+
+#[test]
+fn property_reader_failure_during_lookahead_preserves_partial_jsonl() {
+    let directory = tempfile::tempdir().unwrap();
+    let source = directory.path().join("late_string.vcd");
+    let fst = directory.path().join("late_string.fst");
+    std::fs::write(&source, b"$timescale 1ns $end\n$scope module top $end\n$var wire 1 c clk $end\n$var string 1 s msg $end\n$upscope $end\n$enddefinitions $end\n#0\n0c\nsok s\n#5\n1c\n#10\n0c\n#14\ns\xc3\xa9 s\n#15\n1c\n").unwrap();
+    let conversion = std::process::Command::new("vcd2fst")
+        .arg(&source)
+        .arg(&fst)
+        .output()
+        .unwrap();
+    assert!(conversion.status.success(), "{conversion:?}");
+    for (on, eval) in [
+        ("posedge top.clk", "top.msg == \"ok\""),
+        ("posedge top.clk iff (top.msg == \"ok\")", "1"),
+    ] {
+        for mode in ["--json", "--jsonl"] {
+            let output = wavepeek_cmd()
+                .arg("property")
+                .arg("--waves")
+                .arg(&fst)
+                .args([
+                    "--on",
+                    on,
+                    "--eval",
+                    eval,
+                    "--capture",
+                    "match",
+                    "--sample-mode",
+                    "native",
+                    "--max",
+                    "1",
+                    mode,
+                ])
+                .output()
+                .unwrap();
+            assert_eq!(output.status.code(), Some(1), "{output:?}");
+            assert!(output.stderr.is_empty());
+            let records: Vec<Value> = std::str::from_utf8(&output.stdout)
+                .unwrap()
+                .lines()
+                .map(|line| serde_json::from_str(line).unwrap())
+                .collect();
+            let fatal = records.last().unwrap();
+            assert_eq!(fatal["type"], "fatal");
+            assert_eq!(fatal["code"], "WPK-F0004");
+            let message = fatal["message"].as_str().unwrap();
+            assert!(message.contains("non-ASCII string"), "{message}");
+            assert!(message.contains(fst.to_str().unwrap()), "{message}");
+            if mode == "--jsonl" {
+                assert_eq!(records.len(), 3, "{records:?}");
+                assert_eq!(records[0]["type"], "begin");
+                assert_eq!(records[1]["type"], "data");
+                assert_eq!(
+                    records[1]["data"],
+                    serde_json::json!({"time":"5ns", "sample_time":"5ns", "kind":"match"})
+                );
+                for (seq, record) in records.iter().enumerate() {
+                    assert_eq!(record["seq"], seq);
+                }
+            } else {
+                assert_eq!(records.len(), 1);
+                assert!(fatal.get("seq").is_none());
+            }
+        }
+    }
+}

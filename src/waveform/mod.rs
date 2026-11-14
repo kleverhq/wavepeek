@@ -7,6 +7,7 @@
 
 #[allow(dead_code)]
 pub(crate) mod expr_host;
+pub(crate) mod expr_query;
 mod ondas_backend;
 mod ondas_error;
 pub(crate) mod selection;
@@ -492,6 +493,20 @@ impl Waveform {
         query_time_raw: u64,
     ) -> Result<SampledValue, WavepeekError> {
         self.backend.sample_expr_value(resolved, query_time_raw)
+    }
+
+    pub(crate) fn query_expressions(
+        &mut self,
+        query: &expr_query::ExpressionQuery,
+        range: std::ops::RangeInclusive<u64>,
+        initialize: bool,
+        visitor: impl FnMut(
+            &dyn expr_host::RuntimeExpressionHost,
+            expr_query::ExpressionQueryTick,
+        ) -> Result<std::ops::ControlFlow<()>, WavepeekError>,
+    ) -> Result<(), WavepeekError> {
+        self.backend
+            .query_expressions(query, range, initialize, visitor)
     }
 
     #[allow(dead_code)]

@@ -1254,3 +1254,352 @@ fn string_values_are_rejected_as_property_and_extract_predicates() {
             .stdout(predicate::str::contains("EXPR-SEMANTIC-BOOLEAN-CONTEXT"));
     }
 }
+
+#[test]
+fn property_query_filters_projection_noise_and_same_tick_writes() {
+    let fixture = write_fixture(
+        concat!(
+            "$timescale 1ns $end\n$scope module top $end\n",
+            "$var wire 1 c clk $end\n$var wire 1 e enable $end\n",
+            "$var wire 1 d data $end\n$var wire 2 b bus $end\n",
+            "$var wire 2 b alias $end\n$upscope $end\n$enddefinitions $end\n",
+            "#0\n0c\n0e\n1d\nb00 b\n",
+            "#1\nb10 b\n#2\n1e\n#3\nb11 b\n",
+            "#4\nb10 b\nb11 b\n#5\n1c\n0e\nb11 b\n",
+            "#6\n1e\n#7\n0c\n0d\n#8\n1c\n1d\n",
+            "#9\n0c\n1c\n#10\nb10 b\n#11\nb10 b\n",
+        ),
+        ".property-query-noise.vcd",
+    );
+    for on in [
+        r#"$signal("top.\"bus\"[0:0]") or posedge clk iff enable"#,
+        r#"$signal("top.\"alias\"[0:0]") or posedge clk iff enable"#,
+        r#"$signal("top.\"bus\"[0:0]") or $signal("top.\"alias\"[0:0]") or posedge clk iff enable"#,
+    ] {
+        let output = wavepeek_cmd()
+            .arg("property")
+            .arg("--waves")
+            .arg(fixture.path())
+            .args([
+                "--scope",
+                "top",
+                "--on",
+                on,
+                "--eval",
+                "data && (bus[0] == alias[0])",
+                "--capture",
+                "match",
+                "--sample-mode",
+                "native",
+                "--max",
+                "unlimited",
+                "--json",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        assert_eq!(
+            parse_json(&output.stdout)["data"],
+            json!([
+                {"time":"3ns","sample_time":"3ns","kind":"match"},
+                {"time":"8ns","sample_time":"8ns","kind":"match"},
+                {"time":"10ns","sample_time":"10ns","kind":"match"},
+            ])
+        );
+    }
+}
+
+#[test]
+fn property_query_preserves_quiet_baseline_and_late_first_value() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 1 c clk $end\n$var wire 1 d data $end\n$var real 1 r real_value $end\n$upscope $end\n$enddefinitions $end\n#0\n0c\n#5\n1d\n#10\n1c\nr1 r\n",
+        ".property-query-late.vcd",
+    );
+    for (from, to, capture, eval, expected) in [
+        (
+            "0ns",
+            "10ns",
+            "match",
+            "data",
+            json!([{"time":"5ns","sample_time":"5ns","kind":"match"}]),
+        ),
+        (
+            "0ns",
+            "10ns",
+            "switch",
+            "data",
+            json!([{"time":"5ns","sample_time":"5ns","kind":"assert"}]),
+        ),
+        ("1ns", "4ns", "match", "real_value > 0", json!([])),
+        ("6ns", "9ns", "switch", "data", json!([])),
+    ] {
+        let output = wavepeek_cmd()
+            .arg("property")
+            .arg("--waves")
+            .arg(fixture.path())
+            .args([
+                "--scope",
+                "top",
+                "--on",
+                "data",
+                "--eval",
+                eval,
+                "--capture",
+                capture,
+                "--sample-mode",
+                "native",
+                "--from",
+                from,
+                "--to",
+                to,
+                "--json",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{from} {capture}: {output:?}");
+        assert_eq!(parse_json(&output.stdout)["data"], expected);
+    }
+    let output = wavepeek_cmd()
+        .arg("property")
+        .arg("--waves")
+        .arg(fixture.path())
+        .args([
+            "--scope",
+            "top",
+            "--on",
+            "clk",
+            "--eval",
+            "real_value > 0",
+            "--capture",
+            "switch",
+            "--sample-mode",
+            "native",
+            "--from",
+            "1ns",
+            "--to",
+            "4ns",
+            "--json",
+        ])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert_eq!(parse_json(&output.stdout)["type"], "fatal");
+}
+
+#[test]
+fn property_query_limit_looks_for_next_matching_row_or_eof() {
+    let fixture = write_fixture(RTL_SAMPLING_VCD, ".property-query-limit.vcd");
+    for (eval, capture, complete) in [
+        ("valid", "match", false),
+        ("!valid", "match", false),
+        ("valid", "assert", true),
+        ("valid", "switch", false),
+        ("valid", "deassert", true),
+        ("data == 8'haa", "deassert", true),
+    ] {
+        let output = wavepeek_cmd()
+            .arg("property")
+            .arg("--waves")
+            .arg(fixture.path())
+            .args([
+                "--scope",
+                "top",
+                "--on",
+                "posedge clk",
+                "--eval",
+                eval,
+                "--capture",
+                capture,
+                "--sample-mode",
+                "native",
+                "--max",
+                "1",
+                "--json",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        let result = parse_json(&output.stdout);
+        assert_eq!(result["data"].as_array().unwrap().len(), 1, "{result}");
+        assert_eq!(
+            result["summary"]["complete"], complete,
+            "{eval} {capture}: {result}"
+        );
+    }
+}
+
+#[test]
+fn property_query_lookahead_error_keeps_owned_and_streaming_failure_contracts() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 1 c clk $end\n$var wire 1 v valid $end\n$var real 1 r real_value $end\n$upscope $end\n$enddefinitions $end\n#0\n0c\n1v\n#5\n1c\n#10\n0c\n0v\n#15\n1c\n",
+        ".property-query-lookahead-error.vcd",
+    );
+    for mode in ["--json", "--jsonl"] {
+        let output = wavepeek_cmd()
+            .arg("property")
+            .arg("--waves")
+            .arg(fixture.path())
+            .args([
+                "--scope",
+                "top",
+                "--on",
+                "posedge clk",
+                "--eval",
+                "valid || (real_value > 0)",
+                "--capture",
+                "match",
+                "--sample-mode",
+                "native",
+                "--max",
+                "1",
+                mode,
+            ])
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1), "{output:?}");
+        assert!(output.stderr.is_empty(), "{output:?}");
+        let records: Vec<Value> = std::str::from_utf8(&output.stdout)
+            .unwrap()
+            .lines()
+            .map(|line| serde_json::from_str(line).unwrap())
+            .collect();
+        let fatal = records.last().unwrap();
+        assert_eq!(fatal["type"], "fatal", "{records:?}");
+        assert!(
+            fatal["message"].as_str().unwrap().contains("real_value"),
+            "{records:?}"
+        );
+        if mode == "--jsonl" {
+            assert_eq!(records.len(), 3, "{records:?}");
+            assert_eq!(records[0]["type"], "begin");
+            assert_eq!(records[1]["type"], "data");
+            assert_eq!(records[1]["data"]["time"], "5ns");
+            for (seq, record) in records.iter().enumerate() {
+                assert_eq!(record["seq"], seq);
+            }
+        } else {
+            assert_eq!(records.len(), 1, "{records:?}");
+            assert!(fatal.get("seq").is_none());
+        }
+    }
+}
+
+#[test]
+fn property_zero_limit_rejects_before_open_in_machine_modes() {
+    for mode in ["--json", "--jsonl"] {
+        let output = wavepeek_cmd()
+            .args([
+                "property",
+                "--waves",
+                "missing.vcd",
+                "--on",
+                "posedge missing",
+                "--eval",
+                "missing",
+                "--max",
+                "0",
+                mode,
+            ])
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1));
+        assert!(output.stderr.is_empty());
+        let fatal = parse_json(&output.stdout);
+        assert_eq!(fatal["type"], "fatal");
+        assert_eq!(fatal["code"], "WPK-F0001");
+        assert!(
+            fatal["message"]
+                .as_str()
+                .unwrap()
+                .contains("--max must be greater than 0")
+        );
+        if mode == "--jsonl" {
+            assert_eq!(fatal["seq"], 0);
+        }
+    }
+}
+
+#[test]
+fn property_raw_event_at_zero_has_no_persistent_or_initial_change() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var event 1 e ev $end\n$var wire 1 c clk $end\n$upscope $end\n$enddefinitions $end\n#0\n1e\n1c\n#1\n0c\n#2\n1c\n",
+        ".property-query-zero.vcd",
+    );
+    for (on, eval, capture, mode, expected) in [
+        (
+            "ev",
+            "1",
+            "match",
+            "native",
+            json!([{"time":"0ns","sample_time":"0ns","kind":"match"}]),
+        ),
+        ("ev", "1", "switch", "native", json!([])),
+        (
+            "posedge clk",
+            "ev.triggered()",
+            "match",
+            "pre-edge",
+            json!([]),
+        ),
+    ] {
+        let output = wavepeek_cmd()
+            .arg("property")
+            .arg("--waves")
+            .arg(fixture.path())
+            .args([
+                "--scope",
+                "top",
+                "--on",
+                on,
+                "--eval",
+                eval,
+                "--capture",
+                capture,
+                "--sample-mode",
+                mode,
+                "--json",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        assert_eq!(parse_json(&output.stdout)["data"], expected);
+    }
+}
+
+#[test]
+fn property_query_binds_dynamic_selection_operands_in_both_sample_modes() {
+    let fixture = write_fixture(RTL_SAMPLING_VCD, ".property-query-dynamic.vcd");
+    for (mode, times) in [
+        ("native", vec!["5ns", "15ns", "25ns", "35ns"]),
+        ("pre-edge", vec!["15ns", "25ns", "35ns"]),
+    ] {
+        let output = wavepeek_cmd()
+            .arg("property")
+            .arg("--waves")
+            .arg(fixture.path())
+            .args([
+                "--scope",
+                "top",
+                "--on",
+                "posedge clk",
+                "--eval",
+                "data[valid]",
+                "--capture",
+                "match",
+                "--sample-mode",
+                mode,
+                "--json",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        let value = parse_json(&output.stdout);
+        let actual: Vec<_> = value["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|row| row["time"].as_str().unwrap())
+            .collect();
+        assert_eq!(actual, times);
+    }
+}

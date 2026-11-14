@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use serde::Serialize;
 
 use crate::cli::limits::LimitArg;
@@ -6,10 +8,10 @@ use crate::cli::sampling::SampleMode;
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::expr_runtime::{
-    bind_waveform_event_expr, bind_waveform_logical_expr, candidate_sources_for_handles,
-    eval_bound_logical_truth, event_candidate_handles, event_expr_contains_wildcard,
-    event_expr_is_any_tracked_only, event_expr_is_edge_only, event_expr_matches,
-    open_shared_waveform, referenced_signal_handles,
+    bind_waveform_event_expr, bind_waveform_logical_expr, eval_bound_logical_truth,
+    event_candidate_handles, event_expr_contains_wildcard, event_expr_is_any_tracked_only,
+    event_expr_is_edge_only, event_expr_matches, event_iff_handles, open_shared_waveform,
+    referenced_signal_handles,
 };
 use crate::engine::time::{
     DumpTimeContext, TimeValidationError, format_raw_timestamp, parse_dump_time_context,
@@ -18,9 +20,7 @@ use crate::engine::time::{
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions, ResultSummary};
 use crate::error::WavepeekError;
 use crate::expr::EventEvalFrame;
-use crate::waveform::ChangeCandidateCollectionMode;
-#[cfg(test)]
-use crate::waveform::Waveform;
+use crate::waveform::expr_query::{ExpressionQuery, ExpressionQueryTick};
 
 const PRE_EDGE_REQUIRES_EDGE_ONLY_ON: &str = "--sample-mode pre-edge requires --on with only edge event terms (posedge, negedge, or edge); use --sample-mode native for wildcard or plain signal triggers";
 
@@ -185,7 +185,6 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
     let bound_eval = bind_waveform_logical_expr(&host, args.scope.as_deref(), args.eval.as_str())?;
     debug.event("expression.bind.done", || serde_json::json!({}));
     let eval_signal_handles = referenced_signal_handles(&bound_eval);
-    let eval_sources = candidate_sources_for_handles(&host, eval_signal_handles.as_slice())?;
 
     let tracked_signal_handles = if event_expr_contains_wildcard(&bound_event) {
         if eval_signal_handles.is_empty() && event_expr_is_any_tracked_only(&bound_event) {
@@ -198,166 +197,133 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
         Vec::new()
     };
 
-    let mut candidate_sources = if tracked_signal_handles.is_empty() {
-        Vec::new()
-    } else {
-        eval_sources.clone()
-    };
-    candidate_sources.extend(candidate_sources_for_handles(
-        &host,
-        &event_candidate_handles(&bound_event),
-    )?);
+    let mut drivers = tracked_signal_handles.clone();
+    drivers.extend(event_candidate_handles(&bound_event));
     let mut seen = std::collections::HashSet::new();
-    candidate_sources.retain(|signal| seen.insert(signal.id));
+    drivers.retain(|handle| seen.insert(*handle));
+    let mut operands = event_iff_handles(&bound_event);
+    operands.extend(eval_signal_handles);
+    let query = ExpressionQuery::new(&host, &drivers, &operands)?;
     debug.event("signal.resolve.done", || {
         serde_json::json!({
             "tracked_signals": tracked_signal_handles.len(),
-            "candidate_sources": candidate_sources.len(),
+            "drivers": drivers.len(),
         })
     });
 
     sink.start()?;
-    let candidate_times = waveform
-        .borrow_mut()
-        .collect_expr_candidate_times_with_mode(
-            candidate_sources.as_slice(),
-            from_raw,
-            to_raw,
-            ChangeCandidateCollectionMode::Auto,
-        )?;
-    debug.event(
-        "candidate.collect.done",
-        || serde_json::json!({"times": candidate_times.len()}),
-    );
-    debug.event(
-        "candidate.schedule.done",
-        || serde_json::json!({"entries": candidate_times.len()}),
-    );
-
-    if max_entries.is_none() {
-        let preload_from_raw = from_raw
-            .checked_sub(1)
-            .filter(|value| *value >= dump_start_raw)
-            .unwrap_or(from_raw);
-        let mut preload_sources = candidate_sources.clone();
-        preload_sources.extend(eval_sources.iter().cloned());
-        let mut seen_preload = std::collections::HashSet::new();
-        preload_sources.retain(|signal| seen_preload.insert(signal.id));
-        waveform.borrow_mut().preload_expr_value_changes(
-            preload_sources.as_slice(),
-            preload_from_raw,
-            to_raw,
-        )?;
-        debug.event("value.preload.done", || {
-            serde_json::json!({
-                "from_raw": preload_from_raw,
-                "to_raw": to_raw,
-                "backend_stats": waveform.borrow().debug_stats(),
-            })
-        });
-    } else {
-        debug.event("value.preload.skipped", || {
-            serde_json::json!({
-                "reason": "bounded_max",
-                "max_entries": max_entries,
-            })
-        });
-    }
-
     let mut emitted = 0usize;
     let mut truncated = false;
-    let mut previous_state = match args.capture {
-        CaptureMode::Match => None,
-        CaptureMode::Switch | CaptureMode::Assert | CaptureMode::Deassert => Some(
-            eval_bound_logical_truth(args.eval.as_str(), &bound_eval, &host, from_raw)?,
-        ),
-    };
+    let mut previous_state = None;
+    waveform.borrow_mut().query_expressions(
+        &query,
+        from_raw..=to_raw,
+        args.capture != CaptureMode::Match,
+        |host, tick| {
+            let timestamp = match tick {
+                ExpressionQueryTick::Initial(timestamp) => {
+                    previous_state = Some(eval_bound_logical_truth(
+                        args.eval.as_str(),
+                        &bound_eval,
+                        host,
+                        timestamp,
+                    )?);
+                    return Ok(ControlFlow::Continue(()));
+                }
+                ExpressionQueryTick::Candidate(timestamp) => timestamp,
+            };
+            let previous_timestamp = timestamp
+                .checked_sub(1)
+                .filter(|time| *time >= dump_start_raw);
+            let frame = EventEvalFrame {
+                timestamp,
+                previous_timestamp,
+                tracked_signals: tracked_signal_handles.as_slice(),
+            };
+            if !event_expr_matches(event_expr_source, &bound_event, host, &frame)? {
+                return Ok(ControlFlow::Continue(()));
+            }
 
-    for timestamp in candidate_times {
-        let previous_timestamp = waveform.borrow().previous_sample_time(timestamp);
-        let frame = EventEvalFrame {
-            timestamp,
-            previous_timestamp,
-            tracked_signals: tracked_signal_handles.as_slice(),
-        };
-        if !event_expr_matches(event_expr_source, &bound_event, &host, &frame)? {
-            continue;
-        }
+            if matches!(
+                args.capture,
+                CaptureMode::Switch | CaptureMode::Assert | CaptureMode::Deassert
+            ) && timestamp == from_raw
+                && args.sample_mode == SampleMode::PreEdge
+            {
+                return Ok(ControlFlow::Continue(()));
+            }
 
-        if matches!(
-            args.capture,
-            CaptureMode::Switch | CaptureMode::Assert | CaptureMode::Deassert
-        ) && timestamp == from_raw
-            && args.sample_mode == SampleMode::PreEdge
-        {
-            continue;
-        }
+            let decision_timestamp =
+                value_sample_time_for_mode(args.sample_mode, timestamp, dump_start_raw);
+            let Some(decision_timestamp) = decision_timestamp else {
+                return Ok(ControlFlow::Continue(()));
+            };
 
-        let decision_timestamp =
-            value_sample_time_for_mode(args.sample_mode, timestamp, dump_start_raw);
-        let Some(decision_timestamp) = decision_timestamp else {
-            continue;
-        };
+            let decision = eval_bound_logical_truth(
+                args.eval.as_str(),
+                &bound_eval,
+                host,
+                decision_timestamp,
+            )?;
+            match args.capture {
+                CaptureMode::Match => {
+                    if decision
+                        && !emit_property_row(
+                            sink,
+                            PropertyCaptureRow {
+                                time: format_raw_timestamp(timestamp, dump_tick)?,
+                                sample_time: format_raw_timestamp(decision_timestamp, dump_tick)?,
+                                kind: PropertyResultKind::Match,
+                            },
+                            max_entries,
+                            &mut emitted,
+                            &mut truncated,
+                        )?
+                    {
+                        return Ok(ControlFlow::Break(()));
+                    }
+                }
+                CaptureMode::Switch | CaptureMode::Assert | CaptureMode::Deassert => {
+                    if timestamp == from_raw {
+                        if args.sample_mode == SampleMode::Native {
+                            previous_state = Some(decision);
+                        }
+                        return Ok(ControlFlow::Continue(()));
+                    }
 
-        let decision =
-            eval_bound_logical_truth(args.eval.as_str(), &bound_eval, &host, decision_timestamp)?;
-        match args.capture {
-            CaptureMode::Match => {
-                if decision
-                    && !emit_property_row(
+                    let prior = previous_state.unwrap_or(false);
+                    let transition = match (prior, decision) {
+                        (false, true) => Some(PropertyResultKind::Assert),
+                        (true, false) => Some(PropertyResultKind::Deassert),
+                        _ => None,
+                    };
+                    previous_state = Some(decision);
+
+                    let Some(kind) = transition else {
+                        return Ok(ControlFlow::Continue(()));
+                    };
+                    if !capture_allows_kind(args.capture, kind) {
+                        return Ok(ControlFlow::Continue(()));
+                    }
+
+                    if !emit_property_row(
                         sink,
                         PropertyCaptureRow {
                             time: format_raw_timestamp(timestamp, dump_tick)?,
                             sample_time: format_raw_timestamp(decision_timestamp, dump_tick)?,
-                            kind: PropertyResultKind::Match,
+                            kind,
                         },
                         max_entries,
                         &mut emitted,
                         &mut truncated,
-                    )?
-                {
-                    break;
-                }
-            }
-            CaptureMode::Switch | CaptureMode::Assert | CaptureMode::Deassert => {
-                if timestamp == from_raw {
-                    if args.sample_mode == SampleMode::Native {
-                        previous_state = Some(decision);
+                    )? {
+                        return Ok(ControlFlow::Break(()));
                     }
-                    continue;
-                }
-
-                let prior = previous_state.unwrap_or(false);
-                let transition = match (prior, decision) {
-                    (false, true) => Some(PropertyResultKind::Assert),
-                    (true, false) => Some(PropertyResultKind::Deassert),
-                    _ => None,
-                };
-                previous_state = Some(decision);
-
-                let Some(kind) = transition else {
-                    continue;
-                };
-                if !capture_allows_kind(args.capture, kind) {
-                    continue;
-                }
-
-                if !emit_property_row(
-                    sink,
-                    PropertyCaptureRow {
-                        time: format_raw_timestamp(timestamp, dump_tick)?,
-                        sample_time: format_raw_timestamp(decision_timestamp, dump_tick)?,
-                        kind,
-                    },
-                    max_entries,
-                    &mut emitted,
-                    &mut truncated,
-                )? {
-                    break;
                 }
             }
-        }
-    }
+            Ok(ControlFlow::Continue(()))
+        },
+    )?;
     debug.event(
         "property.evaluate.done",
         || serde_json::json!({"rows": emitted, "truncated": truncated}),
@@ -430,17 +396,6 @@ fn emit_property_row<S: PropertyRowSink + ?Sized>(
     Ok(true)
 }
 
-#[cfg(test)]
-fn build_candidate_schedule(
-    waveform: &Waveform,
-    candidate_times: &[u64],
-) -> Result<Vec<(u64, Option<u64>)>, WavepeekError> {
-    candidate_times
-        .iter()
-        .map(|timestamp| Ok((*timestamp, waveform.previous_sample_time(*timestamp))))
-        .collect()
-}
-
 fn parse_bound_time(
     token: &str,
     arg_name: &str,
@@ -488,7 +443,7 @@ mod tests {
 
     use super::{
         DumpTimeContext, PropertyCaptureRow, PropertyResultKind, PropertyRowSink,
-        build_candidate_schedule, capture_allows_kind, parse_bound_time, run, run_with_sink,
+        capture_allows_kind, parse_bound_time, run, run_with_sink,
     };
     use crate::cli::limits::LimitArg;
     use crate::cli::property::{CaptureMode, PropertyArgs};
@@ -496,7 +451,7 @@ mod tests {
     use crate::engine::CommandData;
     use crate::engine::time::{ParsedTime, TimeUnit, as_zeptoseconds};
     use crate::error::WavepeekError;
-    use crate::waveform::{Waveform, WaveformMetadata};
+    use crate::waveform::WaveformMetadata;
 
     const TEST_VCD: &str = concat!(
         "$date\n  today\n$end\n",
@@ -580,15 +535,6 @@ mod tests {
             CaptureMode::Deassert,
             PropertyResultKind::Assert
         ));
-    }
-
-    #[test]
-    fn candidate_schedule_tracks_previous_timestamp_for_indexed_and_between_times() {
-        let fixture = write_fixture(TEST_VCD, "property-schedule.vcd");
-        let waveform = Waveform::open(fixture.path()).expect("waveform should open");
-
-        let schedule = build_candidate_schedule(&waveform, &[0, 7, 10]).expect("schedule");
-        assert_eq!(schedule, vec![(0, None), (7, Some(6)), (10, Some(9))]);
     }
 
     #[test]

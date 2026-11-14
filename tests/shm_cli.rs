@@ -257,7 +257,14 @@ fn human_and_jsonl_value_output_match_vcd() {
         for path in [fixture_path("m2_core.vcd"), shm_path("m2_core")] {
             let mut command = wavepeek_cmd();
             command
-                .args(["value", "--signals", "top.data", "--at", "10ns", "--waves"])
+                .args([
+                    "value",
+                    "--signals",
+                    "top.data,top.data[7:4],top.data",
+                    "--at",
+                    "10ns,0ns,10ns,5ns",
+                    "--waves",
+                ])
                 .arg(path);
             if let Some(mode) = mode {
                 command.arg(mode);

@@ -79,6 +79,25 @@ pub(crate) fn with_waveform_bytes<T>(
     result
 }
 
+fn require_values(sampled: Vec<SampledSignalState>) -> Result<Vec<SampledSignal>, WavepeekError> {
+    sampled
+        .into_iter()
+        .map(|entry| {
+            let bits = entry.bits.ok_or_else(|| {
+                WavepeekError::Signal(format!(
+                    "signal '{}' has no value at or before requested time",
+                    entry.path
+                ))
+            })?;
+            Ok(SampledSignal {
+                path: entry.path,
+                width: entry.width,
+                bits,
+            })
+        })
+        .collect()
+}
+
 fn invocation_waveform(path: &Path) -> Option<Arc<[u8]>> {
     INVOCATION_WAVEFORM.with(|slot| {
         slot.borrow()
@@ -183,21 +202,21 @@ impl Waveform {
         query_time_raw: u64,
     ) -> Result<Vec<SampledSignal>, WavepeekError> {
         let sampled = self.sample_resolved_optional(resolved, query_time_raw)?;
-        sampled
+        require_values(sampled)
+    }
+
+    pub fn sample_resolved_at_times(
+        &mut self,
+        resolved: &[ResolvedSignal],
+        query_times_raw: &[u64],
+    ) -> Result<Vec<Vec<SampledSignal>>, WavepeekError> {
+        if let [time] = query_times_raw {
+            return Ok(vec![self.sample_resolved_at_time(resolved, *time)?]);
+        }
+        self.backend
+            .sample_resolved_optional_at_times(resolved, query_times_raw)?
             .into_iter()
-            .map(|entry| {
-                let bits = entry.bits.ok_or_else(|| {
-                    WavepeekError::Signal(format!(
-                        "signal '{}' has no value at or before requested time",
-                        entry.path
-                    ))
-                })?;
-                Ok(SampledSignal {
-                    path: entry.path,
-                    width: entry.width,
-                    bits,
-                })
-            })
+            .map(require_values)
             .collect()
     }
 

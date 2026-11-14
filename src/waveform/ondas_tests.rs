@@ -2034,3 +2034,185 @@ fn repeated_scope_names_keep_their_declarations_in_their_own_scope() {
         [Some("0"), Some("1")]
     );
 }
+
+#[test]
+fn batch_samples_preserve_aliases_projections_and_composition_missing() {
+    let fixture = write_fixture(
+        concat!(
+            "$timescale 1ns $end\n$scope module top $end\n",
+            "$var wire 4 ! bus [7:4] $end\n$var wire 4 \" bus [3:0] $end\n",
+            "$var wire 4 \" alias $end\n$var wire 8 # literal $end\n",
+            "$var wire 4 $ \\literal[3:0] $end\n$upscope $end\n$enddefinitions $end\n",
+            "#0\nb10100110 #\nb0001 $\n#5\nb0110 \"\n#10\nb1010 !\n#15\nbxxxx !\n",
+        ),
+        "batch-composition.vcd",
+    );
+    let mut backend = OndasBackend::open(fixture.path()).unwrap();
+    let paths = [
+        "top.bus",
+        "top.bus[5:2]",
+        "top.alias",
+        "top.bus",
+        "top.bus[7:4]",
+        "top.literal[3:0]",
+        "top.\"literal\"[3:0]",
+    ]
+    .map(String::from);
+    let resolved = backend.resolve_signals(&paths).unwrap();
+    let times = [10, 0, 5, 10, 15, 4, 16];
+    let rows = backend
+        .sample_resolved_optional_at_times(&resolved, &times)
+        .unwrap();
+    for (row, time) in rows.iter().zip(times) {
+        assert_eq!(
+            *row,
+            backend.sample_resolved_optional(&resolved, time).unwrap()
+        );
+        assert_eq!(row[0], row[3]);
+        assert_eq!(row[5].bits.as_deref(), Some("0001"));
+        assert_eq!(row[6].bits.as_deref(), Some("0110"));
+    }
+    assert_eq!(rows[0][0].bits.as_deref(), Some("10100110"));
+    assert_eq!(rows[0][2].bits.as_deref(), Some("0110"));
+    assert_eq!(rows[2][2].bits.as_deref(), Some("0110"));
+    assert_eq!(rows[2][2].path, "top.alias");
+    assert_eq!(rows[1][0].bits, None);
+    assert_eq!(rows[1][2].bits, None);
+    assert_eq!(rows[2][0].bits.as_deref(), Some("xxxx0110"));
+    assert_eq!(rows[2][1].bits.as_deref(), Some("xx01"));
+    assert_eq!(rows[2][4].bits.as_deref(), Some("xxxx"));
+    assert_eq!(rows[4][0].bits.as_deref(), Some("xxxx0110"));
+    assert!(backend.traces.is_empty());
+    assert!(
+        backend
+            .sample_resolved_optional_at_times(&resolved, &[])
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        backend
+            .sample_resolved_optional_at_times(&[], &[5, 0, 5])
+            .unwrap(),
+        vec![vec![], vec![], vec![]]
+    );
+}
+
+#[test]
+fn saved_trace_samples_match_source_at_window_and_event_boundaries() {
+    let fixture = write_fixture(
+        concat!(
+            "$timescale 1ns $end\n$scope module top $end\n",
+            "$var wire 1 ! state $end\n$var wire 1 \" delayed $end\n",
+            "$var wire 1 # other $end\n$var event 1 $ tick $end\n",
+            "$var wire 1 % never $end\n$upscope $end\n$enddefinitions $end\n",
+            "#0\n0!\n0#\n#5\n1!\nx\"\n1$\n#10\n0!\n1\"\n1$\n",
+            "#20\n1!\n1#\n1$\n#25\n",
+        ),
+        "saved-window.vcd",
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let fst = dir.path().join("saved-window.fst");
+    assert!(
+        Command::new("vcd2fst")
+            .arg(fixture.path())
+            .arg(&fst)
+            .status()
+            .unwrap()
+            .success()
+    );
+    for path in [fixture.path(), fst.as_path()] {
+        let mut saved = OndasBackend::open(path).unwrap();
+        let mut direct = OndasBackend::open(path).unwrap();
+        let paths = ["top.state", "top.delayed", "top.tick", "top.never"].map(String::from);
+        let resolved = saved.resolve_signals(&paths).unwrap();
+        let direct_resolved = direct.resolve_signals(&paths).unwrap();
+        saved
+            .preload_resolved_value_changes(&resolved, 6, 12)
+            .unwrap();
+        let trace = &saved.traces[&resolved[0].id];
+        for time in [5, 13] {
+            assert!(matches!(
+                trace.sample(ondas::Time::from_ticks(time)),
+                Err(ondas::Error::TraceCoverage { .. })
+            ));
+            assert!(saved.cached_value(resolved[0].id, time).unwrap().is_none());
+        }
+        let event = saved.resolve_expr_signal("top.tick").unwrap();
+        let direct_event = direct.resolve_expr_signal("top.tick").unwrap();
+        let times = [12, 6, 9, 10, 11, 6, 4, 5, 13, 20, 25, 30];
+        let batch = direct
+            .sample_resolved_optional_at_times(&direct_resolved, &times)
+            .unwrap();
+        for (time, batch_row) in times.into_iter().zip(batch) {
+            let expected = direct
+                .sample_resolved_optional(&direct_resolved, time)
+                .unwrap();
+            assert_eq!(batch_row, expected);
+            assert_eq!(
+                saved.sample_resolved_optional(&resolved, time).unwrap(),
+                expected,
+                "{} at {time}",
+                path.display()
+            );
+            assert_eq!(
+                saved.expr_event_occurred(&event, time).unwrap(),
+                direct.expr_event_occurred(&direct_event, time).unwrap()
+            );
+            assert_eq!(
+                saved.expr_event_occurred(&event, time).unwrap(),
+                [5, 10, 20].contains(&time)
+            );
+        }
+        let quiet = saved.sample_resolved_optional(&resolved, 6).unwrap();
+        assert_eq!(quiet[0].bits.as_deref(), Some("1"));
+        assert_eq!(quiet[1].bits.as_deref(), Some("x"));
+        assert_eq!(
+            saved.sample_resolved_optional(&resolved, 30).unwrap()[0]
+                .bits
+                .as_deref(),
+            Some("1")
+        );
+        if path == fixture.path() {
+            assert!(matches!(
+                saved.cached_value(resolved[3].id, 9).unwrap(),
+                Some(None)
+            ));
+        }
+        let other = saved.resolve_signals(&["top.other".into()]).unwrap();
+        saved.sample_resolved_optional(&other, 9).unwrap();
+        assert_eq!(saved.traces.len(), 4);
+        assert!(!saved.traces.contains_key(&other[0].id));
+    }
+}
+
+#[test]
+fn candidate_window_does_not_preload_unrequested_sample_histories() {
+    let source = write_fixture(TEST_VCD, "explicit-history.vcd");
+    let dir = tempfile::tempdir().unwrap();
+    let fst = dir.path().join("explicit-history.fst");
+    assert!(
+        Command::new("vcd2fst")
+            .arg(source.path())
+            .arg(&fst)
+            .status()
+            .unwrap()
+            .success()
+    );
+    for path in [source.path(), fst.as_path()] {
+        let mut backend = OndasBackend::open(path).unwrap();
+        let clock = backend.resolve_signals(&["top.clk".into()]).unwrap();
+        let data = backend.resolve_signals(&["top.data".into()]).unwrap();
+        backend
+            .collect_change_times_with_mode(&clock, 1, 10, ChangeCandidateCollectionMode::Auto)
+            .unwrap();
+        assert_eq!(backend.traces.len(), 1);
+        assert_eq!(
+            backend.sample_resolved_optional(&data, 9).unwrap()[0]
+                .bits
+                .as_deref(),
+            Some("00000000")
+        );
+        assert_eq!(backend.traces.len(), 1);
+        assert!(!backend.traces.contains_key(&data[0].id));
+    }
+}

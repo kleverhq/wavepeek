@@ -1126,3 +1126,37 @@ fn value_projects_normalized_ascending_and_unknown_bits() {
         ])
     );
 }
+
+#[test]
+fn value_batch_missing_observation_fails_without_partial_output() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! delayed $end\n$upscope $end\n$enddefinitions $end\n#0\n#5\nx!\n#10\n",
+        "value-batch-missing.vcd",
+    );
+    for mode in ["--json", "--jsonl"] {
+        let output = wavepeek_cmd()
+            .args([
+                "value",
+                "--waves",
+                fixture.path().to_str().unwrap(),
+                "--signals",
+                "top.delayed",
+                "--at",
+                "5ns,0ns,5ns",
+                mode,
+            ])
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1));
+        assert!(output.stderr.is_empty());
+        let fatal: Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(fatal["type"], "fatal");
+        assert_eq!(fatal["code"], "WPK-F0004");
+        assert!(
+            fatal["message"]
+                .as_str()
+                .unwrap()
+                .contains("no value at or before requested time")
+        );
+    }
+}

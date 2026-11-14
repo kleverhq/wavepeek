@@ -613,7 +613,11 @@ impl OndasBackend {
                 .samples(&signals, Time::from_ticks(time))
                 .map_err(|error| read_error(&self.path, "read samples from", error))?;
             for ((index, _), sample) in missing.into_iter().zip(samples) {
-                result[index] = sample_value(sample.as_ref()).map(ValueRef::to_owned);
+                result[index] = match sample {
+                    ondas::Sample::Value { value, .. } => Some(value),
+                    ondas::Sample::Event { occurrences, .. } => Some(Value::Event { occurrences }),
+                    _ => None,
+                };
             }
         }
         Ok(result)

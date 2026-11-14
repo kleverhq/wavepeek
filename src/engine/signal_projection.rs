@@ -7,25 +7,11 @@ use crate::waveform::{ResolvedSignal, SampledSignalState, Waveform};
 pub(crate) struct ProjectedSignal {
     pub source: ResolvedSignal,
     pub path: String,
-    projected: bool,
 }
 
 impl ProjectedSignal {
-    #[cfg(test)]
-    pub(crate) fn unprojected(source: ResolvedSignal) -> Self {
-        Self {
-            path: source.path.clone(),
-            source,
-            projected: false,
-        }
-    }
-
     pub(crate) fn width(&self) -> u32 {
         self.source.width
-    }
-
-    pub(crate) fn is_projected(&self) -> bool {
-        self.projected
     }
 
     pub(crate) fn project_sample(&self, sample: SampledSignalState) -> SampledSignalState {
@@ -49,7 +35,6 @@ pub(crate) fn resolve_projected_signal(
             return Ok(ProjectedSignal {
                 path: source.path.clone(),
                 source,
-                projected: false,
             });
         }
         Err(WavepeekError::SignalNotFound(_)) => {}
@@ -70,7 +55,6 @@ pub(crate) fn resolve_projected_signal(
         return Ok(ProjectedSignal {
             path: source.path.clone(),
             source,
-            projected: false,
         });
     };
 
@@ -93,6 +77,5 @@ pub(crate) fn resolve_projected_signal(
     Ok(ProjectedSignal {
         path: source.path.clone(),
         source,
-        projected: true,
     })
 }

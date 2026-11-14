@@ -62,15 +62,6 @@ pub fn event_matches_at(
     eval::event_matches_at(expr, host, frame)
 }
 
-pub(crate) fn event_matches_at_with_any_tracked(
-    expr: &BoundEventExpr,
-    host: &dyn ExpressionHost,
-    frame: &EventEvalFrame<'_>,
-    any_tracked: bool,
-) -> Result<bool, ExprDiagnostic> {
-    eval::event_matches_at_with_any_tracked(expr, host, frame, Some(any_tracked))
-}
-
 #[cfg(test)]
 mod tests {
     use super::{lex_event_expr, parse_event_expr_ast, parse_logical_expr_ast};

@@ -7,25 +7,6 @@ use crate::cli::sampling::SampleMode;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Default)]
 #[value(rename_all = "kebab-case")]
-pub enum TuneChangeEngineMode {
-    #[default]
-    Auto,
-    Baseline,
-    Fused,
-    EdgeFast,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Default)]
-#[value(rename_all = "kebab-case")]
-pub enum TuneChangeCandidateMode {
-    #[default]
-    Auto,
-    Random,
-    Stream,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Default)]
-#[value(rename_all = "kebab-case")]
 pub enum RowMode {
     #[default]
     Dense,
@@ -107,23 +88,4 @@ pub struct ChangeArgs {
     /// Stream newline-delimited JSON output
     #[arg(long, conflicts_with = "json", help_heading = "Output options")]
     pub jsonl: bool,
-    /// Unstable internal performance control (requires DEBUG=1).
-    #[arg(
-        long = "tune-engine",
-        value_enum,
-        default_value_t = TuneChangeEngineMode::Auto,
-        hide = true
-    )]
-    pub tune_engine: TuneChangeEngineMode,
-    /// Unstable internal performance control (requires DEBUG=1).
-    #[arg(
-        long = "tune-candidates",
-        value_enum,
-        default_value_t = TuneChangeCandidateMode::Auto,
-        hide = true
-    )]
-    pub tune_candidates: TuneChangeCandidateMode,
-    /// Unstable internal performance control (requires DEBUG=1).
-    #[arg(long = "tune-edge-fast-force", hide = true)]
-    pub tune_edge_fast_force: bool,
 }

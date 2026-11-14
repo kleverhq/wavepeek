@@ -174,10 +174,6 @@ fn derive_surfaces_for_data_transfer_types() {
         assert!(format!("{mode:?}").len() > 3);
     }
 
-    let offset = SignalOffsetData::new(10, 2);
-    assert_eq!(offset, SignalOffsetData::new(10, 2));
-    assert!(format!("{offset:?}").contains("start"));
-
     let edge = EdgeClassification {
         posedge: true,
         negedge: false,

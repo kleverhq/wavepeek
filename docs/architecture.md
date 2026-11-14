@@ -84,7 +84,7 @@ src/
 │   ├── scope.rs         # Hierarchy traversal with depth/filter
 │   ├── signal.rs        # Signal listing within scope
 │   ├── value.rs         # Value extraction at time point
-│   ├── change.rs        # Value-change tracking and engine dispatch
+│   ├── change.rs        # Value-change tracking through the shared query
 │   ├── expr_runtime.rs  # Shared typed-expression binding/evaluation helpers
 │   ├── time.rs          # Shared time token parsing/validation/alignment helpers
 │   ├── value_format.rs  # Shared Verilog literal formatting helpers
@@ -193,34 +193,41 @@ Non-fatal diagnostics do not change the exit code.
 ## Transitional Range Access
 
 The waveform facade retains explicit `preload_signal_ids`,
-`preload_expr_value_changes`, `preload_resolved_value_changes`, candidate-time
-collection and indexed timestamp/offset/decode helpers during the query migration.
-Their saved traces and candidate grids belong to one command's `Waveform`.
-The indexed offset is a change-position equality token; value decoding uses
-`Trace::sample`.
+`preload_expr_value_changes`, `preload_resolved_value_changes`, and candidate-time
+collection during the query migration. Their saved traces and candidate grids
+belong to one command's `Waveform`.
 
-Consumers are `change` engines, generic `extract` and its
-APB/ATB/AXI/AXIS adapters, and AHB warm-up and transaction tracking. Engine
-dispatch remains in these consumers. Paths with explicit preloads retain their
-histories; bounded `extract` paths read uncached operands point by
-point. These interfaces remain temporary until the consumers use Ondas queries
-directly.
+Production consumers are generic `extract` and its APB/ATB/AXI/AXIS adapters, and
+AHB warm-up and transaction tracking. Engine dispatch remains in these consumers.
+Paths with explicit preloads retain their histories; bounded `extract` paths read
+uncached operands point by point.
+
+The indexed timestamp accessor remains for transitional `extract` debug
+compatibility; its storage is not populated. Multi-expression lookup and
+`collect_change_times` wrappers remain for tests. Remove these interfaces when
+the remaining consumers complete the query migration.
 
 ## `change` Command Execution Architecture
 
-`change` keeps one user-visible contract while choosing among several internal execution strategies.
+`change` uses one ordered Ondas selection and activity query for native and
+pre-edge sampling. Drivers include explicit event operands and, for wildcard
+triggers, the selected logical signals. Guard and payload operands share the
+selection without adding candidate times. Event evaluation filters candidates
+against completed `t` and absolute `t - 1` states through the shared query host.
 
-Execution engines:
+Sparse rows compare against samples at the range start, then against emitted
+samples. Delta columns follow the same selected values. Only emitted rows update
+comparison state and counters. After the row limit, matching lookahead finds one
+more eligible row or reaches the end of the query.
 
-- **Baseline engine** for conservative low-overhead execution on small or simple workloads.
-- **Fused engine** for broader candidate sets where more work can be shared across signals.
-- **Edge-fast engine** for dense edge-trigger workloads that benefit from trigger-focused filtering.
+Payload conversion preserves Missing, maps logic through WavePeek's four-state
+policy, and represents raw events as zero-width values. Real and string payloads
+retain the existing unsupported-value errors. Typed application and sink errors
+stop the outer query through the shared adapter.
 
-The dispatcher chooses between those engines from internal workload estimates such as window size, candidate density, requested signal count, and trigger shape. This policy is intentionally internal and may evolve without changing the user contract.
-
-The reason for the multi-engine design is simple: a single internal strategy could not keep latency consistently low across both tiny and large-window scenarios.
-
-For `--jsonl`, `change` emits snapshots through a sink while the selected engine runs instead of collecting the complete result set solely for output. The human and `--json` paths use the same sink interface with a collector so they preserve the existing complete-result behavior. `property` uses the same pattern for captured rows.
+For `--jsonl`, `change` emits snapshots through a sink during the query. Human and
+`--json` output use the same sink interface with a collector. `property` uses the
+same output pattern for captured rows.
 
 ## Protocol Extraction Architecture
 

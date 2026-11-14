@@ -86,26 +86,6 @@ pub(crate) enum ChangeCandidateCollectionMode {
     Stream,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct SignalOffsetData {
-    start: usize,
-    elements: u16,
-}
-
-impl SignalOffsetData {
-    pub(in crate::waveform) fn new(start: usize, elements: u16) -> Self {
-        Self { start, elements }
-    }
-}
-
-impl PartialEq for SignalOffsetData {
-    fn eq(&self, other: &Self) -> bool {
-        self.start == other.start && self.elements == other.elements
-    }
-}
-
-impl Eq for SignalOffsetData {}
-
 // Stable machine-contract kind inventories intentionally exclude backend-specific
 // GHW/VHDL spellings even when the waveform backend can expose them.
 #[cfg_attr(not(test), allow(dead_code))]

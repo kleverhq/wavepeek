@@ -26,7 +26,7 @@ use super::ondas_error::{open_error, read_error};
 use super::selection::format_path;
 use super::types::{
     ChangeCandidateCollectionMode, ExprResolvedSignal, ResolvedSignal, SampledSignalState,
-    ScopeEntry, SignalEntry, SignalId, SignalListing, SignalOffsetData, WaveformMetadata,
+    ScopeEntry, SignalEntry, SignalId, SignalListing, WaveformMetadata,
 };
 
 pub(super) struct OndasBackend {
@@ -35,7 +35,6 @@ pub(super) struct OndasBackend {
     index: OnceCell<HierarchyIndex>,
     direct: RefCell<DirectSignals>,
     traces: HashMap<SignalId, Trace>,
-    indexed_window: Option<(u64, u64)>,
     indexed_times: Option<Vec<u64>>,
     compositions: RefCell<HashMap<SignalId, ondas::Signal>>,
 }
@@ -149,7 +148,6 @@ impl OndasBackend {
             index: OnceCell::new(),
             direct: RefCell::new(DirectSignals::default()),
             traces: HashMap::new(),
-            indexed_window: None,
             indexed_times: None,
             compositions: RefCell::new(HashMap::new()),
         }
@@ -432,6 +430,7 @@ impl OndasBackend {
         })
     }
 
+    #[cfg(test)]
     pub fn resolve_expr_signals(
         &self,
         paths: &[String],
@@ -808,7 +807,6 @@ impl OndasBackend {
         from: u64,
         to: u64,
     ) -> Result<(), WavepeekError> {
-        self.indexed_window = Some((from, to));
         self.preload(ids, from, to)
     }
 
@@ -838,98 +836,8 @@ impl OndasBackend {
         )
     }
 
-    // This grid indexes the loaded signals' net changes, not the file's global
-    // timestamp table. Include the entering tick so indexed engines can seed state.
-    pub fn ensure_indexed_signals_loaded(&mut self, ids: &[SignalId]) -> bool {
-        if ids.iter().any(|id| {
-            !matches!(
-                self.signal(*id).map(|signal| signal.encoding()),
-                Ok(Encoding::Bits { .. })
-            )
-        }) {
-            return false;
-        }
-        let window = self.indexed_window.or_else(|| {
-            self.inner
-                .borrow()
-                .metadata()
-                .time_span()
-                .map(|span| (span.first().ticks(), span.last().ticks()))
-        });
-        let Some((from, to)) = window else {
-            return false;
-        };
-        if self.preload(ids, from, to).is_err() {
-            return false;
-        }
-        let first = self
-            .inner
-            .borrow()
-            .metadata()
-            .time_span()
-            .map_or(from, |span| span.first().ticks());
-        let mut times = BTreeSet::from([from.max(first)]);
-        for id in ids {
-            if let Some(cached) = self.traces.get(id) {
-                times.extend(
-                    cached
-                        .changes()
-                        .iter()
-                        .map(|change| change.time().ticks())
-                        .filter(|time| (from..=to).contains(time)),
-                );
-            }
-        }
-        self.indexed_times = Some(times.into_iter().collect());
-        true
-    }
-
     pub fn indexed_timestamps(&self) -> Option<&[u64]> {
         self.indexed_times.as_deref()
-    }
-
-    pub fn indexed_signal_offset_at(&self, id: SignalId, index: u32) -> Option<SignalOffsetData> {
-        let time = *self.indexed_times.as_ref()?.get(index as usize)?;
-        let trace = self.traces.get(&id)?;
-        let position = trace
-            .changes()
-            .partition_point(|change| change.time().ticks() <= time);
-        if position == 0 && trace.initial().is_none() {
-            return None;
-        }
-        Some(SignalOffsetData::new(position, 1))
-    }
-
-    pub fn decode_indexed_signal_at(
-        &self,
-        resolved: &ResolvedSignal,
-        index: u32,
-    ) -> Result<SampledSignalState, WavepeekError> {
-        let missing = || {
-            WavepeekError::Internal(format!(
-                "signal '{}' could not be loaded from waveform backend",
-                resolved.path
-            ))
-        };
-        if !self.traces.contains_key(&resolved.id) {
-            return Err(missing());
-        }
-        let time = self
-            .indexed_times
-            .as_ref()
-            .and_then(|times| times.get(index as usize))
-            .ok_or_else(missing)?;
-        let value = self.cached_value(resolved.id, *time)?.ok_or_else(missing)?;
-        let bits = match value {
-            Some(ValueRef::Bits(bits)) => Some(interpreted_bits(bits)),
-            None => None,
-            _ => return Err(unsupported(&resolved.path)),
-        };
-        Ok(SampledSignalState {
-            path: resolved.path.clone(),
-            width: resolved.width,
-            bits,
-        })
     }
 
     fn candidate_times(
@@ -951,7 +859,6 @@ impl OndasBackend {
             ));
         }
         let sample_from = from.saturating_sub(1);
-        self.indexed_window = Some((sample_from, to));
         self.preload(ids, sample_from, to)?;
         let mut times = Vec::new();
         for id in ids {

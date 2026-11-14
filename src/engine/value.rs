@@ -67,8 +67,8 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
         .collect::<Vec<_>>();
     let mut snapshots = Vec::with_capacity(query_times_raw.len());
 
-    for query_time_raw in query_times_raw {
-        let sampled = waveform.sample_resolved_at_time(&sources, query_time_raw)?;
+    let sampled_rows = waveform.sample_resolved_at_times(&sources, &query_times_raw)?;
+    for (query_time_raw, sampled) in query_times_raw.into_iter().zip(sampled_rows) {
         let signals = requested_signals
             .iter()
             .zip(sampled)

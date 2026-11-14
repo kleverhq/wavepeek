@@ -83,7 +83,7 @@ fn lazy_fst_expression_reads_preserve_signal_failures_and_late_jsonl_framing() {
     let directory = tempfile::tempdir().unwrap();
     let source = directory.path().join("non_ascii.vcd");
     let fst = directory.path().join("non_ascii.fst");
-    std::fs::write(&source, b"$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var string 1 \" msg $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nsok \"\n#5\n1!\ns\xc3\xa9 \"\n#10\n0!\n").unwrap();
+    std::fs::write(&source, b"$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var string 1 \" msg $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nsok \"\n#4\ns\xc3\xa9 \"\n#5\n1!\n#10\n0!\n").unwrap();
     let conversion = std::process::Command::new("vcd2fst")
         .arg(&source)
         .arg(&fst)

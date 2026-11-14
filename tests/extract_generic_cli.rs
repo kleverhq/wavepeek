@@ -927,3 +927,444 @@ fn extract_generic_projects_and_preserves_duplicate_payloads_from_cli_and_source
     );
     assert_eq!(parse_json(&from_source.stdout)["data"], expected);
 }
+
+#[test]
+fn extract_query_orders_groups_aliases_and_ready_row_lookahead_at_one_tick() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 1 c clk $end\n$var wire 1 c alias $end\n$var wire 1 d other $end\n$var wire 1 g gate $end\n$var wire 1 v valid $end\n$var wire 8 p data $end\n$upscope $end\n$enddefinitions $end\n#0\n0c\n0d\n0g\n1v\nb00001111 p\n#4\n1g\nb10101010 p\n#5\n1c\n1d\n0v\nb11111111 p\n#6\n0c\n0d\n#8\n1v\n#10\n0g\n#14\n1g\nb01010101 p\n#15\n1c\n1d\n#20\n0c\n0d\n",
+        ".extract-query-groups.vcd",
+    );
+    let source = write_source(&json!({
+        "kind": "extract.generic.sources",
+        "sources": [
+            {"name":"first", "on":"posedge clk iff gate", "when":"valid", "payload":["data", "alias", "data"]},
+            {"name":"filtered", "on":"posedge other", "when":"0", "payload":["data"]},
+            {"name":"second", "on":"posedge other", "when":"valid", "payload":["data[7:4]"]},
+            {"name":"third", "on":"posedge clk iff gate", "when":"valid", "payload":["data"]},
+            {"name":"fourth", "on":"posedge alias iff gate", "when":"valid", "payload":["data"]}
+        ]
+    }).to_string());
+    for max in ["1", "3", "4", "5", "unlimited"] {
+        let limit = max.parse::<usize>().unwrap_or(usize::MAX);
+        let count = limit.min(4);
+        let mut expected = None;
+        for mode in ["--json", "--jsonl"] {
+            let output = wavepeek_cmd()
+                .args([
+                    "extract",
+                    "generic",
+                    "--waves",
+                    fixture.path().to_str().unwrap(),
+                    "--scope",
+                    "top",
+                    "--source",
+                    source.path().to_str().unwrap(),
+                    "--from",
+                    "5ns",
+                    "--to",
+                    "5ns",
+                    "--max",
+                    max,
+                    mode,
+                ])
+                .output()
+                .unwrap();
+            assert!(output.status.success(), "{output:?}");
+            assert!(output.stderr.is_empty());
+            let (rows, summary) = if mode == "--json" {
+                let result = parse_json(&output.stdout);
+                (
+                    result["data"].as_array().unwrap().clone(),
+                    result["summary"].clone(),
+                )
+            } else {
+                let records = parse_stream(&output.stdout);
+                assert_eq!(records[0]["type"], "begin");
+                for (seq, record) in records.iter().enumerate() {
+                    assert_eq!(record["seq"], seq);
+                }
+                assert_eq!(records.last().unwrap()["type"], "end");
+                (
+                    records
+                        .iter()
+                        .filter(|r| r["type"] == "data")
+                        .map(|r| r["data"].clone())
+                        .collect(),
+                    records.last().unwrap()["summary"].clone(),
+                )
+            };
+            assert_eq!(rows.len(), count);
+            assert_eq!(summary["returned"], count);
+            assert_eq!(summary["complete"], limit >= 4);
+            assert_eq!(
+                summary["total"],
+                if limit >= 4 { json!(4) } else { Value::Null }
+            );
+            let names: Vec<_> = rows.iter().map(|r| r["source"].as_str().unwrap()).collect();
+            assert_eq!(names, ["first", "second", "third", "fourth"][..count]);
+            for row in &rows {
+                assert_eq!(row["time"], "5ns");
+                assert_eq!(row["sample_time"], "4ns");
+            }
+            assert_eq!(
+                rows[0]["payload"],
+                json!([
+                    {"path":"top.data", "relative_path":"data", "value":"8'haa"},
+                    {"path":"top.alias", "relative_path":"alias", "value":"1'h0"},
+                    {"path":"top.data", "relative_path":"data", "value":"8'haa"}
+                ])
+            );
+            if count > 1 {
+                assert_eq!(rows[1]["payload"][0]["value"], "4'ha");
+            }
+            if let Some(ref expected) = expected {
+                assert_eq!(&(rows, summary), expected);
+            } else {
+                expected = Some((rows, summary));
+            }
+        }
+    }
+    for (from, to, count) in [("7ns", "14ns", 0), ("7ns", "15ns", 4)] {
+        let output = wavepeek_cmd()
+            .args([
+                "extract",
+                "generic",
+                "--waves",
+                fixture.path().to_str().unwrap(),
+                "--scope",
+                "top",
+                "--source",
+                source.path().to_str().unwrap(),
+                "--from",
+                from,
+                "--to",
+                to,
+                "--json",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        let result = parse_json(&output.stdout);
+        assert_eq!(result["data"].as_array().unwrap().len(), count);
+        if count > 0 {
+            assert_eq!(result["data"][0]["payload"][0]["value"], "8'h55");
+        }
+    }
+}
+
+#[test]
+fn extract_query_rejects_projection_noise_and_same_tick_net_zero_edges() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 4 b bus $end\n$var wire 1 v valid $end\n$var wire 1 g gate $end\n$var event 1 e ev $end\n$upscope $end\n$enddefinitions $end\n#0\nb0000 b\n1v\n1g\n#4\n1e\n#5\nb0010 b\n#6\n0v\n#7\n1v\n0g\n#8\n1g\n#10\nb0011 b\nb0010 b\n#15\nb0011 b\n#20\nb0010 b\n",
+        ".extract-query-projection.vcd",
+    );
+    for mode in ["--json", "--jsonl"] {
+        let output = wavepeek_cmd()
+            .args([
+                "extract",
+                "generic",
+                "--waves",
+                fixture.path().to_str().unwrap(),
+                "--scope",
+                "top",
+                "--on",
+                r#"posedge $signal("top.\"bus\"[0:0]") iff gate"#,
+                "--when",
+                "valid",
+                "--payload",
+                "bus[1:0],ev",
+                mode,
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        let rows = if mode == "--json" {
+            parse_json(&output.stdout)["data"]
+                .as_array()
+                .unwrap()
+                .clone()
+        } else {
+            parse_stream(&output.stdout)
+                .into_iter()
+                .filter(|r| r["type"] == "data")
+                .map(|r| r["data"].clone())
+                .collect()
+        };
+        assert_eq!(
+            rows,
+            [
+                json!({"time":"15ns", "sample_time":"14ns", "source":"transfer", "payload":[
+                    {"path":"top.bus[1:0]", "relative_path":"bus[1:0]", "value":"2'h2"},
+                    {"path":"top.ev", "relative_path":"ev", "value":"0'h0"}
+                ]})
+            ]
+        );
+    }
+}
+
+#[test]
+fn extract_query_validates_complete_lookahead_payload_before_limit() {
+    let fixture = write_fixture(HANDSHAKE_VCD, ".extract-query-missing.vcd");
+    let source = write_source(
+        &json!({"kind":"extract.generic.sources", "sources":[
+            {"name":"first", "on":"posedge clk", "when":"valid", "payload":["data"]},
+            {"name":"second", "on":"posedge clk", "when":"1", "payload":["missing"]}
+        ]})
+        .to_string(),
+    );
+    // A missing initial payload is a query error, including when it belongs to
+    // the second qualifying source at the limit tick.
+    let text = fs::read_to_string(fixture.path()).unwrap().replace(
+        "$var wire 1 & last $end",
+        "$var wire 1 & last $end\n$var wire 1 m missing $end",
+    );
+    fs::write(fixture.path(), text).unwrap();
+    for mode in ["--json", "--jsonl"] {
+        let output = wavepeek_cmd()
+            .args([
+                "extract",
+                "generic",
+                "--waves",
+                fixture.path().to_str().unwrap(),
+                "--scope",
+                "top",
+                "--source",
+                source.path().to_str().unwrap(),
+                "--max",
+                "1",
+                mode,
+            ])
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1), "{output:?}");
+        let records = parse_stream(&output.stdout);
+        let fatal = records.last().unwrap();
+        assert_eq!(fatal["type"], "fatal");
+        assert_eq!(fatal["code"], "WPK-F0004");
+        assert!(fatal["message"].as_str().unwrap().contains("has no value"));
+        assert_eq!(records.len(), if mode == "--jsonl" { 3 } else { 1 });
+        if mode == "--jsonl" {
+            assert_eq!(records[0]["type"], "begin");
+            assert_eq!(records[1]["data"]["source"], "first");
+            assert_eq!(fatal["seq"], 2);
+        }
+    }
+}
+
+#[test]
+fn extract_query_reader_failure_after_a_row_keeps_partial_jsonl() {
+    let directory = tempfile::tempdir().unwrap();
+    let vcd = directory.path().join("late_string.vcd");
+    let fst = directory.path().join("late_string.fst");
+    fs::write(&vcd, b"$timescale 1ns $end\n$scope module top $end\n$var wire 1 c clk $end\n$var string 1 s msg $end\n$upscope $end\n$enddefinitions $end\n#0\n0c\nsok s\n#5\n1c\n#10\n0c\n#14\ns\xc3\xa9 s\n#15\n1c\n").unwrap();
+    let conversion = std::process::Command::new("vcd2fst")
+        .arg(&vcd)
+        .arg(&fst)
+        .output()
+        .unwrap();
+    assert!(conversion.status.success(), "{conversion:?}");
+    for (on, when) in [
+        ("posedge clk", "msg == \"ok\""),
+        ("posedge clk iff (msg == \"ok\")", "1"),
+    ] {
+        for mode in ["--json", "--jsonl"] {
+            let output = wavepeek_cmd()
+                .args([
+                    "extract",
+                    "generic",
+                    "--waves",
+                    fst.to_str().unwrap(),
+                    "--scope",
+                    "top",
+                    "--on",
+                    on,
+                    "--when",
+                    when,
+                    "--payload",
+                    "clk",
+                    "--max",
+                    "1",
+                    mode,
+                ])
+                .output()
+                .unwrap();
+            assert_eq!(output.status.code(), Some(1), "{output:?}");
+            assert!(output.stderr.is_empty());
+            let records = parse_stream(&output.stdout);
+            let fatal = records.last().unwrap();
+            assert_eq!(fatal["type"], "fatal");
+            assert_eq!(fatal["code"], "WPK-F0004");
+            assert!(
+                fatal["message"]
+                    .as_str()
+                    .unwrap()
+                    .contains("non-ASCII string")
+            );
+            assert_eq!(records.len(), if mode == "--jsonl" { 3 } else { 1 });
+            if mode == "--jsonl" {
+                assert_eq!(records[0]["type"], "begin");
+                assert_eq!(records[1]["data"]["time"], "5ns");
+                assert_eq!(records[1]["data"]["sample_time"], "4ns");
+                for (seq, record) in records.iter().enumerate() {
+                    assert_eq!(record["seq"], seq);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn extract_query_preserves_window_entry_state_and_skips_first_tick() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 1 c clk $end\n$var wire 1 d data $end\n$upscope $end\n$enddefinitions $end\n#0\n1c\n#5\n1d\n#6\n0c\n#20\n1c\n#30\n0c\n",
+        ".extract-query-entry.vcd",
+    );
+    for (from, to, count) in [("0ns", "4ns", 0), ("7ns", "19ns", 0), ("7ns", "20ns", 1)] {
+        for mode in ["--json", "--jsonl"] {
+            let output = wavepeek_cmd()
+                .args([
+                    "extract",
+                    "generic",
+                    "--waves",
+                    fixture.path().to_str().unwrap(),
+                    "--scope",
+                    "top",
+                    "--on",
+                    "posedge clk",
+                    "--when",
+                    "data",
+                    "--payload",
+                    "data",
+                    "--from",
+                    from,
+                    "--to",
+                    to,
+                    mode,
+                ])
+                .output()
+                .unwrap();
+            assert!(output.status.success(), "{output:?}");
+            let rows = if mode == "--json" {
+                parse_json(&output.stdout)["data"]
+                    .as_array()
+                    .unwrap()
+                    .clone()
+            } else {
+                parse_stream(&output.stdout)
+                    .into_iter()
+                    .filter(|r| r["type"] == "data")
+                    .map(|r| r["data"].clone())
+                    .collect()
+            };
+            assert_eq!(rows.len(), count);
+            if count > 0 {
+                assert_eq!(rows[0]["sample_time"], "19ns");
+                assert_eq!(rows[0]["payload"][0]["value"], "1'h1");
+            }
+        }
+    }
+}
+
+#[test]
+fn extract_query_reads_before_the_window_and_before_the_first_raw_event() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 1 c clk $end\n$var wire 8 d data $end\n$var event 1 e ev $end\n$upscope $end\n$enddefinitions $end\n#0\n0c\nb00000000 d\n#4\nb10101010 d\n#5\n1c\nb11111111 d\n#10\n0c\n#20\n1e\n",
+        ".extract-query-before-window.vcd",
+    );
+    let fst = NamedTempFile::with_suffix(".fst").unwrap();
+    let conversion = std::process::Command::new("vcd2fst")
+        .arg(fixture.path())
+        .arg(fst.path())
+        .output()
+        .unwrap();
+    assert!(conversion.status.success(), "{conversion:?}");
+    for waves in [fixture.path(), fst.path()] {
+        for mode in ["--json", "--jsonl"] {
+            let output = wavepeek_cmd()
+                .args([
+                    "extract",
+                    "generic",
+                    "--waves",
+                    waves.to_str().unwrap(),
+                    "--scope",
+                    "top",
+                    "--from",
+                    "5ns",
+                    "--to",
+                    "5ns",
+                    "--on",
+                    "posedge clk",
+                    "--when",
+                    "1",
+                    "--payload",
+                    "data,ev",
+                    mode,
+                ])
+                .output()
+                .unwrap();
+            assert!(output.status.success(), "{output:?}");
+            let rows = if mode == "--json" {
+                parse_json(&output.stdout)["data"]
+                    .as_array()
+                    .unwrap()
+                    .clone()
+            } else {
+                parse_stream(&output.stdout)
+                    .into_iter()
+                    .filter(|r| r["type"] == "data")
+                    .map(|r| r["data"].clone())
+                    .collect()
+            };
+            assert_eq!(
+                rows,
+                [
+                    json!({"time":"5ns", "sample_time":"4ns", "source":"transfer", "payload":[
+                        {"path":"top.data", "relative_path":"data", "value":"8'haa"},
+                        {"path":"top.ev", "relative_path":"ev", "value":"0'h0"}
+                    ]})
+                ]
+            );
+        }
+    }
+}
+
+#[test]
+fn extract_query_keeps_real_and_string_payloads_unsupported() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 1 c clk $end\n$var real 1 r temp $end\n$var string 1 s msg $end\n$upscope $end\n$enddefinitions $end\n#0\n0c\nr0.5 r\nsok s\n#5\n1c\n",
+        ".extract-query-non-bits.vcd",
+    );
+    for payload in ["temp", "msg"] {
+        for mode in ["--json", "--jsonl"] {
+            let output = wavepeek_cmd()
+                .args([
+                    "extract",
+                    "generic",
+                    "--waves",
+                    fixture.path().to_str().unwrap(),
+                    "--scope",
+                    "top",
+                    "--on",
+                    "posedge clk",
+                    "--when",
+                    "1",
+                    "--payload",
+                    payload,
+                    mode,
+                ])
+                .output()
+                .unwrap();
+            assert_eq!(output.status.code(), Some(1), "{output:?}");
+            let records = parse_stream(&output.stdout);
+            let fatal = records.last().unwrap();
+            assert_eq!(fatal["type"], "fatal");
+            assert_eq!(fatal["code"], "WPK-F0004");
+            assert!(
+                fatal["message"]
+                    .as_str()
+                    .unwrap()
+                    .contains("unsupported non-bit-vector encoding")
+            );
+        }
+    }
+}

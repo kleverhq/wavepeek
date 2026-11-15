@@ -317,7 +317,7 @@ check-fsdb-build: require-verdi
 test-fsdb: check-ondas-fixtures check-fsdb-build prepare-fsdb-test-fixtures
     @export CARGO_TARGET_DIR=target/fsdb; \
     cargo test --features fsdb --lib && \
-    cargo test --features fsdb --test fsdb_cli --test fsdb_output_cli --test waveform_errors_cli
+    cargo test --features fsdb --test fsdb_cli --test fsdb_output_cli --test waveform_errors_cli --test change_query
 
 # Run auxiliary Python/unit test suites
 test-aux: require-container

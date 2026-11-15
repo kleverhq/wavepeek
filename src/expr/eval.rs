@@ -150,23 +150,11 @@ pub fn event_matches_at(
     host: &dyn ExpressionHost,
     frame: &EventEvalFrame<'_>,
 ) -> Result<bool, ExprDiagnostic> {
-    event_matches_at_with_any_tracked(expr, host, frame, None)
-}
-
-pub(crate) fn event_matches_at_with_any_tracked(
-    expr: &BoundEventExpr,
-    host: &dyn ExpressionHost,
-    frame: &EventEvalFrame<'_>,
-    any_tracked: Option<bool>,
-) -> Result<bool, ExprDiagnostic> {
     let mut cache = EvalCache::default();
 
     for term in &expr.terms {
         let event_matches = match term.event {
-            BoundEventKind::AnyTracked => match any_tracked {
-                Some(matches) => matches,
-                None => any_tracked_matches(host, frame, &mut cache)?,
-            },
+            BoundEventKind::AnyTracked => any_tracked_matches(host, frame, &mut cache)?,
             BoundEventKind::Named(handle) => named_event_matches(host, handle, frame, &mut cache)?,
             BoundEventKind::Posedge(handle) => {
                 edge_event_matches(host, handle, frame, &mut cache)?.0

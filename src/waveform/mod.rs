@@ -28,7 +28,7 @@ pub(crate) use types::{
     ChangeCandidateCollectionMode, EXCLUDED_SCOPE_KIND_ALIASES, EXCLUDED_SIGNAL_KIND_ALIASES,
     ExprResolvedSignal, ResolvedSignal, STABLE_SCOPE_KIND_ALIASES, STABLE_SIGNAL_KIND_ALIASES,
     SampledSignal, SampledSignalState, ScopeEntry, SignalEntry, SignalId, SignalListing,
-    SignalOffsetData, WaveformMetadata,
+    WaveformMetadata,
 };
 
 #[derive(Debug)]
@@ -314,6 +314,7 @@ impl Waveform {
         self.backend.resolve_expr_signal(canonical_path)
     }
 
+    #[cfg(test)]
     pub(crate) fn resolve_expr_signals(
         &self,
         canonical_paths: &[String],
@@ -337,30 +338,6 @@ impl Waveform {
                 error,
             )
         })
-    }
-
-    pub(crate) fn resolve_expr_signals_with_diagnostics(
-        &self,
-        canonical_paths: &[String],
-        query_names: &[String],
-        scope: Option<&str>,
-    ) -> Result<Vec<ExprResolvedSignal>, WavepeekError> {
-        if canonical_paths.len() != query_names.len() {
-            return Err(WavepeekError::Internal(
-                "expression query names do not match canonical paths".to_string(),
-            ));
-        }
-
-        match self.resolve_expr_signals(canonical_paths) {
-            Ok(resolved) => Ok(resolved),
-            Err(_) => canonical_paths
-                .iter()
-                .zip(query_names)
-                .map(|(canonical_path, query_name)| {
-                    self.resolve_expr_signal_with_diagnostic(canonical_path, query_name, scope)
-                })
-                .collect(),
-        }
     }
 
     fn missing_signal_diagnostic(
@@ -555,31 +532,6 @@ impl Waveform {
     pub(crate) fn indexed_timestamps(&self) -> Option<&[u64]> {
         self.backend.indexed_timestamps()
     }
-
-    #[inline]
-    pub(crate) fn indexed_signal_offset_at(
-        &self,
-        id: SignalId,
-        time_table_idx: u32,
-    ) -> Option<SignalOffsetData> {
-        self.backend.indexed_signal_offset_at(id, time_table_idx)
-    }
-
-    #[inline]
-    pub(crate) fn decode_indexed_signal_at(
-        &self,
-        resolved: &ResolvedSignal,
-        time_table_idx: u32,
-    ) -> Result<SampledSignalState, WavepeekError> {
-        self.backend
-            .decode_indexed_signal_at(resolved, time_table_idx)
-    }
-
-    #[inline]
-    pub(crate) fn ensure_indexed_signals_loaded(&mut self, ids: &[SignalId]) -> bool {
-        self.backend.ensure_indexed_signals_loaded(ids)
-    }
-
     #[allow(dead_code)]
     pub fn collect_change_times(
         &mut self,

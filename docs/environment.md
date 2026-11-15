@@ -107,7 +107,7 @@ See [fsdb.md](fsdb.md) for SDK requirements and FSDB gates.
 
 ## Debug Mode
 
-`DEBUG=1` enables maintainer diagnostics and unstable hidden controls outside the public CLI contract.
+`DEBUG=1` enables maintainer diagnostics outside the public CLI contract.
 
 ## Temporary Files
 

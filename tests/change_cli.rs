@@ -1822,201 +1822,6 @@ fn change_rejects_zero_max_with_args_error() {
 }
 
 #[test]
-fn change_tune_overrides_require_debug_mode() {
-    let fixture = fixture_path("m2_core.vcd");
-    let fixture = fixture.to_string_lossy().into_owned();
-
-    wavepeek_cmd()
-        .env_remove("DEBUG")
-        .args([
-            "change",
-            "--on",
-            "*",
-            "--sample-mode",
-            "native",
-            "--waves",
-            fixture.as_str(),
-            "--signals",
-            "top.clk",
-            "--tune-engine",
-            "fused",
-        ])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
-        .stderr(predicate::str::contains("--tune-*"))
-        .stderr(predicate::str::contains("DEBUG=1"));
-}
-
-#[test]
-fn change_explicit_tune_auto_still_requires_debug_mode() {
-    let fixture = fixture_path("m2_core.vcd");
-    let fixture = fixture.to_string_lossy().into_owned();
-
-    wavepeek_cmd()
-        .env_remove("DEBUG")
-        .args([
-            "change",
-            "--on",
-            "*",
-            "--sample-mode",
-            "native",
-            "--waves",
-            fixture.as_str(),
-            "--signals",
-            "top.clk",
-            "--tune-engine",
-            "auto",
-        ])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
-        .stderr(predicate::str::contains("DEBUG=1"));
-}
-
-#[test]
-fn change_tune_candidate_override_requires_debug_mode() {
-    let fixture = fixture_path("m2_core.vcd");
-    let fixture = fixture.to_string_lossy().into_owned();
-
-    wavepeek_cmd()
-        .env_remove("DEBUG")
-        .args([
-            "change",
-            "--on",
-            "*",
-            "--sample-mode",
-            "native",
-            "--waves",
-            fixture.as_str(),
-            "--signals",
-            "top.clk",
-            "--tune-candidates",
-            "stream",
-        ])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
-        .stderr(predicate::str::contains("DEBUG=1"));
-}
-
-#[test]
-fn change_explicit_tune_candidates_auto_still_requires_debug_mode() {
-    let fixture = fixture_path("m2_core.vcd");
-    let fixture = fixture.to_string_lossy().into_owned();
-
-    wavepeek_cmd()
-        .env_remove("DEBUG")
-        .args([
-            "change",
-            "--on",
-            "*",
-            "--sample-mode",
-            "native",
-            "--waves",
-            fixture.as_str(),
-            "--signals",
-            "top.clk",
-            "--tune-candidates",
-            "auto",
-        ])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
-        .stderr(predicate::str::contains("DEBUG=1"));
-}
-
-#[test]
-fn change_tune_edge_fast_force_requires_debug_mode() {
-    let fixture = fixture_path("m2_core.vcd");
-    let fixture = fixture.to_string_lossy().into_owned();
-
-    wavepeek_cmd()
-        .env_remove("DEBUG")
-        .args([
-            "change",
-            "--on",
-            "*",
-            "--sample-mode",
-            "native",
-            "--waves",
-            fixture.as_str(),
-            "--signals",
-            "top.clk",
-            "--tune-edge-fast-force",
-        ])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
-        .stderr(predicate::str::contains("DEBUG=1"));
-}
-
-#[test]
-fn change_rejects_legacy_pre_fusion_engine_label() {
-    let fixture = fixture_path("m2_core.vcd");
-    let fixture = fixture.to_string_lossy().into_owned();
-
-    wavepeek_cmd()
-        .env("DEBUG", "1")
-        .args([
-            "change",
-            "--on",
-            "*",
-            "--sample-mode",
-            "native",
-            "--waves",
-            fixture.as_str(),
-            "--signals",
-            "top.clk",
-            "--tune-engine",
-            "pre-fusion",
-        ])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
-        .stderr(predicate::str::contains("invalid value 'pre-fusion'"))
-        .stderr(predicate::str::contains("baseline"));
-}
-
-#[test]
-fn change_tune_overrides_succeed_with_debug_mode() {
-    let fixture = fixture_path("m2_core.vcd");
-    let fixture = fixture.to_string_lossy().into_owned();
-
-    wavepeek_cmd()
-        .env("DEBUG", "1")
-        .args([
-            "change",
-            "--on",
-            "*",
-            "--sample-mode",
-            "native",
-            "--waves",
-            fixture.as_str(),
-            "--signals",
-            "top.clk",
-            "--tune-engine",
-            "fused",
-            "--json",
-        ])
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("\"kind\":\"debug\""));
-}
-
-#[test]
 fn change_rejects_legacy_internal_and_perf_change_flags() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
@@ -2424,7 +2229,7 @@ const FLAT_PROJECTION_VCD: &str = concat!(
 #[test]
 fn change_compares_projected_values_for_wildcard_sparse_and_delta_rows() {
     let fixture = write_fixture(FLAT_PROJECTION_VCD, "change-flat-projection.vcd");
-    let run = |engine: &str| {
+    let run = || {
         let output = wavepeek_cmd()
             .env("DEBUG", "1")
             .args([
@@ -2443,8 +2248,6 @@ fn change_compares_projected_values_for_wildcard_sparse_and_delta_rows() {
                 "sparse",
                 "--row-values",
                 "delta",
-                "--tune-engine",
-                engine,
                 "--json",
             ])
             .output()
@@ -2479,41 +2282,62 @@ fn change_compares_projected_values_for_wildcard_sparse_and_delta_rows() {
             ]
         }
     ]);
-    assert_eq!(run("baseline"), expected);
-    assert_eq!(run("fused"), expected);
+    assert_eq!(run(), expected);
 }
 
 #[test]
 fn change_wildcard_ignores_changes_outside_the_only_projection() {
     let fixture = write_fixture(FLAT_PROJECTION_VCD, "change-projection-wildcard.vcd");
-    for engine in ["baseline", "fused"] {
-        let output = wavepeek_cmd()
+    let output = wavepeek_cmd()
+        .env("DEBUG", "1")
+        .args([
+            "change",
+            "--waves",
+            fixture.path().to_str().unwrap(),
+            "--scope",
+            "top",
+            "--signals",
+            "data[7:4]",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
+            "--json",
+        ])
+        .output()
+        .expect("change should execute");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let data = parse_json(&output.stdout)["data"].clone();
+    assert_eq!(data.as_array().unwrap().len(), 1);
+    assert_eq!(data[0]["time"], "10ns");
+}
+
+#[test]
+fn change_rejects_removed_tuning_controls_even_in_debug_mode() {
+    for flag in [
+        "--tune-engine",
+        "--tune-candidates",
+        "--tune-edge-fast-force",
+    ] {
+        wavepeek_cmd()
             .env("DEBUG", "1")
             .args([
                 "change",
                 "--waves",
-                fixture.path().to_str().unwrap(),
-                "--scope",
-                "top",
+                "missing.vcd",
                 "--signals",
-                "data[7:4]",
+                "top.clk",
                 "--on",
-                "*",
-                "--sample-mode",
-                "native",
-                "--tune-engine",
-                engine,
-                "--json",
+                "posedge top.clk",
+                flag,
             ])
-            .output()
-            .expect("change should execute");
-        assert!(
-            output.status.success(),
-            "{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        let data = parse_json(&output.stdout)["data"].clone();
-        assert_eq!(data.as_array().unwrap().len(), 1, "{engine}");
-        assert_eq!(data[0]["time"], "10ns", "{engine}");
+            .assert()
+            .failure()
+            .code(1)
+            .stderr(predicate::str::contains("unexpected argument"));
     }
 }

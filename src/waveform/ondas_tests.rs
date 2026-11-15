@@ -703,7 +703,6 @@ fn streaming_candidate_collection_rejects_derived_signals() {
         waveform.collect_change_times(&resolved, 5, 10).unwrap(),
         vec![5, 10]
     );
-    assert!(waveform.ensure_indexed_signals_loaded(&[resolved[0].id]));
     assert!(
         waveform
             .collect_change_times_with_mode(&resolved, 5, 10, ChangeCandidateCollectionMode::Stream)
@@ -968,106 +967,6 @@ fn sample_signals_at_time_errors_when_signal_has_no_prior_value() {
         "fatal: signal: signal 'top.delayed' has no value at or before requested time"
     );
 }
-
-#[test]
-fn indexed_signal_offset_at_compares_data_position_only() {
-    let fixture = write_fixture(TEST_VCD, "sample.vcd");
-
-    let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
-    let resolved = waveform
-        .resolve_signals(&["top.data".to_string()])
-        .expect("signal should resolve");
-    let clock = waveform.resolve_signals(&["top.clk".into()]).unwrap();
-    waveform.ensure_indexed_signals_loaded(&[resolved[0].id, clock[0].id]);
-
-    let offset_at_0 = waveform
-        .indexed_signal_offset_at(resolved[0].id, 0)
-        .expect("offset at #0 should exist");
-    let offset_at_5 = waveform
-        .indexed_signal_offset_at(resolved[0].id, 1)
-        .expect("offset at #5 should exist");
-    let offset_at_10 = waveform
-        .indexed_signal_offset_at(resolved[0].id, 2)
-        .expect("offset at #10 should exist");
-
-    assert_eq!(offset_at_0, offset_at_5);
-    assert_ne!(offset_at_5, offset_at_10);
-}
-
-#[test]
-fn indexed_signal_offset_at_returns_none_when_signal_is_not_loaded() {
-    let fixture = write_fixture(TEST_VCD, "sample.vcd");
-
-    let waveform = Waveform::open(fixture.path()).expect("fixture should open");
-    let resolved = waveform
-        .resolve_signals(&["top.data".to_string()])
-        .expect("signal should resolve");
-
-    assert_eq!(waveform.indexed_signal_offset_at(resolved[0].id, 0), None);
-}
-
-#[test]
-fn decode_indexed_signal_at_matches_sample_resolved_optional() {
-    let fixture = write_fixture(TEST_VCD, "sample.vcd");
-
-    let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
-    let resolved = waveform
-        .resolve_signals(&["top.clk".to_string(), "top.data".to_string()])
-        .expect("signals should resolve");
-    let signal_ids = resolved.iter().map(|signal| signal.id).collect::<Vec<_>>();
-    waveform.ensure_indexed_signals_loaded(&signal_ids);
-
-    let at_10 = waveform
-        .sample_resolved_optional(&resolved, 10)
-        .expect("batch sampling should succeed");
-    let decoded = resolved
-        .iter()
-        .map(|signal| waveform.decode_indexed_signal_at(signal, 2))
-        .collect::<Result<Vec<_>, _>>()
-        .expect("point decode should succeed");
-
-    assert_eq!(decoded, at_10);
-}
-
-#[test]
-fn decode_indexed_signal_at_returns_none_when_no_prior_value_exists() {
-    let fixture = write_fixture(DELAYED_VALUE_VCD, "delayed.vcd");
-
-    let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
-    let resolved = waveform
-        .resolve_signals(&["top.delayed".to_string()])
-        .expect("signal should resolve");
-    waveform.ensure_indexed_signals_loaded(&[resolved[0].id]);
-
-    let sample_before_first_value = waveform
-        .decode_indexed_signal_at(&resolved[0], 0)
-        .expect("decode should succeed");
-    let sample_after_first_value = waveform
-        .decode_indexed_signal_at(&resolved[0], 1)
-        .expect("decode should succeed");
-
-    assert_eq!(sample_before_first_value.bits, None);
-    assert_eq!(sample_after_first_value.bits.as_deref(), Some("1"));
-}
-
-#[test]
-fn decode_indexed_signal_at_requires_loaded_signal_data() {
-    let fixture = write_fixture(TEST_VCD, "sample.vcd");
-
-    let waveform = Waveform::open(fixture.path()).expect("fixture should open");
-    let resolved = waveform
-        .resolve_signals(&["top.data".to_string()])
-        .expect("signal should resolve");
-
-    let error = waveform
-        .decode_indexed_signal_at(&resolved[0], 0)
-        .expect_err("decode must fail before load");
-    assert_eq!(
-        error.to_string(),
-        "fatal: internal: signal 'top.data' could not be loaded from waveform backend"
-    );
-}
-
 #[test]
 fn edge_classification_sv2023_matrix() {
     for (previous, current) in [("0", "1"), ("0", "x"), ("0", "z"), ("x", "1"), ("z", "1")] {

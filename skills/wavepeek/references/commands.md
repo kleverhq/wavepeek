@@ -62,7 +62,7 @@ Every successful command with numeric or unlimited `--max` reports `complete`, `
 
 Pass `--summary` when only completeness metadata, optional command context, and diagnostics are needed. The command performs the same selection, filtering, limit checks, and early termination but suppresses result rows. Human mode prints the four summary fields; JSON omits `data`; JSONL emits no `data` records and places the summary in its terminal `end` record.
 
-`change` applies its `--max` limit after row-mode filtering. Dense mode counts every selected event that can be sampled; sparse mode counts only selected samples whose requested values changed from the previous selected sample.
+`change` applies its `--max` limit after row-mode filtering. Dense mode counts every selected event that can be sampled; sparse mode counts only selected samples whose requested values changed from the previous emitted sample. Sparse mode starts from the values at `--from` and does not emit that initial state. Delta rows include all values in the first row, then only values changed since the previous emitted row.
 
 ## Deterministic Ordering
 

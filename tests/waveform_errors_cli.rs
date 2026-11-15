@@ -174,7 +174,7 @@ fn lazy_fst_expression_reads_preserve_signal_failures_and_late_jsonl_framing() {
 }
 
 #[test]
-fn property_reader_failure_during_lookahead_preserves_partial_jsonl() {
+fn activity_reader_failure_during_lookahead_preserves_partial_jsonl() {
     let directory = tempfile::tempdir().unwrap();
     let source = directory.path().join("late_string.vcd");
     let fst = directory.path().join("late_string.fst");
@@ -185,30 +185,28 @@ fn property_reader_failure_during_lookahead_preserves_partial_jsonl() {
         .output()
         .unwrap();
     assert!(conversion.status.success(), "{conversion:?}");
-    for (on, eval) in [
-        ("posedge top.clk", "top.msg == \"ok\""),
-        ("posedge top.clk iff (top.msg == \"ok\")", "1"),
+    for (command, on, eval) in [
+        ("property", "posedge top.clk", "top.msg == \"ok\""),
+        ("property", "posedge top.clk iff (top.msg == \"ok\")", "1"),
+        ("change", "posedge top.clk iff (top.msg == \"ok\")", "1"),
     ] {
         for mode in ["--json", "--jsonl"] {
-            let output = wavepeek_cmd()
-                .arg("property")
-                .arg("--waves")
-                .arg(&fst)
-                .args([
-                    "--on",
-                    on,
-                    "--eval",
-                    eval,
-                    "--capture",
-                    "match",
-                    "--sample-mode",
-                    "native",
-                    "--max",
-                    "1",
-                    mode,
-                ])
-                .output()
-                .unwrap();
+            let mut process = wavepeek_cmd();
+            process.arg(command).arg("--waves").arg(&fst).args([
+                "--on",
+                on,
+                "--sample-mode",
+                "native",
+                "--max",
+                "1",
+                mode,
+            ]);
+            if command == "property" {
+                process.args(["--eval", eval, "--capture", "match"]);
+            } else {
+                process.args(["--signals", "top.clk"]);
+            }
+            let output = process.output().unwrap();
             assert_eq!(output.status.code(), Some(1), "{output:?}");
             assert!(output.stderr.is_empty());
             let records: Vec<Value> = std::str::from_utf8(&output.stdout)
@@ -226,10 +224,12 @@ fn property_reader_failure_during_lookahead_preserves_partial_jsonl() {
                 assert_eq!(records.len(), 3, "{records:?}");
                 assert_eq!(records[0]["type"], "begin");
                 assert_eq!(records[1]["type"], "data");
-                assert_eq!(
-                    records[1]["data"],
+                let expected = if command == "property" {
                     serde_json::json!({"time":"5ns", "sample_time":"5ns", "kind":"match"})
-                );
+                } else {
+                    serde_json::json!({"time":"5ns", "sample_time":"5ns", "signals":[{"path":"top.clk", "value":"1'h1"}]})
+                };
+                assert_eq!(records[1]["data"], expected);
                 for (seq, record) in records.iter().enumerate() {
                     assert_eq!(record["seq"], seq);
                 }

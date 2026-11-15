@@ -79,22 +79,20 @@ fn jsonl_serializes_pre_begin_failure_at_sequence_zero() {
 
 #[test]
 fn jsonl_appends_runtime_fatal_after_begin_without_end() {
+    let fixture = tempfile::Builder::new().suffix(".vcd").tempfile().unwrap();
+    std::fs::write(fixture.path(), "$timescale 1ns $end\n$scope module top $end\n$var wire 1 c clk $end\n$var wire 1 d delayed $end\n$upscope $end\n$enddefinitions $end\n#0\n0c\n#5\n1c\n#10\n1d\n").unwrap();
     let output = wavepeek_cmd()
         .env("DEBUG", "1")
         .args([
             "change",
             "--waves",
-            "tests/fixtures/hand/change_property_events.vcd",
+            fixture.path().to_str().unwrap(),
             "--signals",
-            "top.armed",
+            "top.delayed",
             "--on",
-            "*",
+            "posedge top.clk",
             "--sample-mode",
             "native",
-            "--tune-engine",
-            "baseline",
-            "--tune-candidates",
-            "stream",
             "--jsonl",
         ])
         .output()
@@ -110,7 +108,7 @@ fn jsonl_appends_runtime_fatal_after_begin_without_end() {
     assert_eq!(records[0]["seq"], 0);
     assert_eq!(records[1]["type"], "fatal");
     assert_eq!(records[1]["seq"], 1);
-    assert_eq!(records[1]["code"], "WPK-F0006");
+    assert_eq!(records[1]["code"], "WPK-F0004");
     assert!(records[1].get("command").is_none());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(

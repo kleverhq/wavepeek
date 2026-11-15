@@ -13,7 +13,6 @@ use std::ffi::{OsStr, OsString};
 use std::io::Write;
 
 use clap::error::ErrorKind;
-use clap::parser::ValueSource;
 use clap::{Arg, ArgAction, Args, CommandFactory, FromArgMatches, Parser, Subcommand};
 
 use crate::engine::{self, Command as EngineCommand};
@@ -439,14 +438,6 @@ fn execute(
         Err(error) => return handle_parse_error(error, stdout).map_err(Into::into),
     };
 
-    if change_tune_overrides_requested(&matches) && !is_debug_mode_enabled() {
-        return Err(WavepeekError::Args(
-            "internal tuning overrides (--tune-*) require DEBUG=1. Set DEBUG=1 only for local diagnostics or CI debugging."
-                .to_string(),
-        )
-        .into());
-    }
-
     let cli = match Cli::from_arg_matches(&matches) {
         Ok(cli) => cli,
         Err(error) => return handle_parse_error(error, stdout).map_err(Into::into),
@@ -578,26 +569,6 @@ fn is_known_option_value(command: &clap::Command, argv: &[OsString], index: usiz
                 && arg.get_action().takes_values()
                 && arg.is_allow_hyphen_values_set()
         })
-}
-
-fn is_debug_mode_enabled() -> bool {
-    std::env::var("DEBUG")
-        .map(|value| value == "1")
-        .unwrap_or(false)
-}
-
-fn change_tune_overrides_requested(matches: &clap::ArgMatches) -> bool {
-    let Some(("change", change_matches)) = matches.subcommand() else {
-        return false;
-    };
-
-    is_command_line_override(change_matches, "tune_engine")
-        || is_command_line_override(change_matches, "tune_candidates")
-        || is_command_line_override(change_matches, "tune_edge_fast_force")
-}
-
-fn is_command_line_override(matches: &clap::ArgMatches, arg: &str) -> bool {
-    matches!(matches.value_source(arg), Some(ValueSource::CommandLine))
 }
 
 fn build_cli_command() -> clap::Command {
@@ -905,9 +876,9 @@ mod tests {
     use crate::cli::limits::LimitArg;
 
     use super::{
-        Cli, EngineCommand, build_cli_command, build_cli_command_for,
-        change_tune_overrides_requested, clap_error_detail, handle_parse_error,
-        help_hint_for_rendered_clap_error, into_engine_command, normalize_clap_error,
+        Cli, EngineCommand, build_cli_command, build_cli_command_for, clap_error_detail,
+        handle_parse_error, help_hint_for_rendered_clap_error, into_engine_command,
+        normalize_clap_error,
     };
 
     #[test]
@@ -1296,7 +1267,7 @@ mod tests {
     }
 
     #[test]
-    fn cli_helper_functions_exercise_override_detection_and_fallback_paths() {
+    fn cli_helper_functions_exercise_help_and_error_paths() {
         let command = build_cli_command();
         let info = command
             .find_subcommand("info")
@@ -1304,40 +1275,6 @@ mod tests {
             .clone();
         assert!(info.get_arguments().any(|arg| arg.get_id() == "help_short"));
         assert!(info.get_arguments().any(|arg| arg.get_id() == "help_long"));
-
-        let matches = Cli::command()
-            .try_get_matches_from([
-                "wavepeek",
-                "change",
-                "--waves",
-                "fixtures/sample.vcd",
-                "--signals",
-                "clk",
-                "--on",
-                "*",
-                "--sample-mode",
-                "native",
-                "--tune-engine",
-                "fused",
-            ])
-            .expect("change command should parse");
-        assert!(change_tune_overrides_requested(&matches));
-
-        let matches = Cli::command()
-            .try_get_matches_from([
-                "wavepeek",
-                "change",
-                "--waves",
-                "fixtures/sample.vcd",
-                "--signals",
-                "clk",
-                "--on",
-                "*",
-                "--sample-mode",
-                "native",
-            ])
-            .expect("change command should parse");
-        assert!(!change_tune_overrides_requested(&matches));
 
         let help_error = Cli::command()
             .try_get_matches_from(["wavepeek", "info", "--help"])

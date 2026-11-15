@@ -82,6 +82,7 @@ pub(crate) struct ExprResolvedSignal {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ChangeCandidateCollectionMode {
     Auto,
+    #[cfg(test)]
     Random,
     Stream,
 }

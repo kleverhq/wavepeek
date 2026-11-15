@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
+use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use regex::Regex;
@@ -10,8 +11,8 @@ use crate::cli::extract::AhbArgs;
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::expr_runtime::{
-    SharedWaveform, bind_waveform_event_expr, candidate_sources_for_handles,
-    event_candidate_handles, event_expr_matches, open_shared_waveform,
+    SharedWaveform, bind_waveform_event_expr, eval_with_waveform_errors, event_candidate_handles,
+    event_expr_matches, expr_diagnostic, open_shared_waveform,
 };
 use crate::engine::extract::{max_entries, parse_bound_time};
 use crate::engine::signal_mapping;
@@ -19,18 +20,15 @@ use crate::engine::time::{format_raw_timestamp, parse_dump_time_context};
 use crate::engine::value_format::format_verilog_literal;
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions, ResultSummary};
 use crate::error::WavepeekError;
-use crate::expr::{BoundEventExpr, EventEvalFrame};
-use crate::waveform::{
-    ChangeCandidateCollectionMode, ExprResolvedSignal, ResolvedSignal, SampledSignalState,
-    expr_host::WaveformExprHost,
-};
+use crate::expr::{BoundEventExpr, EventEvalFrame, ExpressionHost, SampledValue, SignalHandle};
+use crate::waveform::expr_host::RuntimeExpressionHost;
+use crate::waveform::expr_query::{ExpressionQuery, ExpressionQueryTick};
+use crate::waveform::{ResolvedSignal, SampledSignalState};
 
 const DEFAULT_PROFILE: &str = "ahb-lite";
 const DEFAULT_NAME: &str = "ahb";
 const SOURCE_KIND: &str = "extract.ahb.source";
 const HELP: &str = "wavepeek extract ahb";
-const CANDIDATE_CHUNK_ZS: u128 = 1_000_000_000_000_000_000;
-const MAX_CANDIDATE_CHUNK_MULTIPLIER: u64 = 4;
 const REQUIRED_SIGNALS: &[&str] = &["hclk", "htrans", "hready", "hwrite"];
 const AHB_LITE_SIGNALS: &[&str] = &[
     "hclk",
@@ -286,21 +284,17 @@ struct SignalCandidate {
 struct ResolvedMapping {
     mapping: AhbSignalMapping,
     resolved: ResolvedSignal,
+    handle: SignalHandle,
 }
 
 #[derive(Debug)]
 struct SamplePlan {
     mappings: Vec<ResolvedMapping>,
-    resolved: Vec<ResolvedSignal>,
     by_standard: HashMap<String, usize>,
 }
 
 impl SamplePlan {
     fn new(mappings: Vec<ResolvedMapping>) -> Self {
-        let resolved = mappings
-            .iter()
-            .map(|mapping| mapping.resolved.clone())
-            .collect();
         let by_standard = mappings
             .iter()
             .enumerate()
@@ -308,21 +302,17 @@ impl SamplePlan {
             .collect();
         Self {
             mappings,
-            resolved,
             by_standard,
         }
     }
 }
 
-#[derive(Debug)]
 struct BoundClock {
     source: String,
-    host: WaveformExprHost,
     event: BoundEventExpr,
-    candidates: Vec<ExprResolvedSignal>,
+    query: ExpressionQuery,
 }
 
-#[derive(Debug)]
 struct BuiltAhb {
     waveform: SharedWaveform,
     context: AhbContext,
@@ -519,6 +509,7 @@ impl EdgeSamples {
                     id: SignalId::from_test_index(index as u64),
                     width: bits.len() as u32,
                 },
+                handle: SignalHandle(index as u32),
             })
             .collect::<Vec<_>>();
         let sampled = values
@@ -870,45 +861,25 @@ fn run_with_sink<S: AhbEventSink + ?Sized>(
         busy: context.include_busy,
     };
     let mut walker = Walker::new(context.profile.as_str(), inclusion);
-    if from_raw > dump_start_raw {
-        visit_candidate_chunks(
-            &waveform,
-            &bound_clock,
-            &sample_plan,
-            dump_start_raw,
-            from_raw - 1,
-            dump_time.dump_tick_zs,
-            |timestamp| {
-                if let Some((time, sample_time, samples)) = sample_rising_edge(
-                    &waveform,
-                    &sample_plan,
-                    &bound_clock,
-                    timestamp,
-                    dump_start_raw,
-                    dump_end_raw,
-                    dump_time.dump_tick,
-                )? {
-                    walker.process_edge(time.as_str(), sample_time.as_str(), &samples, false);
-                }
-                Ok(std::ops::ControlFlow::Continue(()))
-            },
-        )?;
-    }
-
-    context.initial_data_phase = walker.state.initial_context();
-    sink.start(&context)?;
+    let mut started = false;
     let mut emitted = 0usize;
     let mut truncated = false;
-    visit_candidate_chunks(
-        &waveform,
-        &bound_clock,
-        &sample_plan,
-        from_raw,
-        to_raw,
-        dump_time.dump_tick_zs,
-        |timestamp| {
+    waveform.borrow_mut().query_expressions(
+        &bound_clock.query,
+        dump_start_raw..=to_raw,
+        false,
+        |host, tick| {
+            let ExpressionQueryTick::Candidate(timestamp) = tick else {
+                return Ok(ControlFlow::Continue(()));
+            };
+            let collect_events = timestamp >= from_raw;
+            if collect_events && !started {
+                context.initial_data_phase = walker.state.initial_context();
+                sink.start(&context)?;
+                started = true;
+            }
             let Some((time, sample_time, samples)) = sample_rising_edge(
-                &waveform,
+                host,
                 &sample_plan,
                 &bound_clock,
                 timestamp,
@@ -917,20 +888,30 @@ fn run_with_sink<S: AhbEventSink + ?Sized>(
                 dump_time.dump_tick,
             )?
             else {
-                return Ok(std::ops::ControlFlow::Continue(()));
+                return Ok(ControlFlow::Continue(()));
             };
-            let events = walker.process_edge(time.as_str(), sample_time.as_str(), &samples, true);
+            let events = walker.process_edge(
+                time.as_str(),
+                sample_time.as_str(),
+                &samples,
+                collect_events,
+            );
             for event in events {
                 if max.is_some_and(|limit| emitted == limit) {
                     truncated = true;
-                    return Ok(std::ops::ControlFlow::Break(()));
+                    return Ok(ControlFlow::Break(()));
                 }
                 sink.emit(event)?;
                 emitted += 1;
             }
-            Ok(std::ops::ControlFlow::Continue(()))
+            Ok(ControlFlow::Continue(()))
         },
     )?;
+    // A quiet window still exposes the state established by warmup.
+    if !started {
+        context.initial_data_phase = walker.state.initial_context();
+        sink.start(&context)?;
+    }
 
     if let Some(limit) = max
         && truncated
@@ -994,13 +975,6 @@ fn build_ahb(args: &AhbArgs) -> Result<BuiltAhb, WavepeekError> {
     let resolved = waveform
         .borrow()
         .resolve_signals(canonical_paths.as_slice())?;
-    let resolved_mappings = ordered_mappings
-        .iter()
-        .cloned()
-        .zip(resolved)
-        .map(|(mapping, resolved)| ResolvedMapping { mapping, resolved })
-        .collect::<Vec<_>>();
-
     let clock = mappings_by_standard
         .get("hclk")
         .expect("required mappings checked");
@@ -1008,8 +982,26 @@ fn build_ahb(args: &AhbArgs) -> Result<BuiltAhb, WavepeekError> {
     let source = format!("posedge {clock_name}");
     let (host, event) =
         bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), source.as_str())?;
-    let candidates =
-        candidate_sources_for_handles(&host, event_candidate_handles(&event).as_slice())?;
+    let resolved_mappings = ordered_mappings
+        .iter()
+        .cloned()
+        .zip(resolved)
+        .map(|(mapping, resolved)| {
+            let handle = host
+                .resolve_signal(&mapping.path)
+                .map_err(|diagnostic| expr_diagnostic(&mapping.path, diagnostic))?;
+            Ok(ResolvedMapping {
+                mapping,
+                resolved,
+                handle,
+            })
+        })
+        .collect::<Result<Vec<_>, WavepeekError>>()?;
+    let operands = resolved_mappings
+        .iter()
+        .map(|mapping| mapping.handle)
+        .collect::<Vec<_>>();
+    let query = ExpressionQuery::new(&host, &event_candidate_handles(&event), &operands)?;
 
     Ok(BuiltAhb {
         waveform,
@@ -1029,82 +1021,16 @@ fn build_ahb(args: &AhbArgs) -> Result<BuiltAhb, WavepeekError> {
         resolved_mappings,
         bound_clock: BoundClock {
             source,
-            host,
             event,
-            candidates,
+            query,
         },
         diagnostics,
         debug,
     })
 }
 
-fn visit_candidate_chunks<F>(
-    waveform: &SharedWaveform,
-    clock: &BoundClock,
-    plan: &SamplePlan,
-    from_raw: u64,
-    to_raw: u64,
-    dump_tick_zs: u128,
-    mut visit: F,
-) -> Result<(), WavepeekError>
-where
-    F: FnMut(u64) -> Result<std::ops::ControlFlow<()>, WavepeekError>,
-{
-    if from_raw > to_raw {
-        return Ok(());
-    }
-    let mut cursor = from_raw;
-    let base_span = candidate_chunk_raw_span(dump_tick_zs);
-    let max_span = base_span.saturating_mul(MAX_CANDIDATE_CHUNK_MULTIPLIER);
-    let mut span = base_span;
-    loop {
-        let chunk_end = cursor.saturating_add(span - 1).min(to_raw);
-        let candidates = waveform
-            .borrow_mut()
-            .collect_expr_candidate_times_with_mode(
-                clock.candidates.as_slice(),
-                cursor,
-                chunk_end,
-                ChangeCandidateCollectionMode::Random,
-            )?;
-        let empty = candidates.is_empty();
-        if !empty {
-            let preload_from = cursor.saturating_sub(1);
-            waveform.borrow_mut().preload_expr_value_changes(
-                clock.candidates.as_slice(),
-                preload_from,
-                chunk_end,
-            )?;
-            waveform.borrow_mut().preload_resolved_value_changes(
-                plan.resolved.as_slice(),
-                preload_from,
-                chunk_end,
-            )?;
-        }
-        for timestamp in candidates {
-            if visit(timestamp)?.is_break() {
-                return Ok(());
-            }
-        }
-        if chunk_end == to_raw {
-            return Ok(());
-        }
-        cursor = chunk_end + 1;
-        span = if empty {
-            span.saturating_mul(2).clamp(base_span, max_span)
-        } else {
-            base_span
-        };
-    }
-}
-
-fn candidate_chunk_raw_span(dump_tick_zs: u128) -> u64 {
-    let raw_span = CANDIDATE_CHUNK_ZS.div_ceil(dump_tick_zs);
-    u64::try_from(raw_span).unwrap_or(u64::MAX).max(1)
-}
-
 fn sample_rising_edge(
-    waveform: &SharedWaveform,
+    host: &dyn RuntimeExpressionHost,
     plan: &Arc<SamplePlan>,
     clock: &BoundClock,
     timestamp: u64,
@@ -1112,13 +1038,15 @@ fn sample_rising_edge(
     dump_end_raw: u64,
     dump_tick: crate::engine::time::ParsedTime,
 ) -> Result<Option<(String, String, EdgeSamples)>, WavepeekError> {
-    let previous_timestamp = waveform.borrow().previous_sample_time(timestamp);
+    let previous_timestamp = timestamp
+        .checked_sub(1)
+        .filter(|time| *time >= dump_start_raw);
     let frame = EventEvalFrame {
         timestamp,
         previous_timestamp,
         tracked_signals: &[],
     };
-    if !event_expr_matches(clock.source.as_str(), &clock.event, &clock.host, &frame)? {
+    if !event_expr_matches(clock.source.as_str(), &clock.event, host, &frame)? {
         return Ok(None);
     }
     let Some(sample_timestamp) = timestamp
@@ -1130,26 +1058,49 @@ fn sample_rising_edge(
     Ok(Some((
         format_raw_timestamp(timestamp, dump_tick)?,
         format_raw_timestamp(sample_timestamp, dump_tick)?,
-        sample_edge(waveform, plan, sample_timestamp)?,
+        sample_edge(host, plan, sample_timestamp)?,
     )))
 }
 
 fn sample_edge(
-    waveform: &SharedWaveform,
+    host: &dyn RuntimeExpressionHost,
     plan: &Arc<SamplePlan>,
     sample_timestamp: u64,
 ) -> Result<EdgeSamples, WavepeekError> {
-    let sampled = waveform
-        .borrow_mut()
-        .sample_resolved_optional(plan.resolved.as_slice(), sample_timestamp)?;
-    for (mapping, sample) in plan.mappings.iter().zip(&sampled) {
-        if sample.bits.is_none() {
-            return Err(WavepeekError::Signal(format!(
-                "signal '{}' has no value at or before requested time",
-                mapping.mapping.path
-            )));
-        }
-    }
+    let sampled = plan
+        .mappings
+        .iter()
+        .map(|mapping| {
+            let path = &mapping.mapping.path;
+            let bits = if mapping.resolved.width == 0 {
+                eval_with_waveform_errors(path, host, || {
+                    host.event_occurred(mapping.handle, sample_timestamp)
+                })?;
+                Some(String::new())
+            } else {
+                match eval_with_waveform_errors(path, host, || {
+                    host.sample_value(mapping.handle, sample_timestamp)
+                })? {
+                    SampledValue::Integral { bits, .. } => bits,
+                    _ => {
+                        return Err(WavepeekError::Signal(format!(
+                            "signal '{path}' has unsupported non-bit-vector encoding"
+                        )));
+                    }
+                }
+            };
+            let bits = bits.ok_or_else(|| {
+                WavepeekError::Signal(format!(
+                    "signal '{path}' has no value at or before requested time"
+                ))
+            })?;
+            Ok(SampledSignalState {
+                path: path.clone(),
+                width: mapping.resolved.width,
+                bits: Some(bits.chars().map(crate::logic::four_state).collect()),
+            })
+        })
+        .collect::<Result<Vec<_>, WavepeekError>>()?;
     Ok(EdgeSamples {
         plan: Arc::clone(plan),
         sampled,
@@ -1546,8 +1497,7 @@ mod tests {
     use super::{
         AHB_LITE_PROFILE, AHB_LITE_SIGNALS, AHB5_PROFILE, AHB5_SIGNALS, AhbSignalMapping,
         Direction, EdgeSamples, Inclusion, PipelineState, SignalCandidate, Walker, auto_mappings,
-        candidate_chunk_raw_span, candidate_matching_standards, is_mapping_decoy, parse_cli_maps,
-        parse_profile,
+        candidate_matching_standards, is_mapping_decoy, parse_cli_maps, parse_profile,
     };
     use std::collections::HashMap;
 
@@ -1556,11 +1506,124 @@ mod tests {
     }
 
     #[test]
-    fn candidate_chunk_span_tracks_physical_time() {
-        assert_eq!(candidate_chunk_raw_span(1_000_000_000), 1_000_000_000);
-        assert_eq!(candidate_chunk_raw_span(1_000_000_000_000), 1_000_000);
-        assert_eq!(candidate_chunk_raw_span(1_000_000_000_000_000), 1_000);
-        assert_eq!(candidate_chunk_raw_span(2_000_000_000_000_000_000), 1);
+    fn sink_failures_stop_output_and_preserve_the_error_type() {
+        struct FailingSink {
+            fail_start: bool,
+            starts: Vec<String>,
+            emitted: usize,
+        }
+        impl super::AhbEventSink for FailingSink {
+            fn start(
+                &mut self,
+                context: &super::AhbContext,
+            ) -> Result<(), crate::error::WavepeekError> {
+                self.starts.push(context.initial_data_phase.state.clone());
+                if self.fail_start {
+                    return Err(crate::error::WavepeekError::File("start sentinel".into()));
+                }
+                Ok(())
+            }
+            fn emit(&mut self, _: super::AhbEvent) -> Result<(), crate::error::WavepeekError> {
+                self.emitted += 1;
+                Err(crate::error::WavepeekError::Signal("emit sentinel".into()))
+            }
+        }
+        let fixture = tempfile::NamedTempFile::with_suffix(".vcd").unwrap();
+        std::fs::write(fixture.path(), "$timescale 1ns $end\n$scope module top $end\n$var wire 1 c clk $end\n$var wire 2 t trans $end\n$var wire 1 y ready $end\n$var wire 1 w write $end\n$upscope $end\n$enddefinitions $end\n#0\n0c\nb10 t\n1y\n0w\n#5\n1c\n#10\n0c\n#15\n1c\n#20\n").unwrap();
+        for (fail_start, from, to, initial) in [
+            (true, None, None, "desynchronized"),
+            (true, Some("6ns"), Some("9ns"), "pending"),
+            (false, None, None, "desynchronized"),
+        ] {
+            let mut sink = FailingSink {
+                fail_start,
+                starts: Vec::new(),
+                emitted: 0,
+            };
+            let error = super::run_with_sink(
+                crate::cli::extract::AhbArgs {
+                    waves: fixture.path().into(),
+                    profile: crate::cli::extract::AhbProfileArg::AhbLite,
+                    source: None,
+                    name: None,
+                    from: from.map(str::to_owned),
+                    to: to.map(str::to_owned),
+                    scope: Some("top".into()),
+                    maps: ["hclk=clk", "htrans=trans", "hready=ready", "hwrite=write"]
+                        .map(str::to_owned)
+                        .to_vec(),
+                    includes: vec![],
+                    include_stall: false,
+                    include_idle: false,
+                    include_busy: false,
+                    max: crate::cli::limits::LimitArg::Unlimited,
+                    summary: false,
+                    abs: false,
+                    json: false,
+                    jsonl: true,
+                },
+                &mut sink,
+            )
+            .unwrap_err();
+            assert_eq!(sink.starts, [initial]);
+            assert_eq!(sink.emitted, usize::from(!fail_start));
+            if fail_start {
+                assert!(
+                    matches!(error, crate::error::WavepeekError::File(ref message) if message == "start sentinel")
+                );
+            } else {
+                assert!(
+                    matches!(error, crate::error::WavepeekError::Signal(ref message) if message == "emit sentinel")
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn sample_failure_preserves_the_typed_waveform_error() {
+        use crate::expr::{
+            DiagnosticLayer, ExprDiagnostic, ExprType, SampledValue, SignalHandle, Span,
+        };
+        use std::cell::Cell;
+        struct FailedRead(Cell<bool>);
+        impl crate::waveform::expr_host::RuntimeExpressionHost for FailedRead {
+            fn take_waveform_error(&self) -> Option<crate::error::WavepeekError> {
+                self.0
+                    .replace(false)
+                    .then(|| crate::error::WavepeekError::File("reader sentinel".into()))
+            }
+        }
+        impl crate::expr::ExpressionHost for FailedRead {
+            fn resolve_signal(&self, _: &str) -> Result<SignalHandle, ExprDiagnostic> {
+                unreachable!()
+            }
+            fn signal_type(&self, _: SignalHandle) -> Result<ExprType, ExprDiagnostic> {
+                unreachable!()
+            }
+            fn event_occurred(&self, _: SignalHandle, _: u64) -> Result<bool, ExprDiagnostic> {
+                unreachable!()
+            }
+            fn sample_value(
+                &self,
+                _: SignalHandle,
+                _: u64,
+            ) -> Result<SampledValue, ExprDiagnostic> {
+                self.0.set(true);
+                Err(ExprDiagnostic {
+                    layer: DiagnosticLayer::Runtime,
+                    code: "HOST-SAMPLE-ERROR",
+                    message: "reader failed".into(),
+                    primary_span: Span::new(0, 0),
+                    notes: vec![],
+                })
+            }
+        }
+        let samples = edge(&[("hready", "1")]);
+        let error =
+            super::sample_edge(&FailedRead(Cell::new(false)), &samples.plan, 4).unwrap_err();
+        assert!(
+            matches!(error, crate::error::WavepeekError::File(ref message) if message == "reader sentinel")
+        );
     }
 
     #[test]

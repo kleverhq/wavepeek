@@ -536,6 +536,7 @@ impl OndasBackend {
         }
     }
 
+    #[cfg(test)]
     pub fn previous_sample_time(&self, time: u64) -> Option<u64> {
         let first = self.inner.borrow().metadata().time_span()?.first().ticks();
         (time > first).then(|| time - 1)
@@ -799,6 +800,7 @@ impl OndasBackend {
         Ok(())
     }
 
+    #[cfg(test)]
     pub fn preload_signal_ids(
         &mut self,
         ids: &[SignalId],
@@ -808,6 +810,7 @@ impl OndasBackend {
         self.preload(ids, from, to)
     }
 
+    #[cfg(all(test, feature = "fsdb"))]
     pub fn preload_expr_value_changes(
         &mut self,
         resolved: &[ExprResolvedSignal],
@@ -821,6 +824,7 @@ impl OndasBackend {
         )
     }
 
+    #[cfg(test)]
     pub fn preload_resolved_value_changes(
         &mut self,
         resolved: &[ResolvedSignal],
@@ -886,6 +890,7 @@ impl OndasBackend {
         )
     }
 
+    #[cfg(test)]
     pub fn collect_expr_candidate_times_with_mode(
         &mut self,
         resolved: &[ExprResolvedSignal],

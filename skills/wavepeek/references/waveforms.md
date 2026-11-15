@@ -10,6 +10,13 @@ All dump-orientation and waveform-inspection commands require `--waves <FILE>` a
 
 `wavepeek` performance depends on the waveform format, file size, selected command, requested signals, storage speed, and machine memory. Each waveform command opens the requested dump, executes the query, writes output, and exits. If a script runs many independent `wavepeek` commands, format setup costs are paid by each process. When command semantics allow it, prefer one command that requests the needed scopes, signals, timestamps, or time window over many tiny commands.
 
+Output limits bound returned rows. Checking exact completeness may require the
+next matching row. Reader setup and initial state can read a prefix of the dump;
+incremental output does not guarantee bounded reader or native SDK memory.
+Selected values can fail decoding before a matching row, including a query with
+no matches. See [Machine output](machine-output.md#5-fatal-errors-and-exit-codes)
+for failure records and exit codes.
+
 ## VCD
 
 VCD is a textual waveform format. It is portable and widely available, but large VCD dumps can be much larger than equivalent binary formats. Queries against large VCD files may require expensive text parsing and high memory use, even when the final result is small.

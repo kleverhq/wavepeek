@@ -1,6 +1,6 @@
 # Architecture
 
-This file holds the internal engineering view of wavepeek: non-functional requirements, module boundaries, dependencies, execution strategy, and testing strategy. It does not restate the exact CLI flag surface. For command semantics and machine-output guarantees, use `skills/wavepeek/references/command-model.md` and `skills/wavepeek/references/machine-output.md`.
+This file holds the internal engineering view of wavepeek: non-functional requirements, module boundaries, dependencies, execution strategy, and testing strategy. It does not restate the exact CLI flag surface. For command semantics and machine-output guarantees, use `skills/wavepeek/references/commands.md` and `skills/wavepeek/references/machine-output.md`.
 
 ## Non-Functional Requirements
 
@@ -43,7 +43,7 @@ wavepeek is organized as three execution layers plus two shared support modules.
 
 1. **CLI layer** (`src/cli/`) parses arguments, owns help text, normalizes clap errors, and dispatches typed command structs.
 2. **Engine layer** (`src/engine/`) implements command behavior, shared time handling, shared value formatting, expression-runtime helpers, and command dispatch.
-3. **Waveform layer** (`src/waveform/`) is the backend-neutral facade for file opening, format detection, hierarchy traversal, sampled-value access, and candidate-time queries. Ondas supplies VCD/FST access in default builds and SDK-backed FSDB/SHM access through the `fsdb` and `shm` features. Native reader setup lives in `fsdb.md` and `shm.md`.
+3. **Waveform layer** (`src/waveform/`) adapts Ondas file opening, metadata, exact hierarchy, point/batch samples, and activity queries. Ondas supplies VCD/FST access in default builds and SDK-backed FSDB/SHM access through the `fsdb` and `shm` features. Native reader setup lives in `fsdb.md` and `shm.md`.
 4. **Embedded skill runtime** (`src/skill.rs`) extracts the packaged agent skill from repository assets.
 5. **Output module** (`src/output.rs`) owns stdout rendering for human mode, strict JSON result and fatal values, and JSONL stream records.
 6. **Browser adapter** (`src/browser.rs`) supplies explicit argv, output buffers, and one invocation-scoped VCD/FST byte source to the same CLI and waveform layers. It rejects FSDB, SHM, `skill`, and extraction `--source` before dispatch.
@@ -54,8 +54,8 @@ Key architectural consequences:
 - Local preview composes the separately generated current Playground and documentation under `/wavepeek/` and `/wavepeek/latest/`; production uses the same paths while Mike retains historical documentation versions.
 - Shared `src/logic.rs` defines four-state interpretation for expressions, edges and bit-output sampling. Renderers consume normalized samples; raw expression samples and enum keys retain their original states.
 - Ondas owns format-specific reading and optional native reader access behind the waveform facade. The range engines share the expression query adapter.
-- The lazy hierarchy index keys scopes and declarations by exact Ondas component paths. Direct lookup uses the same components without building a second full index. Confirmed contiguous declaration ranges define Ondas concatenations; samples, traces, and projections use their common signal handles. Quoted canonical paths are formatted for output and parsed by selections and expressions.
-- `value` submits all selected signals to one Ondas point query for a single requested time, or one `samples_at` query for multiple times. Both paths preserve request order and duplicates. Expression and range consumers use explicit saved traces when covered and otherwise request point samples from Ondas. Saved values are looked up through `Trace::sample`; point reads do not preload histories by format.
+- The lazy hierarchy index keys scopes and declarations by exact Ondas component paths. Direct lookup uses the same components without building a second full index. Confirmed contiguous declaration ranges define Ondas concatenations; samples and projections use their common signal handles. Quoted canonical paths are formatted for output and parsed by selections and expressions.
+- `value` submits all selected signals to one Ondas point query for a single requested time, or one `samples_at` query for multiple times. Both paths preserve request order and duplicates. Range consumers read through the shared expression query adapter without saved histories or candidate grids.
 - `property` binds drivers, guards and evaluation operands into one ordered Ondas selection. It evaluates candidates during `Selection::query`; a callback host reads only completed `t` and absolute `t - 1`. Transition captures first sample the window start once to establish their baseline, including quiet windows.
 - `extract generic` and its APB/ATB/AXI/AXI-Stream adapters bind all sources into one ordered Ondas selection and query. Drivers produce candidates; each group checks its completed-tick event and `iff`, then reads `when` and payload at absolute `t - 1`. Rows retain source declaration order, aliases, projections, and repeated payload fields. A complete matching row beyond the limit establishes truncation.
 - The skill helper keeps its source of truth in packaged files instead of duplicated Rust string tables.
@@ -115,7 +115,7 @@ src/
 ├── waveform/            # Backend-neutral waveform facade plus concrete backends
 │   ├── mod.rs           # Public facade, backend dispatch, and query helpers
 │   ├── types.rs         # Shared waveform metadata, signal, sample, and backend-facing types
-│   ├── ondas_backend.rs # Ondas hierarchy adaptation, batched samples, and cached traces
+│   ├── ondas_backend.rs # Exact hierarchy, logical handles, point/batch samples, and queries
 │   ├── ondas_tests.rs   # Waveform facade regression tests
 │   ├── ondas_fsdb_tests.rs # Feature-gated SDK-backed regression tests
 │   ├── ondas_error.rs   # Typed reader errors mapped to CLI categories
@@ -191,17 +191,32 @@ The current implementation status is:
 
 Non-fatal diagnostics do not change the exit code.
 
-## Transitional Range Access
+## Waveform Access
 
-Production range engines use the shared expression query adapter. AHB queries
+The facade uses registry `ondas = "=2.1.0"`. Metadata and hierarchy commands use
+Ondas metadata and exact hierarchy components. `value` sends all selected handles
+to one `samples` call for a single time, or one `samples_at` call for multiple
+times. Request order and duplicates are preserved.
+
+Range engines use the shared expression query adapter. AHB queries
 from dump start through the upper bound to preserve pipeline warmup before the
 output range. Protocol state belongs to its walker; sampled values belong to one
-callback. No engine saves candidate grids or preloads histories by format.
+callback. APB, ATB, AXI, and AXI-Stream use generic extraction. Browser byte input
+enters the same facade and command engines through `ondas::open_bytes`.
 
-The named `preload_resolved_value_changes`, expression candidate collection, and
-previous-sample wrappers are test-only. Multi-expression lookup and
-`collect_change_times` remain to support tests. Internal trace/preload machinery
-still compiles in production; final cleanup retires the transitional interfaces.
+The lazy hierarchy index supports exact lookup and listing. The direct-signal
+cache avoids building the full index for point selections; the composition cache
+retains Ondas handles for metadata-backed vectors. Binding caches map names to
+expression handles and types. These caches live for one waveform invocation.
+Query values are cached only for the current callback. WavePeek does not retain
+range histories or materialize candidate grids, and format names do not select
+reading algorithms.
+
+The application stops callbacks through `Break`, including typed sink and
+expression failures. Exact result completeness can require a matching row beyond
+the output limit. Reader setup and initial state may read a prefix; callback-local
+state does not bound reader or SDK memory. Owned JSON is all-or-error; JSONL bytes
+already written remain visible if a later failure ends the stream with `fatal`.
 
 ## `change` Command Execution Architecture
 

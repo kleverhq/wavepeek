@@ -5,7 +5,6 @@
 //! - Scope traversal and depth follow hierarchy components, not path punctuation.
 //! - Exact Ondas components use round-trippable canonical quoting.
 
-#[allow(dead_code)]
 pub(crate) mod expr_host;
 pub(crate) mod expr_query;
 mod ondas_backend;
@@ -23,12 +22,12 @@ use std::sync::Arc;
 use crate::error::WavepeekError;
 use crate::expr::SampledValue;
 
-#[allow(unused_imports)]
+#[cfg(test)]
+pub(crate) use types::{EXCLUDED_SCOPE_KIND_ALIASES, EXCLUDED_SIGNAL_KIND_ALIASES, SignalId};
+
 pub(crate) use types::{
-    ChangeCandidateCollectionMode, EXCLUDED_SCOPE_KIND_ALIASES, EXCLUDED_SIGNAL_KIND_ALIASES,
     ExprResolvedSignal, ResolvedSignal, STABLE_SCOPE_KIND_ALIASES, STABLE_SIGNAL_KIND_ALIASES,
-    SampledSignal, SampledSignalState, ScopeEntry, SignalEntry, SignalId, SignalListing,
-    WaveformMetadata,
+    SampledSignal, SampledSignalState, ScopeEntry, SignalEntry, SignalListing, WaveformMetadata,
 };
 
 #[derive(Debug)]
@@ -221,11 +220,6 @@ impl Waveform {
             .collect()
     }
 
-    #[cfg(test)]
-    pub fn previous_sample_time(&self, raw_time: u64) -> Option<u64> {
-        self.backend.previous_sample_time(raw_time)
-    }
-
     pub fn resolve_signals(
         &self,
         canonical_paths: &[String],
@@ -307,20 +301,11 @@ impl Waveform {
         }
     }
 
-    #[allow(dead_code)]
     pub(crate) fn resolve_expr_signal(
         &self,
         canonical_path: &str,
     ) -> Result<ExprResolvedSignal, WavepeekError> {
         self.backend.resolve_expr_signal(canonical_path)
-    }
-
-    #[cfg(test)]
-    pub(crate) fn resolve_expr_signals(
-        &self,
-        canonical_paths: &[String],
-    ) -> Result<Vec<ExprResolvedSignal>, WavepeekError> {
-        self.backend.resolve_expr_signals(canonical_paths)
     }
 
     pub(crate) fn resolve_expr_signal_with_diagnostic(
@@ -464,7 +449,6 @@ impl Waveform {
             .sample_resolved_optional(resolved, query_time_raw)
     }
 
-    #[allow(dead_code)]
     pub(crate) fn sample_expr_value(
         &mut self,
         resolved: &ExprResolvedSignal,
@@ -487,66 +471,12 @@ impl Waveform {
             .query_expressions(query, range, initialize, visitor)
     }
 
-    #[allow(dead_code)]
     pub(crate) fn expr_event_occurred(
         &mut self,
         resolved: &ExprResolvedSignal,
         query_time_raw: u64,
     ) -> Result<bool, WavepeekError> {
         self.backend.expr_event_occurred(resolved, query_time_raw)
-    }
-
-    pub(crate) fn debug_stats(&self) -> Option<serde_json::Value> {
-        None
-    }
-
-    #[cfg(test)]
-    pub(crate) fn preload_resolved_value_changes(
-        &mut self,
-        resolved: &[ResolvedSignal],
-        from_raw: u64,
-        to_raw: u64,
-    ) -> Result<(), WavepeekError> {
-        self.backend
-            .preload_resolved_value_changes(resolved, from_raw, to_raw)
-    }
-
-    #[allow(dead_code)]
-    pub fn collect_change_times(
-        &mut self,
-        resolved: &[ResolvedSignal],
-        from_raw: u64,
-        to_raw: u64,
-    ) -> Result<Vec<u64>, WavepeekError> {
-        self.collect_change_times_with_mode(
-            resolved,
-            from_raw,
-            to_raw,
-            ChangeCandidateCollectionMode::Auto,
-        )
-    }
-
-    pub fn collect_change_times_with_mode(
-        &mut self,
-        resolved: &[ResolvedSignal],
-        from_raw: u64,
-        to_raw: u64,
-        mode: ChangeCandidateCollectionMode,
-    ) -> Result<Vec<u64>, WavepeekError> {
-        self.backend
-            .collect_change_times_with_mode(resolved, from_raw, to_raw, mode)
-    }
-
-    #[cfg(test)]
-    pub(crate) fn collect_expr_candidate_times_with_mode(
-        &mut self,
-        resolved: &[ExprResolvedSignal],
-        from_raw: u64,
-        to_raw: u64,
-        mode: ChangeCandidateCollectionMode,
-    ) -> Result<Vec<u64>, WavepeekError> {
-        self.backend
-            .collect_expr_candidate_times_with_mode(resolved, from_raw, to_raw, mode)
     }
 }
 
@@ -607,53 +537,4 @@ fn duplicate_preserving_projection(canonical_paths: &[String]) -> (Vec<String>, 
     }
 
     (unique_paths, projection)
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct EdgeClassification {
-    pub posedge: bool,
-    pub negedge: bool,
-}
-
-#[allow(dead_code)]
-impl EdgeClassification {
-    pub(crate) fn edge(self) -> bool {
-        self.posedge || self.negedge
-    }
-}
-
-#[allow(dead_code)]
-pub(crate) fn classify_edge(previous_bits: &str, current_bits: &str) -> EdgeClassification {
-    let Some(previous_lsb) = previous_bits.chars().last() else {
-        return EdgeClassification {
-            posedge: false,
-            negedge: false,
-        };
-    };
-    let Some(current_lsb) = current_bits.chars().last() else {
-        return EdgeClassification {
-            posedge: false,
-            negedge: false,
-        };
-    };
-
-    let previous = normalize_to_four_state(previous_lsb);
-    let current = normalize_to_four_state(current_lsb);
-
-    let posedge = matches!(
-        (previous, current),
-        ('0', '1' | 'x' | 'z') | ('x' | 'z', '1')
-    );
-    let negedge = matches!(
-        (previous, current),
-        ('1', '0' | 'x' | 'z') | ('x' | 'z', '0')
-    );
-
-    EdgeClassification { posedge, negedge }
-}
-
-#[allow(dead_code)]
-fn normalize_to_four_state(bit: char) -> char {
-    crate::logic::four_state(bit)
 }

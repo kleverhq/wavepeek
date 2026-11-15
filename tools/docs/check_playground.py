@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
-"""Run one durable browser smoke against a composed Playground/docs site."""
+"""Check native/browser waveform operations in a composed Playground/docs site."""
 
 import argparse
 import functools
 import http.server
+import json
 import pathlib
 import shlex
 import subprocess
+import tempfile
 import threading
 import urllib.parse
 
@@ -70,6 +72,46 @@ def run_browser(page: Page, command: str) -> tuple[int, str, str]:
     )
 
 
+def check_reads(
+    page: Page, native_bin: pathlib.Path, cwd: pathlib.Path, filename: str, signal: str,
+    first: str, later: str, end: str,
+) -> None:
+    commands = [
+        f"value --waves {filename} --signals {signal} --at {later}",
+        f"value --waves {filename} --signals {signal},{signal} --at {later},{first},{later} --json",
+        f"property --waves {filename} --on 'posedge {signal}' --eval '{signal} == 1' "
+        f"--sample-mode native --to {end} --capture match --json",
+        f"change --waves {filename} --signals {signal} --on '*' "
+        f"--sample-mode native --to {end} --max 1 --jsonl",
+    ]
+    for index, command in enumerate(commands):
+        actual = run_browser(page, command)
+        assert actual == run_native(native_bin, cwd, command), command
+        status, stdout, stderr = actual
+        assert status == 0 and stdout.strip() and not stderr, (command, actual)
+        if index in (1, 2):
+            result = json.loads(stdout)
+            assert result["type"] == "result" and result["data"], command
+            if index == 1:
+                assert len(result["data"]) == 3, command
+                assert result["data"][0] == result["data"][2], command
+        elif index == 3:
+            records = [json.loads(line) for line in stdout.splitlines()]
+            assert records[0]["type"] == "begin" and records[-1]["type"] == "end"
+            assert sum(record["type"] == "data" for record in records) == 1
+            assert records[-1]["summary"] == {
+                "complete": False, "returned": 1, "limit": 1, "total": None,
+            }
+
+    command = f"value --waves {filename} --signals missing --at {later} --json"
+    actual = run_browser(page, command)
+    assert actual == run_native(native_bin, cwd, command), command
+    status, stdout, stderr = actual
+    fatal = json.loads(stdout)
+    assert status == 1 and not stderr
+    assert fatal["type"] == "fatal" and fatal["code"] == "WPK-F0004"
+
+
 def check(site: pathlib.Path, native_bin: pathlib.Path) -> None:
     assert site.is_dir(), f"site does not exist: {site}"
     assert native_bin.is_file(), f"native binary does not exist: {native_bin}"
@@ -100,6 +142,9 @@ def check(site: pathlib.Path, native_bin: pathlib.Path) -> None:
 
             info = "info --waves scr1_axi.fst"
             assert run_browser(page, info) == run_native(native_bin, demo_dir, info)
+            check_reads(
+                page, native_bin, demo_dir, "scr1_axi.fst", "TOP.clk", "1ps", "2ps", "200ps"
+            )
 
             page.locator("a", has_text="Documentation").first.click()
             page.wait_for_url(f"{origin}/wavepeek/latest/**")
@@ -116,6 +161,12 @@ def check(site: pathlib.Path, native_bin: pathlib.Path) -> None:
             page.locator("#source-status").filter(has_text="Ready").wait_for()
             status, stdout, stderr = run_browser(page, "info --waves local.vcd")
             assert status == 0 and not stderr and "time_unit: 1ns" in stdout
+            with tempfile.TemporaryDirectory() as directory:
+                cwd = pathlib.Path(directory)
+                (cwd / "local.vcd").write_bytes(VCD)
+                check_reads(
+                    page, native_bin, cwd, "local.vcd", "top.clk", "0ns", "5ns", "10ns"
+                )
             assert not [
                 url
                 for url in requests

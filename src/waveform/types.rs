@@ -72,19 +72,10 @@ pub struct ResolvedSignal {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-#[allow(dead_code)]
 pub(crate) struct ExprResolvedSignal {
     pub path: String,
     pub id: SignalId,
     pub expr_type: ExprType,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ChangeCandidateCollectionMode {
-    Auto,
-    #[cfg(test)]
-    Random,
-    Stream,
 }
 
 // Stable machine-contract kind inventories intentionally exclude backend-specific

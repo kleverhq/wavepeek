@@ -1,6 +1,6 @@
 # Testing Guide
 
-Tests should prove the public command and machine-output contracts, not just exercise code paths. The stable behavior references are `skills/wavepeek/references/command-model.md`, `skills/wavepeek/references/machine-output.md`, and `skills/wavepeek/references/boolean-expressions.md`.
+Tests should prove the public command and machine-output contracts, not just exercise code paths. The stable behavior references are `skills/wavepeek/references/commands.md`, `skills/wavepeek/references/machine-output.md`, and `skills/wavepeek/references/boolean-expressions.md`.
 
 ## Test Levels
 
@@ -8,7 +8,7 @@ Rust unit tests live next to implementation code under `src/` and cover parsing,
 
 Auxiliary Python tests cover repository tooling, docs-site helpers, and benchmark harnesses. Run them with `./dev just test-aux`; individual suites may also be run with `./dev python3 -B -m unittest ...` while iterating.
 
-`./dev just playground-test` builds Rust/WASM and current documentation as one local Pages preview, then uses headless Chromium for one native/browser FST comparison, documentation navigation, and one local VCD run that must not make off-origin requests.
+`./dev just playground-test` builds Rust/WASM and current documentation as one local Pages preview, then uses headless Chromium for native/browser FST and VCD point/batch/query comparisons, documentation navigation, and one local VCD run that must not make off-origin requests.
 
 ## Fixtures
 

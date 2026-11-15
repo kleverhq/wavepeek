@@ -3,9 +3,7 @@ use std::process::{Command, Stdio};
 
 use super::OndasBackend;
 use crate::expr::{ExprTypeKind, SampledValue};
-use crate::waveform::{
-    ChangeCandidateCollectionMode, STABLE_SCOPE_KIND_ALIASES, STABLE_SIGNAL_KIND_ALIASES,
-};
+use crate::waveform::{STABLE_SCOPE_KIND_ALIASES, STABLE_SIGNAL_KIND_ALIASES};
 
 #[test]
 fn fsdb_nine_state_samples_and_enum_keys_remain_raw() {
@@ -653,34 +651,6 @@ fn fsdb_reader_hierarchy_smoke() {
 }
 
 #[test]
-fn fsdb_signal_session_reads_value_changes() {
-    let fixture = GeneratedFsdbFixture::from_vcd("change_property_events.vcd");
-    let mut reader = OndasBackend::open(fixture.path()).unwrap();
-    let signal = reader.resolve_signals(&["top.armed".into()]).unwrap();
-    reader
-        .preload_resolved_value_changes(&signal, 1, 20)
-        .unwrap();
-    assert_eq!(reader.traces.len(), 1);
-    assert_eq!(signal[0].width, 1);
-    let trace = &reader.traces[&signal[0].id];
-    let ondas::ValueRef::Bits(initial) = trace.initial().unwrap().value() else {
-        panic!("expected integral initial value")
-    };
-    assert_eq!(initial.to_string(), "0");
-    let changes = trace
-        .changes()
-        .iter()
-        .map(|change| {
-            let ondas::ValueRef::Bits(bits) = change.value() else {
-                panic!("expected integral change")
-            };
-            (change.time().ticks(), bits.to_string())
-        })
-        .collect::<Vec<_>>();
-    assert_eq!(changes, vec![(10, "1".into()), (15, "0".into())]);
-}
-
-#[test]
 fn fsdb_expr_event_occurred_rejects_non_event_signal() {
     let fixture = GeneratedFsdbFixture::from_vcd("change_property_events.vcd");
     let mut backend = OndasBackend::open(fixture.path()).unwrap();
@@ -699,37 +669,19 @@ fn fsdb_expr_event_occurred_rejects_non_event_signal() {
 }
 
 #[test]
-fn fsdb_candidate_window_does_not_preload_sampled_payload() {
-    let fixture = GeneratedFsdbFixture::from_vcd("change_property_events.vcd");
-    let mut backend = OndasBackend::open(fixture.path()).unwrap();
-    let tick = backend.resolve_expr_signal("top.tick").unwrap();
-    let armed = backend.resolve_expr_signal("top.armed").unwrap();
-    let times = backend
-        .collect_expr_candidate_times_with_mode(&[tick], 1, 20, ChangeCandidateCollectionMode::Auto)
-        .unwrap();
-    assert!(!times.is_empty());
-    assert_eq!(backend.traces.len(), 1);
-    assert_eq!(
-        backend.sample_expr_value(&armed, 10).unwrap(),
-        SampledValue::Integral {
-            bits: Some("1".into()),
-            label: None,
-        }
-    );
-    assert_eq!(backend.traces.len(), 1);
-}
-
-#[test]
-fn fsdb_timeline_cache_serves_expr_samples() {
+fn fsdb_point_reads_preserve_quiet_state_and_repeated_times() {
     let fixture = GeneratedFsdbFixture::from_vcd("change_property_events.vcd");
     let mut backend = OndasBackend::open(fixture.path()).unwrap();
     let armed = backend.resolve_expr_signal("top.armed").unwrap();
-    backend
-        .preload_expr_value_changes(std::slice::from_ref(&armed), 1, 20)
-        .unwrap();
-    assert_eq!(backend.traces.len(), 1);
-    for (time, bits) in [(1, "0"), (12, "1"), (20, "0")] {
-        assert!(backend.cached_value(armed.id, time).unwrap().is_some());
+    for (time, bits) in [
+        (1, "0"),
+        (10, "1"),
+        (12, "1"),
+        (15, "0"),
+        (20, "0"),
+        (12, "1"),
+        (1, "0"),
+    ] {
         assert_eq!(
             backend.sample_expr_value(&armed, time).unwrap(),
             SampledValue::Integral {
@@ -738,7 +690,6 @@ fn fsdb_timeline_cache_serves_expr_samples() {
             }
         );
     }
-    assert_eq!(backend.traces.len(), 1);
 }
 
 struct GeneratedFsdbFixture {

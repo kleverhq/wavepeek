@@ -432,7 +432,6 @@ fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
             "event_match_ns": stats.event_match_ns,
             "predicate_eval_ns": stats.predicate_eval_ns,
             "build_emit_ns": stats.build_emit_ns,
-            "backend_stats": waveform.borrow().debug_stats(),
         })
     });
 

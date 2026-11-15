@@ -4,7 +4,7 @@
 
 - Testing workflow and conventions: `../docs/testing.md`
 - Quality gates: `../docs/quality.md`
-- Product behavior and output contracts: `../skills/wavepeek/references/command-model.md`, `../skills/wavepeek/references/machine-output.md`
+- Product behavior and output contracts: `../skills/wavepeek/references/commands.md`, `../skills/wavepeek/references/machine-output.md`
 - Expression behavior for trigger and eval surfaces: `../skills/wavepeek/references/boolean-expressions.md`
 
 ## Command Fixture Policy

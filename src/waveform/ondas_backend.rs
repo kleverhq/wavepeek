@@ -35,7 +35,6 @@ pub(super) struct OndasBackend {
     index: OnceCell<HierarchyIndex>,
     direct: RefCell<DirectSignals>,
     traces: HashMap<SignalId, Trace>,
-    indexed_times: Option<Vec<u64>>,
     compositions: RefCell<HashMap<SignalId, ondas::Signal>>,
 }
 
@@ -148,7 +147,6 @@ impl OndasBackend {
             index: OnceCell::new(),
             direct: RefCell::new(DirectSignals::default()),
             traces: HashMap::new(),
-            indexed_times: None,
             compositions: RefCell::new(HashMap::new()),
         }
     }
@@ -834,10 +832,6 @@ impl OndasBackend {
             from,
             to,
         )
-    }
-
-    pub fn indexed_timestamps(&self) -> Option<&[u64]> {
-        self.indexed_times.as_deref()
     }
 
     fn candidate_times(

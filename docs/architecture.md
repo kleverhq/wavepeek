@@ -57,6 +57,7 @@ Key architectural consequences:
 - The lazy hierarchy index keys scopes and declarations by exact Ondas component paths. Direct lookup uses the same components without building a second full index. Confirmed contiguous declaration ranges define Ondas concatenations; samples, traces, and projections use their common signal handles. Quoted canonical paths are formatted for output and parsed by selections and expressions.
 - `value` submits all selected signals to one Ondas point query for a single requested time, or one `samples_at` query for multiple times. Both paths preserve request order and duplicates. Expression and range consumers use explicit saved traces when covered and otherwise request point samples from Ondas. Saved values are looked up through `Trace::sample`; point reads do not preload histories by format.
 - `property` binds drivers, guards and evaluation operands into one ordered Ondas selection. It evaluates candidates during `Selection::query`; a callback host reads only completed `t` and absolute `t - 1`. Transition captures first sample the window start once to establish their baseline, including quiet windows.
+- `extract generic` and its APB/ATB/AXI/AXI-Stream adapters bind all sources into one ordered Ondas selection and query. Drivers produce candidates; each group checks its completed-tick event and `iff`, then reads `when` and payload at absolute `t - 1`. Rows retain source declaration order, aliases, projections, and repeated payload fields. A complete matching row beyond the limit establishes truncation.
 - The skill helper keeps its source of truth in packaged files instead of duplicated Rust string tables.
 - JSON and JSONL contracts are covered by direct serialization and command-runtime tests.
 
@@ -192,20 +193,18 @@ Non-fatal diagnostics do not change the exit code.
 
 ## Transitional Range Access
 
-The waveform facade retains explicit `preload_signal_ids`,
-`preload_expr_value_changes`, `preload_resolved_value_changes`, and candidate-time
+The waveform facade retains explicit `preload_expr_value_changes`,
+`preload_resolved_value_changes`, and candidate-time
 collection during the query migration. Their saved traces and candidate grids
 belong to one command's `Waveform`.
 
-Production consumers are generic `extract` and its APB/ATB/AXI/AXIS adapters, and
-AHB warm-up and transaction tracking. Engine dispatch remains in these consumers.
-Paths with explicit preloads retain their histories; bounded `extract` paths read
-uncached operands point by point.
+Production use is limited to AHB warm-up and transaction tracking. Paths with
+explicit preloads retain their histories. Generic `extract` and its
+APB/ATB/AXI/AXIS adapters sample operands within query callbacks, without
+reentering waveform point queries or saving candidate grids.
 
-The indexed timestamp accessor remains for transitional `extract` debug
-compatibility; its storage is not populated. Multi-expression lookup and
-`collect_change_times` wrappers remain for tests. Remove these interfaces when
-the remaining consumers complete the query migration.
+Multi-expression lookup and `collect_change_times` wrappers remain for tests.
+The AHB migration and final cleanup retire the remaining transitional interfaces.
 
 ## `change` Command Execution Architecture
 
@@ -231,7 +230,7 @@ same output pattern for captured rows.
 
 ## Protocol Extraction Architecture
 
-`src/engine/axi.rs` maps supported AXI-family profiles and ready/valid channels into the protocol-neutral runtime in `src/engine/extract.rs`. `src/engine/ahb.rs` is a dedicated stateful walker because an accepted AHB address phase completes on a later edge, can remain pending across wait states, and requires warm-up before a lower time bound. Both engines use the shared waveform facade, pre-edge sampling model, time/limit helpers, contract DTOs, and output sinks; they do not share a speculative protocol framework.
+`src/engine/axi.rs` maps supported AXI-family profiles and ready/valid channels into the protocol-neutral runtime in `src/engine/extract.rs`. `src/engine/ahb.rs` is a dedicated stateful walker because an accepted AHB address phase completes on a later edge, can remain pending across wait states, and requires warm-up before a lower time bound. The stateless adapters use the generic extraction query; AHB retains its separate candidate and preload path until its migration. Both engines use the shared waveform facade, pre-edge sampling model, time/limit helpers, contract DTOs, and output sinks; they do not share a speculative protocol framework.
 
 ## Testing Strategy
 

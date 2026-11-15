@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::ops::ControlFlow;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
@@ -11,9 +11,9 @@ use crate::cli::limits::LimitArg;
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::expr_runtime::{
-    SharedWaveform, bind_waveform_event_expr, bind_waveform_logical_expr,
-    candidate_sources_for_handles, eval_bound_logical_truth, event_candidate_handles,
-    event_expr_is_edge_only, event_expr_matches, event_iff_handles, open_shared_waveform,
+    ScopedExprHost, SharedWaveform, bind_waveform_logical_expr, eval_bound_logical_truth,
+    eval_with_waveform_errors, event_candidate_handles, event_expr_is_edge_only,
+    event_expr_matches, event_iff_handles, expr_diagnostic, open_shared_waveform,
     referenced_signal_handles,
 };
 use crate::engine::signal_projection::{ProjectedSignal, resolve_projected_signal};
@@ -24,11 +24,13 @@ use crate::engine::time::{
 use crate::engine::value_format::format_verilog_literal;
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions, ResultSummary};
 use crate::error::WavepeekError;
-use crate::expr::{BoundEventExpr, BoundLogicalExpr, EventEvalFrame};
-use crate::waveform::{
-    ChangeCandidateCollectionMode, ExprResolvedSignal, SampledSignalState, SignalId,
-    display_signal_path, expr_host::WaveformExprHost,
+use crate::expr::{
+    BoundEventExpr, BoundLogicalExpr, EventEvalFrame, ExpressionHost, SampledValue, SignalHandle,
+    bind_event_expr_ast, parse_event_expr_ast,
 };
+use crate::waveform::display_signal_path;
+use crate::waveform::expr_host::{RuntimeExpressionHost, WaveformExprHost};
+use crate::waveform::expr_query::{ExpressionQuery, ExpressionQueryTick};
 
 const DEFAULT_SOURCE_NAME: &str = "transfer";
 const SOURCE_KIND: &str = "extract.generic.sources";
@@ -106,6 +108,7 @@ struct PayloadSignal {
     display: String,
     relative_path: Option<String>,
     selected: ProjectedSignal,
+    handle: SignalHandle,
 }
 
 #[derive(Debug)]
@@ -115,7 +118,6 @@ struct BoundExtractSource {
     on: String,
     when: String,
     payload: Vec<PayloadSignal>,
-    host: WaveformExprHost,
     bound_event: BoundEventExpr,
     bound_when: BoundLogicalExpr,
 }
@@ -150,6 +152,9 @@ struct ExtractEmitContext<'a> {
     waveform: &'a SharedWaveform,
     sources: &'a [BoundExtractSource],
     event_groups: &'a [EventGroup],
+    query: &'a ExpressionQuery,
+    from_raw: u64,
+    to_raw: u64,
     dump_start_raw: u64,
     dump_end_raw: u64,
     dump_tick: crate::engine::time::ParsedTime,
@@ -157,24 +162,9 @@ struct ExtractEmitContext<'a> {
     profile_timing: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct EventGroupKey {
-    on: String,
-    candidate_ids: Vec<SignalId>,
-}
-
 #[derive(Debug)]
 struct EventGroup {
     source_indices: Vec<usize>,
-    candidate_sources: Vec<ExprResolvedSignal>,
-    candidate_key: Vec<SignalId>,
-}
-
-#[derive(Debug)]
-struct EventGroupCandidateTimes {
-    group_index: usize,
-    times: Rc<Vec<u64>>,
-    cursor: usize,
 }
 
 #[derive(Debug)]
@@ -372,112 +362,46 @@ fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
             args.help_command
         )));
     }
-    let (indexed_timestamps, window_timestamps) = {
-        let waveform_ref = waveform.borrow();
-        waveform_ref
-            .indexed_timestamps()
-            .map(|timestamps| {
-                (
-                    Some(timestamps.len()),
-                    Some(count_timestamps_in_range(timestamps, from_raw, to_raw)),
-                )
-            })
-            .unwrap_or((None, None))
-    };
     debug.event("time.parse.done", || {
         serde_json::json!({
             "dump_start_raw": dump_start_raw,
             "dump_end_raw": dump_end_raw,
             "from_raw": from_raw,
             "to_raw": to_raw,
-            "indexed_timestamps": indexed_timestamps,
-            "window_timestamps": window_timestamps,
         })
     });
 
+    let host = WaveformExprHost::from_shared_scoped(waveform.clone(), args.scope.as_deref());
     let bound_sources = bind_extract_sources(
         &waveform,
+        &host,
         args.scope.as_deref(),
         args.include_relative_paths,
         plan.sources,
     )?;
-    let event_groups = build_event_groups(&bound_sources)?;
-    let event_group_candidate_sources = event_groups
-        .iter()
-        .map(|group| group.candidate_sources.len())
-        .sum::<usize>();
+    let event_groups = build_event_groups(&bound_sources);
+    let mut drivers = Vec::new();
+    let mut operands = Vec::new();
+    for source in &bound_sources {
+        drivers.extend(event_candidate_handles(&source.bound_event));
+        operands.extend(event_iff_handles(&source.bound_event));
+        operands.extend(referenced_signal_handles(&source.bound_when));
+        operands.extend(source.payload.iter().map(|payload| payload.handle));
+    }
+    let mut seen = HashSet::new();
+    drivers.retain(|handle| seen.insert(*handle));
+    let query = ExpressionQuery::new(&host, &drivers, &operands)?;
     debug.event("extract.bind.done", || {
         serde_json::json!({
             "sources": source_count,
             "event_groups": event_groups.len(),
-            "event_group_candidate_sources": event_group_candidate_sources,
+            "drivers": drivers.len(),
         })
     });
-
-    let preload_from_raw = if waveform.borrow().format_name() == "vcd" {
-        from_raw.saturating_sub(1)
-    } else {
-        from_raw
-            .checked_sub(1)
-            .filter(|value| *value >= dump_start_raw)
-            .unwrap_or(from_raw)
-    };
-    let preload_values = || -> Result<(), WavepeekError> {
-        preload_extract_value_changes(
-            &waveform,
-            &bound_sources,
-            &event_groups,
-            preload_from_raw,
-            to_raw,
-        )?;
-        debug.event("value.preload.done", || {
-            serde_json::json!({
-                "from_raw": preload_from_raw,
-                "to_raw": to_raw,
-                "backend_stats": waveform.borrow().debug_stats(),
-            })
-        });
-        Ok(())
-    };
-    // Cold VCD traces replay the file; load candidate and payload histories together.
-    let preload_vcd = max_entries.is_none() && waveform.borrow().format_name() == "vcd";
-    if preload_vcd {
-        preload_values()?;
-    }
-
-    let group_candidate_times =
-        collect_event_group_candidate_times(&waveform, &event_groups, from_raw, to_raw)?;
-    let candidate_times = if debug.is_enabled() {
-        count_merged_candidate_times(&group_candidate_times)
-    } else {
-        0
-    };
-    debug.event("candidate.collect.done", || {
-        serde_json::json!({
-            "times": candidate_times,
-            "event_groups": event_groups.len(),
-            "group_times": group_candidate_times
-                .iter()
-                .map(|group| group.times.len())
-                .collect::<Vec<_>>(),
-        })
-    });
-
-    if max_entries.is_none() && !preload_vcd {
-        preload_values()?;
-    } else if max_entries.is_some() {
-        debug.event("value.preload.skipped", || {
-            serde_json::json!({
-                "reason": "bounded_max",
-                "max_entries": max_entries,
-            })
-        });
-    }
 
     sink.start()?;
     debug.event("extract.emit.start", || {
         serde_json::json!({
-            "candidate_times": candidate_times,
             "sources": bound_sources.len(),
             "event_groups": event_groups.len(),
         })
@@ -486,13 +410,16 @@ fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
         waveform: &waveform,
         sources: &bound_sources,
         event_groups: &event_groups,
+        query: &query,
+        from_raw,
+        to_raw,
         dump_start_raw,
         dump_end_raw,
         dump_tick,
         max_entries,
         profile_timing: debug.is_enabled(),
     };
-    let stats = emit_rows(emit_context, group_candidate_times, candidate_times, sink)?;
+    let stats = emit_rows(emit_context, sink)?;
     debug.event("extract.emit.done", || {
         serde_json::json!({
             "candidate_times": stats.candidate_times,
@@ -656,6 +583,7 @@ fn normalize_payload(payload: Vec<String>) -> Result<Vec<String>, WavepeekError>
 
 fn bind_extract_sources(
     waveform: &SharedWaveform,
+    host: &WaveformExprHost,
     scope: Option<&str>,
     include_relative_paths: bool,
     sources: Vec<ExtractSource>,
@@ -666,14 +594,17 @@ fn bind_extract_sources(
 
     let mut bound_sources = Vec::with_capacity(sources.len());
     for source in sources {
-        let (host, bound_event) =
-            bind_waveform_event_expr(waveform.clone(), scope, source.on.as_str())?;
+        let ast = parse_event_expr_ast(&source.on)
+            .map_err(|diagnostic| expr_diagnostic(&source.on, diagnostic))?;
+        let bound_event = bind_event_expr_ast(&ast, &ScopedExprHost::new(host, scope))
+            .map_err(|diagnostic| expr_diagnostic(&source.on, diagnostic))?;
         if !event_expr_is_edge_only(&bound_event) {
             return Err(WavepeekError::Args(EDGE_ONLY_ON_MESSAGE.to_string()));
         }
-        let bound_when = bind_waveform_logical_expr(&host, scope, source.when.as_str())?;
+        let bound_when = bind_waveform_logical_expr(host, scope, source.when.as_str())?;
         let payload = resolve_payload_signals(
             waveform,
+            host,
             scope,
             include_relative_paths,
             source.payload.as_slice(),
@@ -684,7 +615,6 @@ fn bind_extract_sources(
             on: source.on,
             when: source.when,
             payload,
-            host,
             bound_event,
             bound_when,
         });
@@ -695,6 +625,7 @@ fn bind_extract_sources(
 
 fn resolve_payload_signals(
     waveform: &SharedWaveform,
+    host: &WaveformExprHost,
     scope: Option<&str>,
     include_relative_paths: bool,
     payload: &[String],
@@ -706,7 +637,7 @@ fn resolve_payload_signals(
             .map(|token| resolve_projected_signal(&waveform, token, scope))
             .collect::<Result<Vec<_>, _>>()?
     };
-    Ok(selected
+    selected
         .into_iter()
         .map(|selected| {
             let display = display_signal_path(selected.path.as_str(), scope).to_string();
@@ -715,209 +646,35 @@ fn resolve_payload_signals(
             } else {
                 None
             };
-            PayloadSignal {
+            let handle = host
+                .resolve_signal(&selected.source.path)
+                .map_err(|diagnostic| expr_diagnostic(&selected.path, diagnostic))?;
+            Ok(PayloadSignal {
                 display,
                 relative_path,
                 selected,
-            }
+                handle,
+            })
         })
-        .collect())
+        .collect()
 }
 
-fn build_event_groups(sources: &[BoundExtractSource]) -> Result<Vec<EventGroup>, WavepeekError> {
+fn build_event_groups(sources: &[BoundExtractSource]) -> Vec<EventGroup> {
     let mut groups: Vec<EventGroup> = Vec::new();
-    let mut groups_by_key: HashMap<EventGroupKey, usize> = HashMap::new();
-
+    let mut groups_by_event = HashMap::new();
     for (source_index, source) in sources.iter().enumerate() {
         debug_assert_eq!(source.declaration_index, source_index);
-        let candidate_sources = candidate_sources_for_handles(
-            &source.host,
-            event_candidate_handles(&source.bound_event).as_slice(),
-        )?;
-        let candidate_key = candidate_key_for_sources(&candidate_sources);
-        let key = EventGroupKey {
-            on: source.on.clone(),
-            candidate_ids: candidate_key.clone(),
-        };
-
-        if let Some(group_index) = groups_by_key.get(&key).copied() {
-            groups[group_index].source_indices.push(source_index);
-            continue;
-        }
-
-        let group_index = groups.len();
-        groups.push(EventGroup {
-            source_indices: vec![source_index],
-            candidate_sources,
-            candidate_key,
-        });
-        groups_by_key.insert(key, group_index);
-    }
-
-    Ok(groups)
-}
-
-fn candidate_key_for_sources(candidate_sources: &[ExprResolvedSignal]) -> Vec<SignalId> {
-    let mut candidate_ids = candidate_sources
-        .iter()
-        .map(|candidate| candidate.id)
-        .collect::<Vec<_>>();
-    candidate_ids.sort_unstable();
-    candidate_ids.dedup();
-    candidate_ids
-}
-
-fn collect_event_group_candidate_times(
-    waveform: &SharedWaveform,
-    event_groups: &[EventGroup],
-    from_raw: u64,
-    to_raw: u64,
-) -> Result<Vec<EventGroupCandidateTimes>, WavepeekError> {
-    let mut times_by_candidate_key: HashMap<Vec<SignalId>, Rc<Vec<u64>>> = HashMap::new();
-    let mut group_candidate_times = Vec::with_capacity(event_groups.len());
-
-    for (group_index, group) in event_groups.iter().enumerate() {
-        let times = if let Some(times) = times_by_candidate_key.get(&group.candidate_key) {
-            Rc::clone(times)
+        if let Some(&group_index) = groups_by_event.get(&source.on) {
+            let group: &mut EventGroup = &mut groups[group_index];
+            group.source_indices.push(source_index);
         } else {
-            let times = Rc::new(
-                waveform
-                    .borrow_mut()
-                    .collect_expr_candidate_times_with_mode(
-                        group.candidate_sources.as_slice(),
-                        from_raw,
-                        to_raw,
-                        ChangeCandidateCollectionMode::Auto,
-                    )?,
-            );
-            times_by_candidate_key.insert(group.candidate_key.clone(), Rc::clone(&times));
-            times
-        };
-        group_candidate_times.push(EventGroupCandidateTimes {
-            group_index,
-            times,
-            cursor: 0,
-        });
-    }
-
-    Ok(group_candidate_times)
-}
-
-fn preload_extract_value_changes(
-    waveform: &SharedWaveform,
-    sources: &[BoundExtractSource],
-    event_groups: &[EventGroup],
-    from_raw: u64,
-    to_raw: u64,
-) -> Result<(), WavepeekError> {
-    let mut expr_sources = Vec::new();
-    let mut seen_expr = HashSet::new();
-    for group in event_groups {
-        extend_unique_expr_sources(&mut expr_sources, &mut seen_expr, &group.candidate_sources);
-    }
-    for source in sources {
-        let iff_handles = event_iff_handles(&source.bound_event);
-        let iff_sources = candidate_sources_for_handles(&source.host, iff_handles.as_slice())?;
-        extend_unique_expr_sources(&mut expr_sources, &mut seen_expr, &iff_sources);
-
-        let when_handles = referenced_signal_handles(&source.bound_when);
-        let when_sources = candidate_sources_for_handles(&source.host, when_handles.as_slice())?;
-        extend_unique_expr_sources(&mut expr_sources, &mut seen_expr, &when_sources);
-    }
-
-    let mut payload_sources = Vec::new();
-    let mut seen_payload = HashSet::new();
-    for source in sources {
-        for payload in &source.payload {
-            if seen_payload.insert(payload.selected.source.id) {
-                payload_sources.push(payload.selected.source.clone());
-            }
+            groups_by_event.insert(source.on.clone(), groups.len());
+            groups.push(EventGroup {
+                source_indices: vec![source_index],
+            });
         }
     }
-
-    let mut waveform = waveform.borrow_mut();
-    if waveform.format_name() == "vcd" {
-        let ids = expr_sources
-            .iter()
-            .map(|signal| signal.id)
-            .chain(payload_sources.iter().map(|signal| signal.id))
-            .collect::<Vec<_>>();
-        waveform.preload_signal_ids(&ids, from_raw, to_raw)
-    } else {
-        waveform.preload_expr_value_changes(&expr_sources, from_raw, to_raw)?;
-        waveform.preload_resolved_value_changes(&payload_sources, from_raw, to_raw)
-    }
-}
-
-fn extend_unique_expr_sources(
-    target: &mut Vec<ExprResolvedSignal>,
-    seen: &mut HashSet<SignalId>,
-    sources: &[ExprResolvedSignal],
-) {
-    for source in sources {
-        if seen.insert(source.id) {
-            target.push(source.clone());
-        }
-    }
-}
-
-fn count_merged_candidate_times(group_candidate_times: &[EventGroupCandidateTimes]) -> usize {
-    let mut cursors = vec![0usize; group_candidate_times.len()];
-    let mut count = 0usize;
-
-    loop {
-        let Some(timestamp) = group_candidate_times
-            .iter()
-            .enumerate()
-            .filter_map(|(group_index, group)| group.times.get(cursors[group_index]).copied())
-            .min()
-        else {
-            return count;
-        };
-
-        count += 1;
-        for (group_index, group) in group_candidate_times.iter().enumerate() {
-            while group
-                .times
-                .get(cursors[group_index])
-                .is_some_and(|candidate| *candidate == timestamp)
-            {
-                cursors[group_index] += 1;
-            }
-        }
-    }
-}
-
-fn next_active_event_groups(
-    group_candidate_times: &mut [EventGroupCandidateTimes],
-    active_groups: &mut Vec<usize>,
-) -> Option<u64> {
-    active_groups.clear();
-    let timestamp = group_candidate_times
-        .iter()
-        .filter_map(|group| group.times.get(group.cursor).copied())
-        .min()?;
-
-    for group in group_candidate_times {
-        while group
-            .times
-            .get(group.cursor)
-            .is_some_and(|candidate| *candidate == timestamp)
-        {
-            if active_groups.last().copied() != Some(group.group_index) {
-                active_groups.push(group.group_index);
-            }
-            group.cursor += 1;
-        }
-    }
-
-    Some(timestamp)
-}
-
-fn count_timestamps_in_range(timestamps: &[u64], from_raw: u64, to_raw: u64) -> usize {
-    let start_idx = timestamps.partition_point(|timestamp| *timestamp < from_raw);
-    let end_idx = timestamps.partition_point(|timestamp| *timestamp <= to_raw);
-    end_idx.saturating_sub(start_idx)
+    groups
 }
 
 fn duration_ns(duration: Duration) -> u64 {
@@ -926,8 +683,6 @@ fn duration_ns(duration: Duration) -> u64 {
 
 fn emit_rows<S: ExtractRowSink + ?Sized>(
     context: ExtractEmitContext<'_>,
-    mut group_candidate_times: Vec<EventGroupCandidateTimes>,
-    candidate_times_total: usize,
     sink: &mut S,
 ) -> Result<ExtractRunStats, WavepeekError> {
     let mut candidate_count = 0usize;
@@ -940,105 +695,102 @@ fn emit_rows<S: ExtractRowSink + ?Sized>(
     let mut event_match_time = Duration::ZERO;
     let mut predicate_eval_time = Duration::ZERO;
     let mut build_emit_time = Duration::ZERO;
-    let mut active_groups = Vec::new();
     let mut matched_source_indices = Vec::new();
 
-    'timestamps: while let Some(timestamp) =
-        next_active_event_groups(&mut group_candidate_times, &mut active_groups)
-    {
-        candidate_count += 1;
-        matched_source_indices.clear();
-        let previous_timestamp = context.waveform.borrow().previous_sample_time(timestamp);
-
-        let mut matching_group_count = 0usize;
-        for group_index in &active_groups {
-            let group = &context.event_groups[*group_index];
-            let representative = &context.sources[group.source_indices[0]];
-            let frame = EventEvalFrame {
-                timestamp,
-                previous_timestamp,
-                tracked_signals: &[],
+    context.waveform.borrow_mut().query_expressions(
+        context.query,
+        context.from_raw..=context.to_raw,
+        false,
+        |host, tick| {
+            let ExpressionQueryTick::Candidate(timestamp) = tick else {
+                return Ok(ControlFlow::Continue(()));
             };
-            event_checks += 1;
-            let started_at = context.profile_timing.then(Instant::now);
-            let event_matches_row = event_expr_matches(
-                representative.on.as_str(),
-                &representative.bound_event,
-                &representative.host,
-                &frame,
-            )?;
-            if let Some(started_at) = started_at {
-                event_match_time += started_at.elapsed();
-            }
-            if event_matches_row {
-                event_matches_count += 1;
-                matching_group_count += 1;
-                matched_source_indices.extend(group.source_indices.iter().copied());
-            }
-        }
+            candidate_count += 1;
+            matched_source_indices.clear();
+            let previous_timestamp = timestamp
+                .checked_sub(1)
+                .filter(|time| *time >= context.dump_start_raw);
 
-        if matched_source_indices.is_empty() {
-            continue;
-        }
-        if matching_group_count > 1 {
-            matched_source_indices.sort_unstable_by_key(|source_index| {
-                context.sources[*source_index].declaration_index
-            });
-        }
+            let mut matching_group_count = 0usize;
+            for group in context.event_groups {
+                let representative = &context.sources[group.source_indices[0]];
+                let frame = EventEvalFrame {
+                    timestamp,
+                    previous_timestamp,
+                    tracked_signals: &[],
+                };
+                event_checks += 1;
+                let started_at = context.profile_timing.then(Instant::now);
+                let event_matches_row = event_expr_matches(
+                    representative.on.as_str(),
+                    &representative.bound_event,
+                    host,
+                    &frame,
+                )?;
+                if let Some(started_at) = started_at {
+                    event_match_time += started_at.elapsed();
+                }
+                if event_matches_row {
+                    event_matches_count += 1;
+                    matching_group_count += 1;
+                    matched_source_indices.extend(group.source_indices.iter().copied());
+                }
+            }
 
-        let Some(sample_timestamp) = timestamp
-            .checked_sub(1)
-            .filter(|value| *value >= context.dump_start_raw && *value <= context.dump_end_raw)
-        else {
-            skipped_no_sample_time += matched_source_indices.len();
-            continue;
-        };
+            if matched_source_indices.is_empty() {
+                return Ok(ControlFlow::Continue(()));
+            }
+            if matching_group_count > 1 {
+                matched_source_indices.sort_unstable_by_key(|source_index| {
+                    context.sources[*source_index].declaration_index
+                });
+            }
 
-        for source_index in &matched_source_indices {
-            let source = &context.sources[*source_index];
-            debug_assert_eq!(source.declaration_index, *source_index);
-            let started_at = context.profile_timing.then(Instant::now);
-            let predicate_matches = eval_bound_logical_truth(
-                source.when.as_str(),
-                &source.bound_when,
-                &source.host,
-                sample_timestamp,
-            )?;
-            if let Some(started_at) = started_at {
-                predicate_eval_time += started_at.elapsed();
+            let Some(sample_timestamp) = timestamp
+                .checked_sub(1)
+                .filter(|value| *value >= context.dump_start_raw && *value <= context.dump_end_raw)
+            else {
+                skipped_no_sample_time += matched_source_indices.len();
+                return Ok(ControlFlow::Continue(()));
+            };
+
+            for source_index in &matched_source_indices {
+                let source = &context.sources[*source_index];
+                debug_assert_eq!(source.declaration_index, *source_index);
+                let started_at = context.profile_timing.then(Instant::now);
+                let predicate_matches = eval_bound_logical_truth(
+                    source.when.as_str(),
+                    &source.bound_when,
+                    host,
+                    sample_timestamp,
+                )?;
+                if let Some(started_at) = started_at {
+                    predicate_eval_time += started_at.elapsed();
+                }
+                if !predicate_matches {
+                    continue;
+                }
+                predicate_true += 1;
+                let started_at = context.profile_timing.then(Instant::now);
+                let row = build_row(source, timestamp, sample_timestamp, context.dump_tick, host)?;
+                if let Some(limit) = context.max_entries
+                    && emitted == limit
+                {
+                    truncated = true;
+                    return Ok(ControlFlow::Break(()));
+                }
+                sink.emit(row)?;
+                if let Some(started_at) = started_at {
+                    build_emit_time += started_at.elapsed();
+                }
+                emitted += 1;
             }
-            if !predicate_matches {
-                continue;
-            }
-            predicate_true += 1;
-            if let Some(limit) = context.max_entries
-                && emitted == limit
-            {
-                truncated = true;
-                break 'timestamps;
-            }
-            let started_at = context.profile_timing.then(Instant::now);
-            let row = build_row(
-                source,
-                timestamp,
-                sample_timestamp,
-                context.dump_tick,
-                context.waveform,
-            )?;
-            sink.emit(row)?;
-            if let Some(started_at) = started_at {
-                build_emit_time += started_at.elapsed();
-            }
-            emitted += 1;
-        }
-    }
+            Ok(ControlFlow::Continue(()))
+        },
+    )?;
 
     Ok(ExtractRunStats {
-        candidate_times: if context.profile_timing {
-            candidate_times_total
-        } else {
-            candidate_count
-        },
+        candidate_times: candidate_count,
         event_checks,
         event_matches: event_matches_count,
         predicate_true,
@@ -1056,21 +808,12 @@ fn build_row(
     timestamp: u64,
     sample_timestamp: u64,
     dump_tick: crate::engine::time::ParsedTime,
-    waveform: &SharedWaveform,
+    host: &dyn RuntimeExpressionHost,
 ) -> Result<ExtractGenericRow, WavepeekError> {
-    let resolved = source
-        .payload
-        .iter()
-        .map(|payload| payload.selected.source.clone())
-        .collect::<Vec<_>>();
-    let samples = waveform
-        .borrow_mut()
-        .sample_resolved_optional(resolved.as_slice(), sample_timestamp)?;
     let payload = source
         .payload
         .iter()
-        .zip(samples)
-        .map(|(requested, sampled)| build_payload_value(requested, sampled))
+        .map(|requested| build_payload_value(requested, host, sample_timestamp))
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(ExtractGenericRow {
@@ -1083,20 +826,43 @@ fn build_row(
 
 fn build_payload_value(
     requested: &PayloadSignal,
-    sampled: SampledSignalState,
+    host: &dyn RuntimeExpressionHost,
+    timestamp: u64,
 ) -> Result<ExtractPayloadValue, WavepeekError> {
-    let sampled = requested.selected.project_sample(sampled);
-    let bits = sampled.bits.as_ref().ok_or_else(|| {
+    let bits = if requested.selected.width() == 0 {
+        // Raw-event payloads retain the existing zero-width representation.
+        eval_with_waveform_errors(&requested.selected.path, host, || {
+            host.event_occurred(requested.handle, timestamp)
+        })?;
+        Some(String::new())
+    } else {
+        match eval_with_waveform_errors(&requested.selected.path, host, || {
+            host.sample_value(requested.handle, timestamp)
+        })? {
+            SampledValue::Integral { bits, .. } => bits,
+            _ => {
+                return Err(WavepeekError::Signal(format!(
+                    "signal '{}' has unsupported non-bit-vector encoding",
+                    requested.selected.path
+                )));
+            }
+        }
+    };
+    let bits = bits.ok_or_else(|| {
         WavepeekError::Signal(format!(
             "signal '{}' has no value at or before requested time",
             requested.selected.path
         ))
     })?;
+    let bits = bits
+        .chars()
+        .map(crate::logic::four_state)
+        .collect::<String>();
     Ok(ExtractPayloadValue {
         display: requested.display.clone(),
         path: requested.selected.path.clone(),
         relative_path: requested.relative_path.clone(),
-        value: format_verilog_literal(sampled.width, bits.as_str()),
+        value: format_verilog_literal(requested.selected.width(), &bits),
     })
 }
 
@@ -1137,9 +903,48 @@ pub(crate) fn parse_bound_time(
 
 #[cfg(test)]
 mod tests {
-    use super::{build_plan, normalize_payload};
+    use super::{ExtractGenericRow, ExtractRowSink, build_plan, normalize_payload, run_with_sink};
     use crate::cli::extract::GenericArgs;
     use crate::cli::limits::LimitArg;
+    use crate::error::WavepeekError;
+
+    #[test]
+    fn extract_sink_failure_stops_the_query_and_preserves_its_type() {
+        struct FailingSink(usize);
+        impl ExtractRowSink for FailingSink {
+            fn emit(&mut self, _: ExtractGenericRow) -> Result<(), WavepeekError> {
+                self.0 += 1;
+                Err(WavepeekError::File("sentinel extract sink failure".into()))
+            }
+        }
+        let fixture = tempfile::NamedTempFile::with_suffix(".vcd").unwrap();
+        std::fs::write(fixture.path(), "$timescale 1ns $end\n$scope module top $end\n$var wire 1 c clk $end\n$upscope $end\n$enddefinitions $end\n#0\n0c\n#5\n1c\n#10\n0c\n#15\n1c\n").unwrap();
+        let mut sink = FailingSink(0);
+        let error = run_with_sink(
+            GenericArgs {
+                waves: fixture.path().into(),
+                source: None,
+                from: None,
+                to: None,
+                scope: Some("top".into()),
+                name: None,
+                on: Some("posedge clk".into()),
+                when: Some("1".into()),
+                payload: Some(vec!["clk".into()]),
+                max: LimitArg::Unlimited,
+                abs: false,
+                json: false,
+                summary: false,
+                jsonl: true,
+            },
+            &mut sink,
+        )
+        .unwrap_err();
+        assert_eq!(sink.0, 1);
+        assert!(
+            matches!(error, WavepeekError::File(ref message) if message == "sentinel extract sink failure")
+        );
+    }
 
     #[test]
     fn cli_plan_defaults_source_name_and_payload_order() {

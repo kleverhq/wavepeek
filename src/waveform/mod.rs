@@ -499,15 +499,6 @@ impl Waveform {
         None
     }
 
-    pub(crate) fn preload_signal_ids(
-        &mut self,
-        ids: &[SignalId],
-        from_raw: u64,
-        to_raw: u64,
-    ) -> Result<(), WavepeekError> {
-        self.backend.preload_signal_ids(ids, from_raw, to_raw)
-    }
-
     pub(crate) fn preload_expr_value_changes(
         &mut self,
         resolved: &[ExprResolvedSignal],
@@ -528,10 +519,6 @@ impl Waveform {
             .preload_resolved_value_changes(resolved, from_raw, to_raw)
     }
 
-    #[inline]
-    pub(crate) fn indexed_timestamps(&self) -> Option<&[u64]> {
-        self.backend.indexed_timestamps()
-    }
     #[allow(dead_code)]
     pub fn collect_change_times(
         &mut self,

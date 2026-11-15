@@ -1377,6 +1377,28 @@ fn fsdb_nine_state_rendering_and_edges_use_four_state_interpretation() {
         property["data"],
         json!([{"time":"70ns","sample_time":"70ns","kind":"match"}])
     );
+    let extracted = run_json_success(&[
+        "extract",
+        "generic",
+        "--waves",
+        &fixture,
+        "--scope",
+        "RICH_LOGIC",
+        "--from",
+        "70ns",
+        "--to",
+        "70ns",
+        "--on",
+        "posedge RESOLVED_BIT",
+        "--when",
+        "1",
+        "--payload",
+        "RESOLVED_BIT",
+        "--json",
+    ]);
+    assert_eq!(extracted["data"][0]["time"], "70ns");
+    assert_eq!(extracted["data"][0]["sample_time"], "69ns");
+    assert_eq!(extracted["data"][0]["payload"][0]["value"], "1'h0");
 }
 
 fn typed_fsdb_path(name: &str) -> String {

@@ -1,6 +1,6 @@
 # Benchmarking Guide
 
-Benchmark work must run in the shared devcontainer image so fixture availability, Rust toolchain versions, and helper behavior match project gates. Preserve the public behavior contracts in `skills/wavepeek/references/command-model.md` and `skills/wavepeek/references/machine-output.md` while optimizing.
+Benchmark work must run in the shared devcontainer image so fixture availability, Rust toolchain versions, and helper behavior match project gates. Preserve the public behavior contracts in `skills/wavepeek/references/commands.md` and `skills/wavepeek/references/machine-output.md` while optimizing.
 
 ## Manual performance gate
 
@@ -46,6 +46,10 @@ VCD mode defaults to `never`. Pass `always` as the fourth `bench-gate` argument 
 FSDB mode defaults to `auto`. Auto mode skips FSDB when Verdi is unavailable or when both refs lack FSDB support, captures FSDB when Verdi is available and both refs support it, and fails on asymmetric FSDB support because that comparison is not equivalent. FSDB capture uses a generated runnable catalog under each capture directory and records any omitted tests in the manifest; currently this excludes VCD-style scalar element paths such as `foo.[0]` because converted RTL FSDB fixtures expose those signals with FSDB-specific names that old and current release binaries cannot resolve from the FST-derived catalog. Use `just bench-gate <baseline-ref> <revised-ref> never` only when intentionally skipping FSDB performance review, and record that rationale in the release notes or checklist. Use `python3 -B tools/bench/gate.py --baseline-ref <ref> --revised-ref <ref> --fsdb always` when FSDB capture is required and missing support or Verdi should fail immediately.
 
 The gate screens selected benchmarks for regressions on the machine where it runs. It is not a general performance guarantee. Use the previous release tag as the baseline for major and minor releases. For patch releases, either run the gate when the change may affect performance, or record why the gate was skipped for clearly non-performance changes such as documentation-only or release-metadata-only updates.
+
+The timed command includes a Python timeout wrapper. Its process-wait polling can
+quantize short timings. Retain gate results, and use separate direct CLI timings
+to investigate small differences; wrapper medians alone do not resolve them.
 
 ## CLI End-to-End Benchmarks
 

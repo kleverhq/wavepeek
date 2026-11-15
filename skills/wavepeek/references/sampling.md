@@ -68,8 +68,11 @@ time == sample_time
 In pre-edge mode (`--sample-mode pre-edge`), the result still belongs to the clock edge, but its values come from immediately before that edge:
 
 ```text
-sample_time < time
+sample_time = time - 1 raw tick
 ```
+
+`change`, `property`, and extraction skip a pre-edge event when its preceding tick is before
+the dump start. The previous candidate timestamp is not the sample point.
 
 Human output includes both timestamps when they differ:
 

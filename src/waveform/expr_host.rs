@@ -1,5 +1,6 @@
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+#[cfg(test)]
 use std::path::Path;
 use std::rc::Rc;
 
@@ -26,15 +27,18 @@ pub(crate) struct WaveformExprHost {
 }
 
 impl WaveformExprHost {
+    #[cfg(test)]
     pub(crate) fn open(path: &Path) -> Result<Self, WavepeekError> {
         let waveform = Rc::new(RefCell::new(Waveform::open(path)?));
         Ok(Self::from_shared(waveform))
     }
 
+    #[cfg(test)]
     pub(crate) fn new(waveform: Waveform) -> Self {
         Self::from_shared(Rc::new(RefCell::new(waveform)))
     }
 
+    #[cfg(test)]
     pub(crate) fn from_shared(waveform: Rc<RefCell<Waveform>>) -> Self {
         Self::from_shared_scoped(waveform, None)
     }

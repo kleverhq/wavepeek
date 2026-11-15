@@ -926,7 +926,6 @@ fn run_with_sink<S: AhbEventSink + ?Sized>(
             "emitted": emitted,
             "truncated": truncated,
             "initial_state": context.initial_data_phase.state,
-            "backend_stats": waveform.borrow().debug_stats(),
         })
     });
 

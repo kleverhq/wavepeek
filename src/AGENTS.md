@@ -4,7 +4,7 @@
 
 - Rust style and CLI constraints: `../docs/style.md`
 - Internal architecture: `../docs/architecture.md`
-- Public command and output contracts: `../skills/wavepeek/references/command-model.md`, `../skills/wavepeek/references/machine-output.md`
+- Public command and output contracts: `../skills/wavepeek/references/commands.md`, `../skills/wavepeek/references/machine-output.md`
 - Expression semantics for `change`, `property`, and `extract` family: `../skills/wavepeek/references/boolean-expressions.md`
 
 ## Embedded Skill Runtime

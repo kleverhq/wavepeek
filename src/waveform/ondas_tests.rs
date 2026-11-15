@@ -6,9 +6,9 @@ use tempfile::NamedTempFile;
 
 use super::{OndasBackend, scope_type_alias, var_type_alias};
 use crate::waveform::{
-    ChangeCandidateCollectionMode, EXCLUDED_SCOPE_KIND_ALIASES, EXCLUDED_SIGNAL_KIND_ALIASES,
-    STABLE_SCOPE_KIND_ALIASES, STABLE_SIGNAL_KIND_ALIASES, SampledSignal, ScopeEntry, Waveform,
-    classify_edge, duplicate_preserving_projection,
+    EXCLUDED_SCOPE_KIND_ALIASES, EXCLUDED_SIGNAL_KIND_ALIASES, STABLE_SCOPE_KIND_ALIASES,
+    STABLE_SIGNAL_KIND_ALIASES, SampledSignal, ScopeEntry, Waveform,
+    duplicate_preserving_projection,
 };
 
 const TEST_VCD: &str = "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var reg 8 \" data $end\n$var parameter 8 # cfg $end\n$scope module cpu $end\n$var wire 1 $ valid $end\n$upscope $end\n$scope function helper $end\n$var wire 1 & helper_flag $end\n$upscope $end\n$scope module mem $end\n$var wire 1 % ready $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nb00000000 \"\nb10101010 #\n0$\n0&\n0%\n#5\n1!\n1$\n1&\n#10\nb00001111 \"\n1%\n";
@@ -616,71 +616,7 @@ fn resolved_signal_ids_are_stable_across_resolution_paths() {
 }
 
 #[test]
-fn previous_sample_time_returns_strict_predecessor() {
-    let fixture = write_fixture(TEST_VCD, "sample.vcd");
-
-    let waveform = Waveform::open(fixture.path()).expect("fixture should open");
-
-    assert_eq!(waveform.previous_sample_time(0), None);
-    assert_eq!(waveform.previous_sample_time(5), Some(4));
-    assert_eq!(waveform.previous_sample_time(7), Some(6));
-    assert_eq!(waveform.previous_sample_time(10), Some(9));
-}
-
-#[test]
-fn collect_change_times_facade_returns_unique_backend_timestamps() {
-    let fixture = write_fixture(TEST_VCD, "sample.vcd");
-
-    let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
-    let resolved = waveform
-        .resolve_signals(&["top.clk".to_string(), "top.data".to_string()])
-        .expect("signals should resolve");
-
-    assert_eq!(
-        waveform
-            .collect_change_times(&resolved, 0, 10)
-            .expect("change times should collect"),
-        vec![0, 5, 10]
-    );
-    assert_eq!(
-        waveform
-            .collect_change_times_with_mode(
-                &resolved,
-                0,
-                10,
-                ChangeCandidateCollectionMode::Random,
-            )
-            .expect("random access change times should collect"),
-        vec![0, 5, 10]
-    );
-    assert!(
-        waveform
-            .collect_change_times(&[], 0, 10)
-            .expect("empty resolved set should collect")
-            .is_empty()
-    );
-    assert!(
-        waveform
-            .collect_change_times(&resolved, 20, 30)
-            .expect("empty window should collect")
-            .is_empty()
-    );
-    assert!(
-        waveform
-            .collect_change_times_with_mode(
-                &resolved,
-                0,
-                10,
-                ChangeCandidateCollectionMode::Stream,
-            )
-            .expect_err("forced stream on VCD should fail")
-            .to_string()
-            .contains("requires FST input")
-    );
-}
-
-#[test]
-fn streaming_candidate_collection_rejects_derived_signals() {
+fn composition_point_samples_preserve_part_updates() {
     let fixture = write_fixture(DERIVED_SPLIT_VCD, "derived-split.vcd");
     let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
     let resolved = waveform
@@ -698,15 +634,6 @@ fn streaming_candidate_collection_rejects_derived_signals() {
             .bits
             .as_deref(),
         Some("11")
-    );
-    assert_eq!(
-        waveform.collect_change_times(&resolved, 5, 10).unwrap(),
-        vec![5, 10]
-    );
-    assert!(
-        waveform
-            .collect_change_times_with_mode(&resolved, 5, 10, ChangeCandidateCollectionMode::Stream)
-            .is_err()
     );
 }
 
@@ -840,7 +767,7 @@ fn fst_batch_selects_same_leaf_under_distinct_parents() {
 }
 
 #[test]
-fn fst_cached_trace_handles_reverse_and_repeated_times() {
+fn fst_point_samples_handle_reverse_and_repeated_times() {
     let source = write_fixture(
         "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! bit $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n#5\n1!\n#5\n0!\n#5\n1!\n#10\n0!\n",
         "same-tick.vcd",
@@ -858,9 +785,6 @@ fn fst_cached_trace_handles_reverse_and_repeated_times() {
 
     let mut backend = OndasBackend::open(&fst).unwrap();
     let resolved = backend.resolve_signals(&["top.bit".into()]).unwrap();
-    backend
-        .preload_resolved_value_changes(&resolved, 0, 10)
-        .unwrap();
     for (time, expected) in [(5, "1"), (5, "1"), (4, "0"), (10, "0"), (0, "0"), (5, "1")] {
         let sampled = backend.sample_resolved_optional(&resolved, time).unwrap();
         assert_eq!(sampled[0].bits.as_deref(), Some(expected), "at tick {time}");
@@ -967,51 +891,6 @@ fn sample_signals_at_time_errors_when_signal_has_no_prior_value() {
         "fatal: signal: signal 'top.delayed' has no value at or before requested time"
     );
 }
-#[test]
-fn edge_classification_sv2023_matrix() {
-    for (previous, current) in [("0", "1"), ("0", "x"), ("0", "z"), ("x", "1"), ("z", "1")] {
-        let edge = classify_edge(previous, current);
-        assert!(edge.posedge, "expected posedge for {previous}->{current}");
-    }
-
-    for (previous, current) in [("1", "0"), ("1", "x"), ("1", "z"), ("x", "0"), ("z", "0")] {
-        let edge = classify_edge(previous, current);
-        assert!(edge.negedge, "expected negedge for {previous}->{current}");
-    }
-
-    for previous in ["0", "1", "x", "z"] {
-        for current in ["0", "1", "x", "z"] {
-            let edge = classify_edge(previous, current);
-            assert_eq!(edge.edge(), edge.posedge || edge.negedge);
-        }
-    }
-}
-
-#[test]
-fn edge_classification_uses_weak_zero_and_one() {
-    assert!(!classify_edge("h", "1").edge());
-    assert!(classify_edge("l", "h").posedge);
-    assert!(classify_edge("1", "l").negedge);
-    assert!(classify_edge("u", "0").negedge);
-    assert!(classify_edge("0", "w").posedge);
-    assert!(classify_edge("-", "1").posedge);
-}
-
-#[test]
-fn edge_detection_uses_lsb_only() {
-    let msb_only = classify_edge("0001", "1001");
-    assert!(!msb_only.edge());
-
-    let lsb_flip = classify_edge("1000", "1001");
-    assert!(lsb_flip.posedge);
-}
-
-#[test]
-fn edge_classification_treats_empty_samples_as_no_edge() {
-    assert!(!classify_edge("", "1").edge());
-    assert!(!classify_edge("0", "").edge());
-}
-
 #[test]
 fn stable_kind_aliases_cover_full_inventory() {
     let scope_cases = STABLE_SCOPE_KIND_ALIASES
@@ -1218,98 +1097,6 @@ fn expr_resolution_and_sampling_exercise_real_string_event_paths() {
             .expect_err("non-events cannot be queried as events")
             .to_string()
             .contains("is not a raw event")
-    );
-}
-
-#[test]
-fn candidate_collection_and_time_helpers_exercise_split_paths() {
-    const EXPR_VCD: &str = concat!(
-        "$date\n  today\n$end\n",
-        "$version\n  wavepeek-test\n$end\n",
-        "$timescale 1ns $end\n",
-        "$scope module top $end\n",
-        "$var wire 1 ! sig $end\n",
-        "$var event 1 \" ev $end\n",
-        "$upscope $end\n",
-        "$enddefinitions $end\n",
-        "#0\n",
-        "0!\n",
-        "#5\n",
-        "1!\n",
-        "1\"\n"
-    );
-
-    let fixture = write_fixture(EXPR_VCD, "expr-candidates.vcd");
-    let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
-    let resolved = waveform
-        .resolve_expr_signals(&["top.sig".to_string(), "top.ev".to_string()])
-        .expect("signals should resolve");
-    let candidates = waveform
-        .collect_expr_candidate_times_with_mode(
-            &resolved,
-            0,
-            5,
-            ChangeCandidateCollectionMode::Random,
-        )
-        .expect("candidate collection should succeed");
-    assert_eq!(candidates, vec![0, 5]);
-
-    let empty: Vec<super::ResolvedSignal> = Vec::new();
-    assert!(
-        waveform
-            .collect_change_times_with_mode(&empty, 0, 5, ChangeCandidateCollectionMode::Random)
-            .expect("empty signal list should short-circuit")
-            .is_empty()
-    );
-
-    assert!(
-        waveform
-            .collect_change_times_with_mode(
-                &[super::ResolvedSignal {
-                    path: "top.sig".to_string(),
-                    id: resolved[0].id,
-                    width: 1,
-                }],
-                0,
-                5,
-                ChangeCandidateCollectionMode::Stream,
-            )
-            .expect_err("forcing stream mode on VCD should fail")
-            .to_string()
-            .contains("forced stream candidate collection")
-    );
-    assert!(
-        waveform
-            .collect_expr_candidate_times_with_mode(
-                &resolved,
-                9,
-                1,
-                ChangeCandidateCollectionMode::Random
-            )
-            .unwrap()
-            .is_empty()
-    );
-    assert!(
-        waveform
-            .collect_expr_candidate_times_with_mode(
-                &resolved,
-                6,
-                9,
-                ChangeCandidateCollectionMode::Random
-            )
-            .unwrap()
-            .is_empty()
-    );
-    assert_eq!(
-        waveform
-            .collect_expr_candidate_times_with_mode(
-                &resolved,
-                1,
-                9,
-                ChangeCandidateCollectionMode::Random
-            )
-            .unwrap(),
-        vec![5]
     );
 }
 
@@ -1681,7 +1468,7 @@ fn unpacked_array_names_preserve_public_scope_components() {
 }
 
 #[test]
-fn cached_event_payload_remains_available_between_occurrences() {
+fn event_payload_remains_available_between_occurrences() {
     let fixture = write_fixture(
         include_str!("../../tests/fixtures/hand/change_property_events.vcd"),
         "event-payload.vcd",
@@ -1694,9 +1481,6 @@ fn cached_event_payload_remains_available_between_occurrences() {
             .as_deref(),
         Some("")
     );
-    waveform
-        .preload_resolved_value_changes(&resolved, 0, 25)
-        .unwrap();
     assert_eq!(
         waveform.sample_resolved_optional(&resolved, 9).unwrap()[0]
             .bits
@@ -1790,6 +1574,14 @@ fn write_fixture(contents: &str, filename: &str) -> NamedTempFile {
 
 #[test]
 fn common_composition_and_slices_preserve_partial_and_all_missing() {
+    use std::cell::RefCell;
+    use std::ops::ControlFlow;
+    use std::rc::Rc;
+
+    use crate::expr::ExpressionHost;
+    use crate::waveform::expr_host::WaveformExprHost;
+    use crate::waveform::expr_query::{ExpressionQuery, ExpressionQueryTick};
+
     let fixture = write_fixture(
         "$timescale 1ns $end\n$scope module top $end\n$var wire 4 ! bus [7:4] $end\n$var wire 4 \" bus [3:0] $end\n$var wire 4 # asc [0:3] $end\n$var wire 4 $ asc [4:7] $end\n$upscope $end\n$enddefinitions $end\n#0\n#5\nb0110 \"\nb1100 #\n#10\nb1010 !\nb0011 $\n#15\nbxxxx !\n",
         "composition-missing.vcd",
@@ -1844,20 +1636,30 @@ fn common_composition_and_slices_preserve_partial_and_all_missing() {
             label: None
         }
     );
+    let waveform = Rc::new(RefCell::new(waveform));
+    let binding = WaveformExprHost::from_shared(waveform.clone());
+    let bus = binding.resolve_signal("top.bus").unwrap();
+    let query = ExpressionQuery::new(&binding, &[bus], &[]).unwrap();
+    let mut samples = Vec::new();
     waveform
-        .preload_resolved_value_changes(&resolved, 0, 15)
+        .borrow_mut()
+        .query_expressions(&query, 5..=15, false, |host, tick| {
+            let ExpressionQueryTick::Candidate(time) = tick else {
+                panic!("unexpected initial state")
+            };
+            samples.push((time, host.sample_value(bus, time).unwrap()));
+            Ok(ControlFlow::Continue(()))
+        })
         .unwrap();
     assert_eq!(
-        waveform.sample_resolved_optional(&resolved, 5).unwrap()[1]
-            .bits
-            .as_deref(),
-        Some("xxxx")
-    );
-    assert_eq!(
-        waveform
-            .collect_change_times(&resolved[..1], 0, 15)
-            .unwrap(),
-        [5, 10, 15]
+        samples,
+        [(5, "xxxx0110"), (10, "10100110"), (15, "xxxx0110")].map(|(time, bits)| (
+            time,
+            crate::expr::SampledValue::Integral {
+                bits: Some(bits.into()),
+                label: None,
+            }
+        ))
     );
 }
 
@@ -1981,7 +1783,6 @@ fn batch_samples_preserve_aliases_projections_and_composition_missing() {
     assert_eq!(rows[2][1].bits.as_deref(), Some("xx01"));
     assert_eq!(rows[2][4].bits.as_deref(), Some("xxxx"));
     assert_eq!(rows[4][0].bits.as_deref(), Some("xxxx0110"));
-    assert!(backend.traces.is_empty());
     assert!(
         backend
             .sample_resolved_optional_at_times(&resolved, &[])
@@ -1997,7 +1798,7 @@ fn batch_samples_preserve_aliases_projections_and_composition_missing() {
 }
 
 #[test]
-fn saved_trace_samples_match_source_at_window_and_event_boundaries() {
+fn point_and_batch_samples_preserve_window_and_event_boundaries() {
     let fixture = write_fixture(
         concat!(
             "$timescale 1ns $end\n$scope module top $end\n",
@@ -2020,23 +1821,12 @@ fn saved_trace_samples_match_source_at_window_and_event_boundaries() {
             .success()
     );
     for path in [fixture.path(), fst.as_path()] {
-        let mut saved = OndasBackend::open(path).unwrap();
+        let mut point = OndasBackend::open(path).unwrap();
         let mut direct = OndasBackend::open(path).unwrap();
         let paths = ["top.state", "top.delayed", "top.tick", "top.never"].map(String::from);
-        let resolved = saved.resolve_signals(&paths).unwrap();
+        let resolved = point.resolve_signals(&paths).unwrap();
         let direct_resolved = direct.resolve_signals(&paths).unwrap();
-        saved
-            .preload_resolved_value_changes(&resolved, 6, 12)
-            .unwrap();
-        let trace = &saved.traces[&resolved[0].id];
-        for time in [5, 13] {
-            assert!(matches!(
-                trace.sample(ondas::Time::from_ticks(time)),
-                Err(ondas::Error::TraceCoverage { .. })
-            ));
-            assert!(saved.cached_value(resolved[0].id, time).unwrap().is_none());
-        }
-        let event = saved.resolve_expr_signal("top.tick").unwrap();
+        let event = point.resolve_expr_signal("top.tick").unwrap();
         let direct_event = direct.resolve_expr_signal("top.tick").unwrap();
         let times = [12, 6, 9, 10, 11, 6, 4, 5, 13, 20, 25, 30];
         let batch = direct
@@ -2048,70 +1838,31 @@ fn saved_trace_samples_match_source_at_window_and_event_boundaries() {
                 .unwrap();
             assert_eq!(batch_row, expected);
             assert_eq!(
-                saved.sample_resolved_optional(&resolved, time).unwrap(),
+                point.sample_resolved_optional(&resolved, time).unwrap(),
                 expected,
                 "{} at {time}",
                 path.display()
             );
             assert_eq!(
-                saved.expr_event_occurred(&event, time).unwrap(),
+                point.expr_event_occurred(&event, time).unwrap(),
                 direct.expr_event_occurred(&direct_event, time).unwrap()
             );
             assert_eq!(
-                saved.expr_event_occurred(&event, time).unwrap(),
+                point.expr_event_occurred(&event, time).unwrap(),
                 [5, 10, 20].contains(&time)
             );
         }
-        let quiet = saved.sample_resolved_optional(&resolved, 6).unwrap();
+        let quiet = point.sample_resolved_optional(&resolved, 6).unwrap();
         assert_eq!(quiet[0].bits.as_deref(), Some("1"));
         assert_eq!(quiet[1].bits.as_deref(), Some("x"));
         assert_eq!(
-            saved.sample_resolved_optional(&resolved, 30).unwrap()[0]
+            point.sample_resolved_optional(&resolved, 30).unwrap()[0]
                 .bits
                 .as_deref(),
             Some("1")
         );
-        if path == fixture.path() {
-            assert!(matches!(
-                saved.cached_value(resolved[3].id, 9).unwrap(),
-                Some(None)
-            ));
-        }
-        let other = saved.resolve_signals(&["top.other".into()]).unwrap();
-        saved.sample_resolved_optional(&other, 9).unwrap();
-        assert_eq!(saved.traces.len(), 4);
-        assert!(!saved.traces.contains_key(&other[0].id));
-    }
-}
-
-#[test]
-fn candidate_window_does_not_preload_unrequested_sample_histories() {
-    let source = write_fixture(TEST_VCD, "explicit-history.vcd");
-    let dir = tempfile::tempdir().unwrap();
-    let fst = dir.path().join("explicit-history.fst");
-    assert!(
-        Command::new("vcd2fst")
-            .arg(source.path())
-            .arg(&fst)
-            .status()
-            .unwrap()
-            .success()
-    );
-    for path in [source.path(), fst.as_path()] {
-        let mut backend = OndasBackend::open(path).unwrap();
-        let clock = backend.resolve_signals(&["top.clk".into()]).unwrap();
-        let data = backend.resolve_signals(&["top.data".into()]).unwrap();
-        backend
-            .collect_change_times_with_mode(&clock, 1, 10, ChangeCandidateCollectionMode::Auto)
-            .unwrap();
-        assert_eq!(backend.traces.len(), 1);
-        assert_eq!(
-            backend.sample_resolved_optional(&data, 9).unwrap()[0]
-                .bits
-                .as_deref(),
-            Some("00000000")
-        );
-        assert_eq!(backend.traces.len(), 1);
-        assert!(!backend.traces.contains_key(&data[0].id));
+        assert_eq!(quiet[3].bits, None);
+        let other = point.resolve_signals(&["top.other".into()]).unwrap();
+        point.sample_resolved_optional(&other, 9).unwrap();
     }
 }

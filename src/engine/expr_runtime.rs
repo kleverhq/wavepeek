@@ -13,8 +13,10 @@ use crate::expr::{
     ExpressionHost, SampledValue, SignalHandle, bind_event_expr_ast, bind_logical_expr_ast,
     eval_logical_expr_at, event_matches_at, parse_event_expr_ast, parse_logical_expr_ast,
 };
+#[cfg(test)]
+use crate::waveform::ExprResolvedSignal;
+use crate::waveform::Waveform;
 use crate::waveform::expr_host::{RuntimeExpressionHost, WaveformExprHost};
-use crate::waveform::{ExprResolvedSignal, Waveform};
 
 pub(crate) type SharedWaveform = Rc<RefCell<Waveform>>;
 
@@ -205,6 +207,7 @@ pub(crate) fn event_expr_is_edge_only(expr: &BoundEventExpr) -> bool {
         })
 }
 
+#[cfg(test)]
 pub(crate) fn candidate_sources_for_handles(
     host: &WaveformExprHost,
     handles: &[SignalHandle],

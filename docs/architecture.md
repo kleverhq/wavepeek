@@ -53,7 +53,7 @@ Key architectural consequences:
 - Execution is stateless. Every command opens the dump and runs once; the native wrapper exits, while the browser worker returns stdout, stderr, and status. The plain-JavaScript terminal keeps only in-tab command navigation and a bounded newest-first visible transcript.
 - Local preview composes the separately generated current Playground and documentation under `/wavepeek/` and `/wavepeek/latest/`; production uses the same paths while Mike retains historical documentation versions.
 - Shared `src/logic.rs` defines four-state interpretation for expressions, edges and bit-output sampling. Renderers consume normalized samples; raw expression samples and enum keys retain their original states.
-- Ondas owns format-specific reading and optional native reader access behind the waveform facade. Transitional range-engine policies are listed below.
+- Ondas owns format-specific reading and optional native reader access behind the waveform facade. The range engines share the expression query adapter.
 - The lazy hierarchy index keys scopes and declarations by exact Ondas component paths. Direct lookup uses the same components without building a second full index. Confirmed contiguous declaration ranges define Ondas concatenations; samples, traces, and projections use their common signal handles. Quoted canonical paths are formatted for output and parsed by selections and expressions.
 - `value` submits all selected signals to one Ondas point query for a single requested time, or one `samples_at` query for multiple times. Both paths preserve request order and duplicates. Expression and range consumers use explicit saved traces when covered and otherwise request point samples from Ondas. Saved values are looked up through `Trace::sample`; point reads do not preload histories by format.
 - `property` binds drivers, guards and evaluation operands into one ordered Ondas selection. It evaluates candidates during `Selection::query`; a callback host reads only completed `t` and absolute `t - 1`. Transition captures first sample the window start once to establish their baseline, including quiet windows.
@@ -193,18 +193,15 @@ Non-fatal diagnostics do not change the exit code.
 
 ## Transitional Range Access
 
-The waveform facade retains explicit `preload_expr_value_changes`,
-`preload_resolved_value_changes`, and candidate-time
-collection during the query migration. Their saved traces and candidate grids
-belong to one command's `Waveform`.
+Production range engines use the shared expression query adapter. AHB queries
+from dump start through the upper bound to preserve pipeline warmup before the
+output range. Protocol state belongs to its walker; sampled values belong to one
+callback. No engine saves candidate grids or preloads histories by format.
 
-Production use is limited to AHB warm-up and transaction tracking. Paths with
-explicit preloads retain their histories. Generic `extract` and its
-APB/ATB/AXI/AXIS adapters sample operands within query callbacks, without
-reentering waveform point queries or saving candidate grids.
-
-Multi-expression lookup and `collect_change_times` wrappers remain for tests.
-The AHB migration and final cleanup retire the remaining transitional interfaces.
+The named `preload_resolved_value_changes`, expression candidate collection, and
+previous-sample wrappers are test-only. Multi-expression lookup and
+`collect_change_times` remain to support tests. Internal trace/preload machinery
+still compiles in production; final cleanup retires the transitional interfaces.
 
 ## `change` Command Execution Architecture
 
@@ -230,7 +227,7 @@ same output pattern for captured rows.
 
 ## Protocol Extraction Architecture
 
-`src/engine/axi.rs` maps supported AXI-family profiles and ready/valid channels into the protocol-neutral runtime in `src/engine/extract.rs`. `src/engine/ahb.rs` is a dedicated stateful walker because an accepted AHB address phase completes on a later edge, can remain pending across wait states, and requires warm-up before a lower time bound. The stateless adapters use the generic extraction query; AHB retains its separate candidate and preload path until its migration. Both engines use the shared waveform facade, pre-edge sampling model, time/limit helpers, contract DTOs, and output sinks; they do not share a speculative protocol framework.
+`src/engine/axi.rs` maps supported AXI-family profiles and ready/valid channels into the protocol-neutral runtime in `src/engine/extract.rs`. `src/engine/ahb.rs` is a dedicated stateful walker because an accepted AHB address phase completes on a later edge, can remain pending across wait states, and requires warm-up before a lower time bound. The stateless adapters use the generic extraction query; AHB binds the clock and mapped fields into one query. Clock candidates must pass a rising-edge check on completed `t` and absolute `t - 1`; mapped fields are sampled at `t - 1`. Its walker warms up from dump start, preserves pending phases and reset state across callbacks, and records the initial data phase before in-range edges. Quiet windows retain that context without synthetic edges. Both engines use the shared waveform facade, pre-edge sampling model, time/limit helpers, contract DTOs, and output sinks; they do not share a speculative protocol framework.
 
 ## Testing Strategy
 

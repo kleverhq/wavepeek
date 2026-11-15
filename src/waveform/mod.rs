@@ -221,6 +221,7 @@ impl Waveform {
             .collect()
     }
 
+    #[cfg(test)]
     pub fn previous_sample_time(&self, raw_time: u64) -> Option<u64> {
         self.backend.previous_sample_time(raw_time)
     }
@@ -499,16 +500,7 @@ impl Waveform {
         None
     }
 
-    pub(crate) fn preload_expr_value_changes(
-        &mut self,
-        resolved: &[ExprResolvedSignal],
-        from_raw: u64,
-        to_raw: u64,
-    ) -> Result<(), WavepeekError> {
-        self.backend
-            .preload_expr_value_changes(resolved, from_raw, to_raw)
-    }
-
+    #[cfg(test)]
     pub(crate) fn preload_resolved_value_changes(
         &mut self,
         resolved: &[ResolvedSignal],
@@ -545,6 +537,7 @@ impl Waveform {
             .collect_change_times_with_mode(resolved, from_raw, to_raw, mode)
     }
 
+    #[cfg(test)]
     pub(crate) fn collect_expr_candidate_times_with_mode(
         &mut self,
         resolved: &[ExprResolvedSignal],

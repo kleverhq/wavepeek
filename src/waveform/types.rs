@@ -1,25 +1,5 @@
 use crate::expr::ExprType;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct SignalId(u64);
-
-impl SignalId {
-    #[inline]
-    pub(in crate::waveform) fn from_backend_index(index: u64) -> Self {
-        Self(index)
-    }
-
-    #[cfg(test)]
-    pub(crate) fn from_test_index(index: u64) -> Self {
-        Self(index)
-    }
-
-    #[inline]
-    pub(in crate::waveform) fn as_u64(self) -> u64 {
-        self.0
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WaveformMetadata {
     pub time_unit: String,
@@ -67,14 +47,14 @@ pub struct SampledSignalState {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedSignal {
     pub path: String,
-    pub id: SignalId,
+    pub signal: ondas::Signal,
     pub width: u32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ExprResolvedSignal {
     pub path: String,
-    pub id: SignalId,
+    pub signal: ondas::Signal,
     pub expr_type: ExprType,
 }
 

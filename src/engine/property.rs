@@ -182,7 +182,7 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
     let (host, bound_event) =
         bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), event_expr_source)?;
     validate_sample_mode(args.sample_mode, &bound_event)?;
-    let bound_eval = bind_waveform_logical_expr(&host, args.scope.as_deref(), args.eval.as_str())?;
+    let bound_eval = bind_waveform_logical_expr(&host, args.eval.as_str())?;
     debug.event("expression.bind.done", || serde_json::json!({}));
     let eval_signal_handles = referenced_signal_handles(&bound_eval);
 

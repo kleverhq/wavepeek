@@ -1603,3 +1603,53 @@ fn property_query_binds_dynamic_selection_operands_in_both_sample_modes() {
         assert_eq!(actual, times);
     }
 }
+
+#[test]
+fn property_exact_indexed_lookup_never_masks_ambiguity_with_a_bit_select() {
+    for (declarations, values, expected_rows) in [
+        (
+            "$var wire 1 # bus[0] $end\n$var wire 1 $ bus[0] $end\n",
+            "1#\n0$\n",
+            None,
+        ),
+        ("$var wire 1 # bus[0] $end\n", "1#\n", Some(1)),
+        ("", "", Some(0)),
+    ] {
+        let source = format!(
+            "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var wire 2 \" bus $end\n{declarations}$upscope $end\n$enddefinitions $end\n#0\n0!\nb00 \"\n{values}#5\n1!\n"
+        );
+        let fixture = write_fixture(&source, ".vcd");
+        for scope in [Some("top"), None] {
+            let mut command = wavepeek_cmd();
+            command.args([
+                "property",
+                "--waves",
+                fixture.path().to_str().unwrap(),
+                "--on",
+                "posedge top.clk",
+                "--sample-mode",
+                "native",
+                "--capture",
+                "match",
+                "--json",
+            ]);
+            if let Some(scope) = scope {
+                command.args(["--scope", scope, "--eval", "bus[0] == 1"]);
+            } else {
+                command.args(["--eval", "top.bus[0] == 1"]);
+            }
+            let output = command.output().unwrap();
+            assert!(output.stderr.is_empty());
+            let result = parse_json(&output.stdout);
+            if let Some(rows) = expected_rows {
+                assert!(output.status.success(), "{result}");
+                assert_eq!(result["data"].as_array().unwrap().len(), rows);
+            } else {
+                assert_eq!(output.status.code(), Some(1));
+                assert_eq!(result["type"], "fatal");
+                assert_eq!(result["code"], "WPK-F0005");
+                assert!(result["message"].as_str().unwrap().contains("ambiguous"));
+            }
+        }
+    }
+}

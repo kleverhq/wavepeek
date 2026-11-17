@@ -106,19 +106,17 @@ impl ExpressionHost for WaveformExprHost {
             return Ok(handle);
         }
 
-        let query_name = self
-            .scope
-            .as_deref()
-            .and_then(|scope| name.strip_prefix(scope))
-            .and_then(|name| name.strip_prefix('.'))
-            .unwrap_or(name);
         let resolved = self
             .waveform
             .borrow()
-            .resolve_expr_signal_with_diagnostic(name, query_name, self.scope.as_deref())
+            .resolve_expr_signal_with_diagnostic(name, self.scope.as_deref())
             .map_err(|error| ExprDiagnostic {
                 layer: DiagnosticLayer::Semantic,
-                code: "HOST-UNKNOWN-SIGNAL",
+                code: if matches!(error, WavepeekError::SignalNotFound(_)) {
+                    "HOST-UNKNOWN-SIGNAL"
+                } else {
+                    "HOST-SIGNAL-ERROR"
+                },
                 message: error.to_string(),
                 primary_span: Span::new(0, 0),
                 notes: vec![],
@@ -331,5 +329,59 @@ mod tests {
         let fixture = NamedTempFile::with_suffix(suffix).expect("temp fixture should create");
         fs::write(fixture.path(), contents).expect("fixture should write");
         fixture
+    }
+}
+
+#[cfg(test)]
+mod selector_binding_tests {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    use super::WaveformExprHost;
+    use crate::expr::{
+        ExprValuePayload, bind_logical_expr_ast, eval_logical_expr_at, parse_logical_expr_ast,
+    };
+    use crate::waveform::Waveform;
+
+    #[test]
+    fn exact_indexed_declarations_are_terminal_or_take_priority_over_expression_bits() {
+        for (declarations, expected) in [
+            (
+                "$var wire 1 # bus[0] $end\n$var wire 1 $ bus[0] $end\n",
+                None,
+            ),
+            ("$var wire 1 # bus[0] $end\n", Some("1")),
+            ("", Some("0")),
+        ] {
+            let source = format!(
+                "$timescale 1ns $end\n$scope module top $end\n$var wire 2 ! bus $end\n{declarations}$upscope $end\n$enddefinitions $end\n#0\nb00 !\n1#\n0$\n"
+            );
+            // Only write value records for declarations present in this input.
+            let source = if declarations.is_empty() {
+                source.replace("1#\n0$\n", "")
+            } else if expected.is_some() {
+                source.replace("0$\n", "")
+            } else {
+                source
+            };
+            let file = tempfile::NamedTempFile::with_suffix(".vcd").unwrap();
+            std::fs::write(file.path(), source).unwrap();
+            for (scope, operand) in [(Some("top"), "bus[0]"), (None, "top.bus[0]")] {
+                let waveform = Rc::new(RefCell::new(Waveform::open(file.path()).unwrap()));
+                let host = WaveformExprHost::from_shared_scoped(waveform, scope);
+                let ast = parse_logical_expr_ast(operand).unwrap();
+                let bound = bind_logical_expr_ast(&ast, &host);
+                if let Some(expected) = expected {
+                    let value = eval_logical_expr_at(&bound.unwrap(), &host, 0).unwrap();
+                    assert!(
+                        matches!(value.payload, ExprValuePayload::Integral { ref bits, .. } if bits == expected)
+                    );
+                } else {
+                    let error = bound.unwrap_err();
+                    assert_eq!(error.code, "HOST-SIGNAL-ERROR");
+                    assert!(error.message.contains("ambiguous"));
+                }
+            }
+        }
     }
 }

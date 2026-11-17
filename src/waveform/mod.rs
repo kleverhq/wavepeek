@@ -23,7 +23,7 @@ use crate::error::WavepeekError;
 use crate::expr::SampledValue;
 
 #[cfg(test)]
-pub(crate) use types::{EXCLUDED_SCOPE_KIND_ALIASES, EXCLUDED_SIGNAL_KIND_ALIASES, SignalId};
+pub(crate) use types::{EXCLUDED_SCOPE_KIND_ALIASES, EXCLUDED_SIGNAL_KIND_ALIASES};
 
 pub(crate) use types::{
     ExprResolvedSignal, ResolvedSignal, STABLE_SCOPE_KIND_ALIASES, STABLE_SIGNAL_KIND_ALIASES,
@@ -227,129 +227,64 @@ impl Waveform {
         self.backend.resolve_signals(canonical_paths)
     }
 
-    pub(crate) fn project_signal(
+    pub(crate) fn resolve_signal_with_diagnostic(
         &self,
-        source: &ResolvedSignal,
-        msb: u32,
-        lsb: u32,
-    ) -> Result<ResolvedSignal, WavepeekError> {
-        self.backend.project_signal(source, msb, lsb)
-    }
-
-    pub(crate) fn prepare_value_signals(&self, canonical_paths: &[String]) {
-        self.backend.prepare_value_signals(canonical_paths);
-    }
-
-    pub(crate) fn resolve_signals_with_diagnostics(
-        &self,
-        canonical_paths: &[String],
-        query_names: &[String],
-        scope: Option<&str>,
-    ) -> Result<Vec<ResolvedSignal>, WavepeekError> {
-        self.resolve_signals_with_diagnostic_depth(canonical_paths, query_names, scope, true)
-    }
-
-    pub(crate) fn resolve_local_signal_with_diagnostic(
-        &self,
-        canonical_path: &String,
-        query_name: &String,
-        scope: Option<&str>,
-    ) -> Result<ResolvedSignal, WavepeekError> {
-        self.resolve_signals_with_diagnostic_depth(
-            std::slice::from_ref(canonical_path),
-            std::slice::from_ref(query_name),
-            scope,
-            false,
-        )?
-        .into_iter()
-        .next()
-        .ok_or_else(|| WavepeekError::Internal("signal resolution returned no result".to_string()))
-    }
-
-    fn resolve_signals_with_diagnostic_depth(
-        &self,
-        canonical_paths: &[String],
-        query_names: &[String],
+        selector: &str,
         scope: Option<&str>,
         recursive: bool,
-    ) -> Result<Vec<ResolvedSignal>, WavepeekError> {
-        if canonical_paths.len() != query_names.len() {
-            return Err(WavepeekError::Internal(
-                "signal query names do not match canonical paths".to_string(),
-            ));
-        }
-
-        match self.resolve_signals(canonical_paths) {
-            Ok(resolved) => Ok(resolved),
-            Err(_) => {
-                for (canonical_path, query_name) in canonical_paths.iter().zip(query_names) {
-                    if let Err(error) = self.resolve_signals(std::slice::from_ref(canonical_path)) {
-                        return Err(self.missing_signal_diagnostic(
-                            canonical_path,
-                            query_name,
-                            scope,
-                            SignalLookupKind::Direct,
-                            recursive,
-                            error,
-                        ));
-                    }
-                }
-                Err(WavepeekError::Internal(
-                    "bulk signal resolution failed after individual lookups succeeded".to_string(),
-                ))
-            }
-        }
+    ) -> Result<ResolvedSignal, WavepeekError> {
+        self.backend
+            .resolve_signal(selector, scope)
+            .map_err(|error| {
+                self.missing_signal_diagnostic(
+                    selector,
+                    scope,
+                    SignalLookupKind::Direct,
+                    recursive,
+                    error,
+                )
+            })
     }
 
     pub(crate) fn resolve_expr_signal(
         &self,
         canonical_path: &str,
     ) -> Result<ExprResolvedSignal, WavepeekError> {
-        self.backend.resolve_expr_signal(canonical_path)
+        self.backend.resolve_expr_signal(canonical_path, None)
     }
 
     pub(crate) fn resolve_expr_signal_with_diagnostic(
         &self,
-        canonical_path: &str,
-        query_name: &str,
+        selector: &str,
         scope: Option<&str>,
     ) -> Result<ExprResolvedSignal, WavepeekError> {
-        self.resolve_expr_signal(canonical_path).map_err(|error| {
-            self.missing_signal_diagnostic(
-                canonical_path,
-                query_name,
-                scope,
-                SignalLookupKind::Expression,
-                true,
-                error,
-            )
-        })
+        self.backend
+            .resolve_expr_signal(selector, scope)
+            .map_err(|error| {
+                self.missing_signal_diagnostic(
+                    selector,
+                    scope,
+                    SignalLookupKind::Expression,
+                    true,
+                    error,
+                )
+            })
     }
 
     fn missing_signal_diagnostic(
         &self,
-        canonical_path: &str,
         query_name: &str,
         scope: Option<&str>,
         kind: SignalLookupKind,
         recursive: bool,
         original: WavepeekError,
     ) -> WavepeekError {
+        if !matches!(original, WavepeekError::SignalNotFound(_)) {
+            return original;
+        }
         let Ok(listing) = self.signal_candidates(scope, recursive) else {
             return original;
         };
-        if listing
-            .entries
-            .iter()
-            .any(|entry| entry.path == canonical_path)
-            || listing
-                .omitted_ambiguous_paths
-                .iter()
-                .any(|path| path == canonical_path)
-        {
-            return original;
-        }
-
         let basename = query_name.rsplit('.').next().unwrap_or(query_name);
         let basename_chars = basename.chars().collect::<Vec<_>>();
         let max_distance = if basename_chars.len() <= 3 { 1 } else { 2 };
@@ -393,7 +328,7 @@ impl Waveform {
         } else {
             format!("closest query names:\n  {}", suggestions.join("\n  "))
         };
-        WavepeekError::Signal(format!("{location}\n{detail}"))
+        WavepeekError::SignalNotFound(format!("{location}\n{detail}"))
     }
 
     fn signal_candidate_is_resolvable(&self, path: &String, kind: SignalLookupKind) -> bool {
@@ -401,16 +336,9 @@ impl Waveform {
             return false;
         };
         match kind {
-            SignalLookupKind::Direct => {
-                self.resolve_signals(std::slice::from_ref(path)).is_ok()
-                    && self.validate_direct_value_supported(path).is_ok()
-            }
+            SignalLookupKind::Direct => self.resolve_signals(std::slice::from_ref(path)).is_ok(),
             SignalLookupKind::Expression => true,
         }
-    }
-
-    fn validate_direct_value_supported(&self, path: &str) -> Result<(), WavepeekError> {
-        self.backend.validate_direct_value_supported(path)
     }
 
     fn signal_candidates(

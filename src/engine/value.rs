@@ -2,15 +2,14 @@ use serde::Serialize;
 
 use crate::cli::value::ValueArgs;
 use crate::debug_trace::DebugTrace;
-use crate::engine::signal_projection::{ProjectedSignal, resolve_projected_signal};
 use crate::engine::time::{
     DumpTimeContext, TimeValidationError, format_raw_timestamp, parse_dump_time_context,
     validate_time_token_to_raw,
 };
 use crate::engine::value_format::format_verilog_literal;
-use crate::engine::{CommandData, CommandName, CommandResult, scoped_signal_path};
+use crate::engine::{CommandData, CommandName, CommandResult};
 use crate::error::WavepeekError;
-use crate::waveform::{SampledSignalState, Waveform, WaveformMetadata, display_signal_path};
+use crate::waveform::{ResolvedSignal, Waveform, WaveformMetadata, display_signal_path};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ValueSignalValue {
@@ -29,11 +28,6 @@ pub struct ValueSnapshot {
 }
 
 pub type ValueData = Vec<ValueSnapshot>;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct RequestedSignal {
-    selected: ProjectedSignal,
-}
 
 pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
     let debug = DebugTrace::for_command(CommandName::Value);
@@ -61,24 +55,13 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
         || serde_json::json!({"times": query_times_raw.len()}),
     );
 
-    let sources = requested_signals
-        .iter()
-        .map(|signal| signal.selected.source.clone())
-        .collect::<Vec<_>>();
     let mut snapshots = Vec::with_capacity(query_times_raw.len());
 
-    let sampled_rows = waveform.sample_resolved_at_times(&sources, &query_times_raw)?;
+    let sampled_rows = waveform.sample_resolved_at_times(&requested_signals, &query_times_raw)?;
     for (query_time_raw, sampled) in query_times_raw.into_iter().zip(sampled_rows) {
-        let signals = requested_signals
-            .iter()
-            .zip(sampled)
-            .map(|(requested, sampled)| {
-                let sampled = requested.selected.project_sample(SampledSignalState {
-                    path: sampled.path,
-                    width: sampled.width,
-                    bits: Some(sampled.bits),
-                });
-                let bits = sampled.bits.expect("value sampling always returns bits");
+        let signals = sampled
+            .into_iter()
+            .map(|sampled| {
                 let display =
                     display_signal_path(sampled.path.as_str(), args.scope.as_deref()).to_string();
                 let relative_path = if (args.json || args.jsonl) && args.scope.is_some() {
@@ -86,14 +69,14 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
                 } else {
                     None
                 };
-                Ok(ValueSignalValue {
+                ValueSignalValue {
                     display,
                     path: sampled.path,
                     relative_path,
-                    value: format_verilog_literal(sampled.width, bits.as_str()),
-                })
+                    value: format_verilog_literal(sampled.width, &sampled.bits),
+                }
             })
-            .collect::<Result<Vec<_>, WavepeekError>>()?;
+            .collect();
 
         snapshots.push(ValueSnapshot {
             time: format_raw_timestamp(query_time_raw, dump_time.dump_tick)?,
@@ -103,7 +86,7 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
     debug.event("value.sample.done", || {
         serde_json::json!({
             "snapshots": snapshots.len(),
-            "signals": sources.len(),
+            "signals": requested_signals.len(),
         })
     });
 
@@ -154,16 +137,9 @@ fn resolve_requested_signals(
     waveform: &Waveform,
     scope: Option<&str>,
     args: &ValueArgs,
-) -> Result<Vec<RequestedSignal>, WavepeekError> {
+) -> Result<Vec<ResolvedSignal>, WavepeekError> {
     if let Some(scope) = scope {
         waveform.signals_in_scope(scope)?;
-    } else if args.signals.len() > 1 {
-        let paths = args
-            .signals
-            .iter()
-            .map(|token| scoped_signal_path(token.trim(), None))
-            .collect::<Vec<_>>();
-        waveform.prepare_value_signals(&paths);
     }
 
     let mut resolved = Vec::with_capacity(args.signals.len());
@@ -176,9 +152,7 @@ fn resolve_requested_signals(
             ));
         }
 
-        resolved.push(RequestedSignal {
-            selected: resolve_projected_signal(waveform, display, scope)?,
-        });
+        resolved.push(waveform.resolve_signal_with_diagnostic(display, scope, true)?);
     }
 
     Ok(resolved)
@@ -258,7 +232,7 @@ mod tests {
             },
         )
         .expect("scoped signals should resolve");
-        assert_eq!(resolved[0].selected.path, "top.sig");
+        assert_eq!(resolved[0].path, "top.sig");
         assert!(
             resolve_requested_signals(
                 &waveform,

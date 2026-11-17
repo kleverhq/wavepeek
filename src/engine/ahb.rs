@@ -493,7 +493,15 @@ impl EdgeSamples {
 
     #[cfg(test)]
     fn for_test(values: &[(&str, &str)]) -> Self {
-        use crate::waveform::SignalId;
+        let declarations = values
+            .iter()
+            .enumerate()
+            .map(|(index, (_, bits))| {
+                format!("$var wire {} s{index} value{index} $end\n", bits.len())
+            })
+            .collect::<String>();
+        let source = format!("{declarations}$enddefinitions $end\n#0\n");
+        let wave = ondas::open_bytes("frame.vcd", source.into_bytes().into()).unwrap();
 
         let mappings = values
             .iter()
@@ -506,7 +514,7 @@ impl EdgeSamples {
                 },
                 resolved: ResolvedSignal {
                     path: format!("top.{standard}"),
-                    id: SignalId::from_test_index(index as u64),
+                    signal: wave.hierarchy().signal(&format!("value{index}")).unwrap(),
                     width: bits.len() as u32,
                 },
                 handle: SignalHandle(index as u32),
@@ -1216,7 +1224,7 @@ fn parse_cli_maps(values: &[String]) -> Result<Vec<(String, String)>, WavepeekEr
 
 fn normalize_map_pair(standard: &str, waves: &str) -> Result<(String, String), WavepeekError> {
     let standard = normalize_standard_name(standard)?;
-    let waves = crate::engine::scoped_signal_path(waves, None);
+    let waves = crate::engine::signal_token(waves);
     if waves.is_empty() {
         return Err(WavepeekError::Args(
             "AHB mapped waveform signal names must not be empty. See 'wavepeek extract ahb --help'."
@@ -1327,11 +1335,9 @@ fn explicit_mappings(
                 "AHB mapping for '{standard}' must use a scope-relative signal when --scope is set. See 'wavepeek extract ahb --help'."
             )));
         }
-        let query_path = crate::engine::scoped_signal_path(waves, scope);
-        let resolved =
-            waveform
-                .borrow()
-                .resolve_local_signal_with_diagnostic(&query_path, waves, scope)?;
+        let resolved = waveform
+            .borrow()
+            .resolve_signal_with_diagnostic(waves, scope, false)?;
         result.insert(
             standard.clone(),
             AhbSignalMapping {

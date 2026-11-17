@@ -600,7 +600,7 @@ fn duplicate_projection_deduplicates_paths_and_tracks_requested_order() {
 }
 
 #[test]
-fn resolved_signal_ids_are_stable_across_resolution_paths() {
+fn resolved_signal_handles_are_stable_across_resolution_paths() {
     let fixture = write_fixture(TEST_VCD, "sample.vcd");
 
     let waveform = Waveform::open(fixture.path()).expect("fixture should open");
@@ -611,8 +611,8 @@ fn resolved_signal_ids_are_stable_across_resolution_paths() {
         .resolve_expr_signal("top.clk")
         .expect("expression signal should resolve");
 
-    assert_eq!(resolved[0].id, resolved[1].id);
-    assert_eq!(resolved[0].id, expr_resolved.id);
+    assert_eq!(resolved[0].signal, resolved[1].signal);
+    assert_eq!(resolved[0].signal, expr_resolved.signal);
 }
 
 #[test]
@@ -678,23 +678,12 @@ fn fst_queries_share_file_and_byte_loading() {
 }
 
 #[test]
-fn fst_scope_only_does_not_build_full_index() {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/generated/m2_core.fst");
-    let backend = OndasBackend::open(&path).unwrap();
-    let scopes = backend.scopes_depth_first(None).unwrap();
-    assert!(backend.index.get().is_none());
-    assert_eq!(scopes, backend.index().scopes);
-}
-
-#[test]
-fn fst_single_exact_signal_does_not_build_full_index() {
+fn fst_point_handles_remain_valid_after_listing() {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/generated/m2_core.fst");
     let mut backend = OndasBackend::open(&path).unwrap();
     let paths = ["top.clk".to_string()];
     let selected = backend.resolve_signals(&paths).unwrap();
-    assert!(backend.index.get().is_none());
     let sampled = backend.sample_resolved_optional(&selected, 10).unwrap();
-    assert!(backend.index.get().is_none());
 
     let mut full = OndasBackend::open(&path).unwrap();
     full.scopes_depth_first(None).unwrap();
@@ -703,11 +692,8 @@ fn fst_single_exact_signal_does_not_build_full_index() {
 
     let mut selected = selected;
     selected.extend(backend.resolve_signals(&["top.data".to_string()]).unwrap());
-    assert!(backend.index.get().is_none());
     let both = backend.sample_resolved_optional(&selected, 10).unwrap();
-    assert!(backend.index.get().is_none());
     backend.signals_in_scope("top").unwrap();
-    assert!(backend.index.get().is_some());
     assert_eq!(
         backend.sample_resolved_optional(&selected, 10).unwrap(),
         both
@@ -715,13 +701,11 @@ fn fst_single_exact_signal_does_not_build_full_index() {
 }
 
 #[test]
-fn fst_batch_value_selection_keeps_full_index_lazy() {
+fn fst_batch_handles_remain_valid_after_listing() {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/generated/m2_core.fst");
     let mut backend = OndasBackend::open(&path).unwrap();
     let paths = ["top.clk".to_string(), "top.data".to_string()];
-    backend.prepare_value_signals(&paths);
     let resolved = backend.resolve_signals(&paths).unwrap();
-    assert!(backend.index.get().is_none());
     let sampled = backend.sample_resolved_optional(&resolved, 10).unwrap();
     backend.signals_in_scope("top").unwrap();
     assert_eq!(
@@ -754,10 +738,8 @@ fn fst_batch_selects_same_leaf_under_distinct_parents() {
 
     let paths = ["top.left.bit".into(), "top.right.bit".into()];
     let mut batch = OndasBackend::open(&fst).unwrap();
-    batch.prepare_value_signals(&paths);
     let selected = batch.resolve_signals(&paths).unwrap();
-    assert!(batch.index.get().is_none());
-    assert_ne!(selected[0].id, selected[1].id);
+    assert_ne!(selected[0].signal, selected[1].signal);
     let actual = batch.sample_resolved_optional(&selected, 0).unwrap();
 
     let mut full = OndasBackend::open(&fst).unwrap();
@@ -792,17 +774,17 @@ fn fst_point_samples_handle_reverse_and_repeated_times() {
 }
 
 #[test]
-fn fst_array_path_uses_full_index_spelling() {
+fn indexed_names_use_public_exact_path_spelling() {
     let fixture = write_fixture(
         "$timescale 1ns $end\n$scope module top $end\n$var wire 8 ! memory[0] [7:0] $end\n$upscope $end\n$enddefinitions $end\n#0\nb00000001 !\n",
         "array.vcd",
     );
     let wave = ondas::open(fixture.path()).unwrap();
     let variable = wave.hierarchy().variables().next().unwrap();
-    let direct = Some(variable.path().to_string());
-    let full = super::HierarchyIndex::new(wave.hierarchy(), false);
-    assert_eq!(direct.as_deref(), Some(r#"top."memory[0]""#));
-    assert!(full.by_path.contains_key(&variable.path()));
+    let direct = variable.path().to_string();
+    assert_eq!(direct, r#"top."memory[0]""#);
+    let backend = OndasBackend::open(fixture.path()).unwrap();
+    assert_eq!(backend.signals_in_scope("top").unwrap()[0].path, direct);
 }
 
 #[test]
@@ -830,17 +812,15 @@ fn fst_batch_array_alias_remains_ambiguous() {
 }
 
 #[test]
-fn fst_expression_signal_does_not_build_full_index() {
+fn fst_expression_handles_remain_valid_after_listing() {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/generated/m2_core.fst");
     let mut backend = OndasBackend::open(&path).unwrap();
-    let signal = backend.resolve_expr_signal("top.clk").unwrap();
-    assert!(backend.index.get().is_none());
+    let signal = backend.resolve_expr_signal("top.clk", None).unwrap();
     let sampled = backend.sample_expr_value(&signal, 10).unwrap();
-    assert!(backend.index.get().is_none());
 
     let mut full = OndasBackend::open(&path).unwrap();
     full.signals_in_scope("top").unwrap();
-    let expected = full.sample_expr_value(&full.resolve_expr_signal("top.clk").unwrap(), 10);
+    let expected = full.sample_expr_value(&full.resolve_expr_signal("top.clk", None).unwrap(), 10);
     assert_eq!(sampled, expected.unwrap());
 }
 
@@ -1221,7 +1201,10 @@ fn helper_functions_exercise_invalid_paths_and_timescales() {
     let backend = OndasBackend::open(fixture.path()).expect("fixture should open");
     for path in ["", "top."] {
         assert_eq!(
-            backend.resolve_expr_signal(path).unwrap_err().exit_code(),
+            backend
+                .resolve_expr_signal(path, None)
+                .unwrap_err()
+                .exit_code(),
             1
         );
     }
@@ -1591,8 +1574,14 @@ fn common_composition_and_slices_preserve_partial_and_all_missing() {
         .resolve_signals(&["top.bus".into()])
         .unwrap()
         .remove(0);
-    let high = waveform.project_signal(&bus, 7, 4).unwrap();
-    let cross = waveform.project_signal(&bus, 5, 2).unwrap();
+    let high = waveform
+        .resolve_signals(&["top.bus[7:4]".into()])
+        .unwrap()
+        .remove(0);
+    let cross = waveform
+        .resolve_signals(&["top.bus[5:2]".into()])
+        .unwrap()
+        .remove(0);
     let asc = waveform
         .resolve_signals(&["top.asc".into()])
         .unwrap()
@@ -1671,7 +1660,6 @@ fn listing_include_and_direct_lookup_share_exact_declarations_and_alias_history(
     );
     let mut backend = OndasBackend::open(fixture.path()).unwrap();
     let entries = backend.matching_signals(|_, _| true);
-    assert!(backend.index.get().is_none());
     assert_eq!(entries.len(), 4);
     for entry in entries {
         let found = backend.matching_signals(|path, _| path == entry.path);
@@ -1679,8 +1667,8 @@ fn listing_include_and_direct_lookup_share_exact_declarations_and_alias_history(
         let signals = backend
             .resolve_signals(std::slice::from_ref(&entry.path))
             .unwrap();
-        let expr = backend.resolve_expr_signal(&entry.path).unwrap();
-        assert_eq!(signals[0].id, expr.id);
+        let expr = backend.resolve_expr_signal(&entry.path, None).unwrap();
+        assert_eq!(signals[0].signal, expr.signal);
         assert_eq!(
             backend.sample_resolved_optional(&signals, 0).unwrap()[0]
                 .bits
@@ -1695,7 +1683,7 @@ fn listing_include_and_direct_lookup_share_exact_declarations_and_alias_history(
     let aliases = backend
         .resolve_signals(&[r#""root.name""#.into(), "top.alias".into()])
         .unwrap();
-    assert_eq!(aliases[0].id, aliases[1].id);
+    assert_eq!(aliases[0].signal, aliases[1].signal);
 }
 
 #[test]
@@ -1826,8 +1814,8 @@ fn point_and_batch_samples_preserve_window_and_event_boundaries() {
         let paths = ["top.state", "top.delayed", "top.tick", "top.never"].map(String::from);
         let resolved = point.resolve_signals(&paths).unwrap();
         let direct_resolved = direct.resolve_signals(&paths).unwrap();
-        let event = point.resolve_expr_signal("top.tick").unwrap();
-        let direct_event = direct.resolve_expr_signal("top.tick").unwrap();
+        let event = point.resolve_expr_signal("top.tick", None).unwrap();
+        let direct_event = direct.resolve_expr_signal("top.tick", None).unwrap();
         let times = [12, 6, 9, 10, 11, 6, 4, 5, 13, 20, 25, 30];
         let batch = direct
             .sample_resolved_optional_at_times(&direct_resolved, &times)
@@ -1864,5 +1852,77 @@ fn point_and_batch_samples_preserve_window_and_event_boundaries() {
         assert_eq!(quiet[3].bits, None);
         let other = point.resolve_signals(&["top.other".into()]).unwrap();
         point.sample_resolved_optional(&other, 9).unwrap();
+    }
+}
+
+#[test]
+fn selectors_keep_scopes_indexed_bases_and_literal_priority() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 8 ! mem[0] [7:0] $end\n$var wire 8 \" data [7:0] $end\n$var wire 4 # \\data[3:0] $end\n$scope module \\a.b $end\n$var wire 1 $ flag $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\nb10100101 !\nb11110000 \"\nb1010 #\n1$\n",
+        "selectors.vcd",
+    );
+    let mut backend = OndasBackend::open(fixture.path()).unwrap();
+    for (selector, scope, path, bits) in [
+        ("mem[0][7:4]", Some("top"), r#"top."mem[0]"[7:4]"#, "1010"),
+        (
+            "top.mem[0][7:4]",
+            Some("top"),
+            r#"top."mem[0]"[7:4]"#,
+            "1010",
+        ),
+        ("data[3:0]", Some("top"), r#"top."data[3:0]""#, "1010"),
+        (r#""data"[3:0]"#, Some("top"), r#"top."data"[3:0]"#, "0000"),
+        (r#"flag"#, Some(r#"top."a.b""#), r#"top."a.b".flag"#, "1"),
+        (r#"top.\a.b .flag"#, Some("top"), r#"top."a.b".flag"#, "1"),
+    ] {
+        let selected = backend.resolve_signal(selector, scope).unwrap();
+        assert_eq!(selected.path, path);
+        let roundtrip = backend.resolve_signal(&selected.path, None).unwrap();
+        assert_eq!(selected.signal, roundtrip.signal);
+        let samples = backend
+            .sample_resolved_optional(&[selected, roundtrip], 0)
+            .unwrap();
+        assert!(
+            samples
+                .iter()
+                .all(|sample| sample.bits.as_deref() == Some(bits))
+        );
+    }
+}
+
+#[test]
+fn selected_alias_types_and_explicit_full_width_are_independent_of_handle_identity() {
+    use crate::expr::{ExprStorage, ExprTypeKind, IntegerLikeKind};
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var integer 8 ! signed $end\n$var wire 8 ! unsigned $end\n$var enum 8 ! enumeration $end\n$upscope $end\n$enddefinitions $end\n#0\nb11111111 !\n",
+        "alias-types.vcd",
+    );
+    let backend = OndasBackend::open(fixture.path()).unwrap();
+    let signed = backend.resolve_expr_signal("signed", Some("top")).unwrap();
+    let unsigned = backend
+        .resolve_expr_signal("unsigned", Some("top"))
+        .unwrap();
+    let enumeration = backend
+        .resolve_expr_signal("enumeration", Some("top"))
+        .unwrap();
+    assert_eq!(signed.signal, unsigned.signal);
+    assert_eq!(signed.signal, enumeration.signal);
+    assert_eq!(
+        signed.expr_type.kind,
+        ExprTypeKind::IntegerLike(IntegerLikeKind::Integer)
+    );
+    assert!(signed.expr_type.is_signed);
+    assert!(!unsigned.expr_type.is_signed);
+    assert_eq!(enumeration.expr_type.kind, ExprTypeKind::EnumCore);
+    for name in ["signed", "unsigned", "enumeration"] {
+        let projected = backend
+            .resolve_expr_signal(&format!("{name}[7:0]"), Some("top"))
+            .unwrap();
+        assert_eq!(projected.signal, signed.signal);
+        assert_eq!(projected.expr_type.kind, ExprTypeKind::BitVector);
+        assert_eq!(projected.expr_type.storage, ExprStorage::PackedVector);
+        assert!(!projected.expr_type.is_signed);
+        assert!(projected.expr_type.enum_type_id.is_none());
+        assert!(projected.expr_type.enum_labels.is_none());
     }
 }

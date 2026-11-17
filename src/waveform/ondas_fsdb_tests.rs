@@ -11,7 +11,7 @@ fn fsdb_nine_state_samples_and_enum_keys_remain_raw() {
         .join("fsdb/fsdb0020-nine-state-ranges/waveform.fsdb");
     let mut backend = OndasBackend::open(&path).unwrap();
     let mut resolved = backend
-        .resolve_expr_signal("RICH_LOGIC.RESOLVED_BIT")
+        .resolve_expr_signal("RICH_LOGIC.RESOLVED_BIT", None)
         .unwrap();
     assert_eq!(resolved.expr_type.width, 1);
     assert!(resolved.expr_type.is_four_state);
@@ -87,18 +87,20 @@ fn fsdb_recursive_listing_uses_structural_depth_for_escaped_scopes() {
 #[test]
 fn fsdb_scope_escape_markers_are_not_public_path_components() {
     let source: std::sync::Arc<[u8]> = b"$timescale 1ns $end\n$scope module top $end\n$scope module \\block[0] $end\n$var wire 1 ! flag $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n".as_slice().into();
-    let wave = ondas::open_bytes("scope.vcd", source).unwrap();
-    let index = super::HierarchyIndex::new(wave.hierarchy(), false);
+    let backend = OndasBackend::open_bytes(Path::new("scope.vcd"), source).unwrap();
     assert!(
-        index
-            .scopes
+        backend
+            .scopes_depth_first(None)
+            .unwrap()
             .iter()
             .any(|scope| scope.path == r#"top."block[0]""#)
     );
-    assert!(
-        index
-            .by_path
-            .contains_key(&ondas::HierarchyPath::parse(r#"top."block[0]".flag"#).unwrap())
+    assert_eq!(
+        backend
+            .resolve_signals(&[r#"top."block[0]".flag"#.into()])
+            .unwrap()[0]
+            .width,
+        1
     );
 }
 
@@ -155,18 +157,15 @@ fn fsdb_hierarchy_lists_direct_and_recursive_signals() {
 }
 
 #[test]
-fn fsdb_exact_value_avoids_second_hierarchy_index() {
+fn fsdb_point_handles_remain_valid_after_listing() {
     let fixture = GeneratedFsdbFixture::from_contents(
         "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n#5\n1!\n",
     );
     let mut backend = OndasBackend::open(fixture.path()).unwrap();
     let paths = ["top.clk".to_string()];
     let resolved = backend.resolve_signals(&paths).unwrap();
-    assert!(backend.index.get().is_none());
     let values = backend.sample_resolved_optional(&resolved, 5).unwrap();
-    assert!(backend.index.get().is_none());
-    let expr = backend.resolve_expr_signal("top.clk").unwrap();
-    assert!(backend.index.get().is_none());
+    let expr = backend.resolve_expr_signal("top.clk", None).unwrap();
     assert_eq!(
         backend.sample_expr_value(&expr, 5).unwrap(),
         SampledValue::Integral {
@@ -176,7 +175,6 @@ fn fsdb_exact_value_avoids_second_hierarchy_index() {
     );
 
     backend.signals_in_scope("top").unwrap();
-    assert!(backend.index.get().is_some());
     assert_eq!(
         backend.sample_resolved_optional(&resolved, 5).unwrap(),
         values
@@ -184,17 +182,14 @@ fn fsdb_exact_value_avoids_second_hierarchy_index() {
 }
 
 #[test]
-fn fsdb_batch_value_selection_keeps_full_index_lazy() {
+fn fsdb_batch_handles_remain_valid_after_listing() {
     let fixture = GeneratedFsdbFixture::from_contents(
         "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var wire 1 \" data $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n1\"\n#5\n1!\n0\"\n",
     );
     let mut backend = OndasBackend::open(fixture.path()).unwrap();
     let paths = ["top.clk".to_string(), "top.data".to_string()];
-    backend.prepare_value_signals(&paths);
     let resolved = backend.resolve_signals(&paths).unwrap();
-    assert!(backend.index.get().is_none());
     let values = backend.sample_resolved_optional(&resolved, 5).unwrap();
-    assert!(backend.index.get().is_none());
 
     let mut full = OndasBackend::open(fixture.path()).unwrap();
     full.signals_in_scope("top").unwrap();
@@ -217,9 +212,9 @@ fn fsdb_repeated_scope_declarations_merge_members() {
             .collect::<Vec<_>>(),
         ["top.clk", "top.ev"]
     );
-    let clock = backend.resolve_expr_signal("top.clk").unwrap();
-    let event = backend.resolve_expr_signal("top.ev").unwrap();
-    assert_ne!(clock.id, event.id);
+    let clock = backend.resolve_expr_signal("top.clk", None).unwrap();
+    let event = backend.resolve_expr_signal("top.ev", None).unwrap();
+    assert_ne!(clock.signal, event.signal);
     assert_eq!(
         backend.sample_expr_value(&clock, 5).unwrap(),
         SampledValue::Integral {
@@ -273,7 +268,7 @@ fn fsdb_hierarchy_skips_exact_duplicate_signal_declarations() {
             width: Some(1)
         }]
     );
-    let signal = backend.resolve_expr_signal("top.clk").unwrap();
+    let signal = backend.resolve_expr_signal("top.clk", None).unwrap();
     assert_eq!(
         backend.sample_expr_value(&signal, 5).unwrap(),
         SampledValue::Integral {
@@ -325,8 +320,9 @@ fn fsdb_hierarchy_preserves_escaped_local_names_with_separators() {
         "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! \\dot.name  $end\n$var wire 1 \" \\slash/name  $end\n$var wire 32 # \\wide.dot[0]  $end\n$var wire 32 $ \\wide/slash[0]  $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n0\"\nb1 #\nb10 $\n",
     );
     let mut backend = OndasBackend::open(fixture.path()).unwrap();
-    let signal = backend.resolve_expr_signal(r#"top."wide.dot[0]""#).unwrap();
-    assert!(backend.index.get().is_none());
+    let signal = backend
+        .resolve_expr_signal(r#"top."wide.dot[0]""#, None)
+        .unwrap();
     let expected = [
         ("dot.name", 1),
         ("wide.dot[0]", 32),
@@ -380,12 +376,12 @@ fn fsdb_ambiguous_exact_paths_are_quarantined() {
     assert_eq!(direct.to_string(), expected);
     assert_eq!(
         backend
-            .resolve_expr_signal("top.opcode")
+            .resolve_expr_signal("top.opcode", None)
             .unwrap_err()
             .to_string(),
         expected
     );
-    let safe = backend.resolve_expr_signal("top.safe").unwrap();
+    let safe = backend.resolve_expr_signal("top.safe", None).unwrap();
     assert_eq!(
         backend.sample_expr_value(&safe, 0).unwrap(),
         SampledValue::Integral {
@@ -505,7 +501,7 @@ fn fsdb_reader_metadata_smoke() {
     let reader = OndasBackend::open(&cpu_fsdb_path()).expect("FSDB open failed");
     assert_eq!(reader.format_name(), "fsdb");
     assert!(!reader.metadata().unwrap().time_unit.is_empty());
-    let span = reader.inner.borrow().metadata().time_span().unwrap();
+    let span = reader.inner.metadata().time_span().unwrap();
     assert!(span.last() >= span.first());
 }
 
@@ -546,7 +542,6 @@ fn fsdb_memory_elements_remain_exact_declarations() {
         .resolve_signals(std::slice::from_ref(&path))
         .unwrap();
     assert_eq!(resolved[0].width, 8);
-    assert!(backend.index.get().is_none());
     assert!(
         !backend
             .scopes_depth_first(None)
@@ -579,7 +574,7 @@ fn fsdb_hierarchy_datatype_enum_overrides_signal_kind() {
         .unwrap();
     assert_eq!(direct[0].width, 2);
     let signal = backend
-        .resolve_expr_signal("system.mvsim_flag.assertControlType")
+        .resolve_expr_signal("system.mvsim_flag.assertControlType", None)
         .unwrap();
     let SampledValue::Integral { bits, .. } = backend.sample_expr_value(&signal, 0).unwrap() else {
         panic!("enum must retain integral value encoding");
@@ -591,9 +586,8 @@ fn fsdb_hierarchy_datatype_enum_overrides_signal_kind() {
 fn fsdb_hierarchy_datatype_enum_metadata_drives_expression_type() {
     let backend = OndasBackend::open(&cpu_fsdb_path()).unwrap();
     let resolved = backend
-        .resolve_expr_signal("system.mvsim_flag.assertControlType")
+        .resolve_expr_signal("system.mvsim_flag.assertControlType", None)
         .unwrap();
-    assert!(backend.index.get().is_none());
     let entries = backend.signals_in_scope("system.mvsim_flag").unwrap();
     let entry = entries
         .iter()
@@ -654,10 +648,10 @@ fn fsdb_reader_hierarchy_smoke() {
 fn fsdb_expr_event_occurred_rejects_non_event_signal() {
     let fixture = GeneratedFsdbFixture::from_vcd("change_property_events.vcd");
     let mut backend = OndasBackend::open(fixture.path()).unwrap();
-    let tick = backend.resolve_expr_signal("top.tick").unwrap();
+    let tick = backend.resolve_expr_signal("top.tick", None).unwrap();
     assert!(matches!(tick.expr_type.kind, ExprTypeKind::Event));
     assert!(backend.expr_event_occurred(&tick, 10).unwrap());
-    let armed = backend.resolve_expr_signal("top.armed").unwrap();
+    let armed = backend.resolve_expr_signal("top.armed", None).unwrap();
     assert!(!matches!(armed.expr_type.kind, ExprTypeKind::Event));
     assert!(
         backend
@@ -672,7 +666,7 @@ fn fsdb_expr_event_occurred_rejects_non_event_signal() {
 fn fsdb_point_reads_preserve_quiet_state_and_repeated_times() {
     let fixture = GeneratedFsdbFixture::from_vcd("change_property_events.vcd");
     let mut backend = OndasBackend::open(fixture.path()).unwrap();
-    let armed = backend.resolve_expr_signal("top.armed").unwrap();
+    let armed = backend.resolve_expr_signal("top.armed", None).unwrap();
     for (time, bits) in [
         (1, "0"),
         (10, "1"),

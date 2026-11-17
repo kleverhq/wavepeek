@@ -44,15 +44,17 @@ SystemVerilog escaped identifiers are also accepted, with terminating whitespace
 
 ## Bit projections and composite signals
 
-`value --signals`, `change --signals`, and `extract generic` payloads may append one flat static decimal `[msb:lsb]` projection. Resolution first tries the complete name, then a trailing projection outside quoted or escaped components. `[n]` names a declaration; use `[n:n]` for one projected bit. Bit zero is the rightmost normalized sampled bit. If a literal declaration conflicts with a projection spelling, the projection quotes its base component, such as `top."data"[3:0]`, so the returned selector remains unambiguous.
+`value --signals`, `change --signals`, and `extract generic` payloads may append one flat static decimal `[msb:lsb]` projection. Resolution first tries the complete name, then a trailing projection outside quoted or escaped components. `[n]` names a declaration; use `[n:n]` for one projected bit. Only one trailing projection is applied to an exact declaration; projections do not chain. An indexed declaration such as `mem[0]` can be the base. Bit zero is the rightmost normalized sampled bit. If a literal declaration conflicts with a projection spelling, the projection quotes its base component, such as `top."data"[3:0]`, so the returned selector remains unambiguous.
 
 ```sh
 wavepeek value --waves dump.vcd --at 10ns \
-  --signals 'top.data[7:4],top."memory[0]"[3:0]'
+  --signals 'top.data[7:4],top.mem[0][3:0]'
 ```
 
-Names such as `memory[0]` do not create scopes or prove array structure. WavePeek preserves the hierarchy provided by Ondas. Declarations sharing an exact name and owning scope form a composite vector only when explicit ranges establish a contiguous, non-overlapping, consistently directed layout. When all parts are scalar ranges, higher indices occupy the more significant bits. Ondas reads the concatenation and its projections. If some parts have observations, missing parts contribute X; if all parts are missing, the whole composition and its projections are missing.
+Names such as `memory[0]` do not create scopes or prove array structure. A trailing projection can select bits of such a declaration, for example `top.mem[0][7:0]`. WavePeek delegates selector resolution and scope qualification to Ondas.
+
+Ondas normalizes confirmed VCD split declarations into one ordinary signal before publishing the hierarchy. The parts must share an exact name and owning scope, have compatible metadata, and cover contiguous, non-overlapping, consistently directed ranges. For scalar parts, higher indices occupy more significant bits. Independent aliases remain available. Other formats retain their Ondas declarations without WavePeek reconstruction. If some parts have observations, missing parts contribute X; if all parts are missing, the whole signal and its projections are missing.
 
 ## Ambiguous declarations
 
-Distinct source declarations can have the same exact path. When confirmed ranges cannot form one vector, listings omit that path with `WPK-W0005`, and explicit selection fails without choosing a candidate. This rule applies to every format. Shared alias histories do not merge declarations or make different paths ambiguous. Canonical quoting prevents collisions caused by flattening different component sequences.
+Distinct source declarations can have the same exact path. Listings omit an ambiguous path with `WPK-W0005`, and explicit selection fails without choosing a candidate. This rule applies to every format. Shared alias histories do not merge declarations or make different paths ambiguous. Canonical quoting prevents collisions caused by flattening different component sequences.

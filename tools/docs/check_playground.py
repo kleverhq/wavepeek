@@ -21,14 +21,26 @@ $version smoke $end
 $timescale 1ns $end
 $scope module top $end
 $var wire 1 ! clk $end
+$var wire 1 " bus [1] $end
+$var wire 1 # bus [0] $end
+$var wire 8 $ mem[0] [7:0] $end
 $upscope $end
 $enddefinitions $end
 #0
 0!
+0"
+0#
+b11110000 $
 #5
 1!
+0"
+1#
+b01010101 $
 #10
 0!
+0"
+0#
+b00001111 $
 """
 
 
@@ -167,6 +179,23 @@ def check(site: pathlib.Path, native_bin: pathlib.Path) -> None:
                 check_reads(
                     page, native_bin, cwd, "local.vcd", "top.clk", "0ns", "5ns", "10ns"
                 )
+                check_reads(
+                    page, native_bin, cwd, "local.vcd", "top.bus", "0ns", "5ns", "10ns"
+                )
+                command = (
+                    "value --waves local.vcd --scope top "
+                    "--signals 'mem[0][7:4],bus[1:0],mem[0][7:4]' "
+                    "--at 0ns,5ns,0ns --json"
+                )
+                actual = run_browser(page, command)
+                assert actual == run_native(native_bin, cwd, command), command
+                status, stdout, stderr = actual
+                assert status == 0 and not stderr
+                rows = json.loads(stdout)["data"]
+                assert len(rows) == 3 and rows[0] == rows[2]
+                assert rows[1]["signals"][0]["path"] == 'top."mem[0]"[7:4]'
+                assert rows[1]["signals"][0]["value"] == "4'h5"
+
             assert not [
                 url
                 for url in requests

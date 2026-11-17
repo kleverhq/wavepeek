@@ -1447,7 +1447,7 @@ fn parse_cli_maps(values: &[String]) -> Result<Vec<(String, String)>, WavepeekEr
 
 fn normalize_map_pair(standard: &str, waves: &str) -> Result<(String, String), WavepeekError> {
     let standard = normalize_standard_name(standard)?;
-    let waves = crate::engine::scoped_signal_path(waves, None);
+    let waves = crate::engine::signal_token(waves);
     if waves.is_empty() {
         return Err(WavepeekError::Args(
             "AXI mapped waveform signal names must not be empty. See 'wavepeek extract axi --help'."
@@ -1587,11 +1587,9 @@ fn explicit_mappings(
                 "AXI mapping for '{standard}' must use a scope-relative signal when --scope is set. See 'wavepeek extract axi --help'."
             )));
         }
-        let query_path = crate::engine::scoped_signal_path(waves, scope);
-        let resolved =
-            waveform
-                .borrow()
-                .resolve_local_signal_with_diagnostic(&query_path, waves, scope)?;
+        let resolved = waveform
+            .borrow()
+            .resolve_signal_with_diagnostic(waves, scope, false)?;
         result.insert(
             standard.clone(),
             AxiSignalMapping {

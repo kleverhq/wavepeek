@@ -378,6 +378,7 @@ fn fsdb_ambiguous_exact_paths_are_quarantined() {
         backend
             .resolve_expr_signal("top.opcode", None)
             .unwrap_err()
+            .into_error()
             .to_string(),
         expected
     );

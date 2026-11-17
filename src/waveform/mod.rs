@@ -250,7 +250,9 @@ impl Waveform {
         &self,
         canonical_path: &str,
     ) -> Result<ExprResolvedSignal, WavepeekError> {
-        self.backend.resolve_expr_signal(canonical_path, None)
+        self.backend
+            .resolve_expr_signal(canonical_path, None)
+            .map_err(ondas_backend::SignalResolutionError::into_error)
     }
 
     pub(crate) fn resolve_expr_signal_with_diagnostic(
@@ -277,16 +279,18 @@ impl Waveform {
         scope: Option<&str>,
         kind: SignalLookupKind,
         recursive: bool,
-        original: WavepeekError,
+        failure: ondas_backend::SignalResolutionError,
     ) -> WavepeekError {
-        if !matches!(original, WavepeekError::SignalNotFound(_)) {
-            return original;
-        }
-        let Ok(listing) = self.signal_candidates(scope, recursive) else {
-            return original;
+        let ondas_backend::SignalResolutionError::NotFound(path) = &failure else {
+            return failure.into_error();
         };
-        let basename = query_name.rsplit('.').next().unwrap_or(query_name);
-        let basename_chars = basename.chars().collect::<Vec<_>>();
+        let Ok(listing) = self.signal_candidates(scope, recursive) else {
+            return failure.into_error();
+        };
+        let basename = path.name().unwrap_or_default();
+        let basename_chars = format_path(&ondas::HierarchyPath::from_components([basename]))
+            .chars()
+            .collect::<Vec<_>>();
         let max_distance = if basename_chars.len() <= 3 { 1 } else { 2 };
         let mut candidates = Vec::with_capacity(MAX_SIGNAL_SUGGESTIONS);
         for entry in listing.entries {

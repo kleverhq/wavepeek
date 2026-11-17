@@ -1204,6 +1204,7 @@ fn helper_functions_exercise_invalid_paths_and_timescales() {
             backend
                 .resolve_expr_signal(path, None)
                 .unwrap_err()
+                .into_error()
                 .exit_code(),
             1
         );

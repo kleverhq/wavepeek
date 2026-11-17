@@ -1208,3 +1208,113 @@ fn value_scoped_indexed_slices_and_normalized_vcd_bus_preserve_batch_order() {
         }
     }
 }
+
+#[test]
+fn missing_projection_suggests_the_attempted_base_without_reinterpreting_literals() {
+    let fixture = fixture_path("m2_core.vcd");
+    for (scope, projection, literal, suggestion) in [
+        (Some("top"), "dtaa[7:0]", r#""dtaa[7:0]""#, "data"),
+        (None, "top.dtaa[7:0]", r#"top."dtaa[7:0]""#, "top.data"),
+    ] {
+        for (selector, is_projection) in [(projection, true), (literal, false)] {
+            let mut command = wavepeek_cmd();
+            command.args([
+                "value",
+                "--waves",
+                fixture.to_str().unwrap(),
+                "--at",
+                "0ns",
+                "--signals",
+                selector,
+                "--json",
+            ]);
+            if let Some(scope) = scope {
+                command.args(["--scope", scope]);
+            }
+            let output = command.output().unwrap();
+            assert_eq!(output.status.code(), Some(1));
+            assert!(output.stderr.is_empty());
+            let result: Value = serde_json::from_slice(&output.stdout).unwrap();
+            assert_eq!(result["type"], "fatal");
+            assert_eq!(result["code"], "WPK-F0004");
+            let message = result["message"].as_str().unwrap();
+            if is_projection {
+                assert!(
+                    message.contains(&format!("closest query names:\n  {suggestion}")),
+                    "{message}"
+                );
+            } else {
+                assert!(message.contains("basename 'dtaa[7:0]'"), "{message}");
+                assert!(!message.contains("closest query names"), "{message}");
+            }
+        }
+        let expression = format!(
+            "$signal({}) == 0",
+            serde_json::to_string(projection).unwrap()
+        );
+        let mut command = wavepeek_cmd();
+        command.args([
+            "property",
+            "--waves",
+            fixture.to_str().unwrap(),
+            "--on",
+            "posedge top.clk",
+            "--sample-mode",
+            "native",
+            "--eval",
+            &expression,
+            "--json",
+        ]);
+        if let Some(scope) = scope {
+            command.args(["--scope", scope]);
+        }
+        let output = command.output().unwrap();
+        assert_eq!(output.status.code(), Some(1));
+        assert!(output.stderr.is_empty());
+        let result: Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(result["code"], "WPK-F0005");
+        assert!(
+            result["message"]
+                .as_str()
+                .unwrap()
+                .contains(&format!("closest query names:\n  {suggestion}"))
+        );
+    }
+}
+
+#[test]
+fn missing_quoted_literal_suggests_copyable_literal_names() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! \\node[0] $end\n$upscope $end\n$enddefinitions $end\n#0\n1!\n",
+        ".vcd",
+    );
+    for (scope, selector, suggestion) in [
+        (Some("top"), r#""nope[0]""#, r#""node[0]""#),
+        (None, r#"top."nope[0]""#, r#"top."node[0]""#),
+    ] {
+        let mut command = wavepeek_cmd();
+        command.args([
+            "value",
+            "--waves",
+            fixture.path().to_str().unwrap(),
+            "--signals",
+            selector,
+            "--at",
+            "0ns",
+            "--json",
+        ]);
+        if let Some(scope) = scope {
+            command.args(["--scope", scope]);
+        }
+        let output = command.output().unwrap();
+        assert_eq!(output.status.code(), Some(1));
+        assert!(output.stderr.is_empty());
+        let result: Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(result["code"], "WPK-F0004");
+        let message = result["message"].as_str().unwrap();
+        assert!(
+            message.contains(&format!("closest query names:\n  {suggestion}")),
+            "{message}"
+        );
+    }
+}

@@ -7,8 +7,6 @@ mod fsdb_tests;
 #[path = "ondas_tests.rs"]
 mod tests;
 
-use std::cell::{OnceCell, RefCell};
-use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -25,100 +23,21 @@ use super::expr_query::{ExpressionQuery, ExpressionQueryTick};
 use super::ondas_error::{open_error, read_error};
 use super::selection::format_path;
 use super::types::{
-    ExprResolvedSignal, ResolvedSignal, SampledSignalState, ScopeEntry, SignalEntry, SignalId,
-    SignalListing, WaveformMetadata,
+    ExprResolvedSignal, ResolvedSignal, SampledSignalState, ScopeEntry, SignalEntry, SignalListing,
+    WaveformMetadata,
 };
 
 pub(super) struct OndasBackend {
-    inner: RefCell<ondas::Waveform>,
+    inner: ondas::Waveform,
     path: PathBuf,
-    index: OnceCell<HierarchyIndex>,
-    direct: RefCell<DirectSignals>,
-    compositions: RefCell<HashMap<SignalId, ondas::Signal>>,
 }
 
 impl fmt::Debug for OndasBackend {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OndasBackend")
-            .field("format", &self.inner.borrow().format())
+            .field("format", &self.inner.format())
             .finish_non_exhaustive()
     }
-}
-
-struct Declaration {
-    entry: SignalEntry,
-    path: ondas::HierarchyPath,
-    id: Option<SignalId>,
-    expr_type: Option<ExprType>,
-    visible: bool,
-}
-
-struct DirectSignal {
-    path: String,
-    signal: ondas::Signal,
-    width: u32,
-    expr_type: Option<ExprType>,
-}
-
-#[derive(Default)]
-struct DirectSignals {
-    entries: Vec<DirectSignal>,
-    by_path: HashMap<String, usize>,
-    by_signal: HashMap<ondas::Signal, SignalId>,
-}
-
-impl DirectSignals {
-    fn resolved(&self, path: &str) -> Option<ResolvedSignal> {
-        let entry = self.entries.get(*self.by_path.get(path)?)?;
-        Some(ResolvedSignal {
-            path: entry.path.clone(),
-            id: self.by_signal[&entry.signal],
-            width: entry.width,
-        })
-    }
-
-    fn insert(&mut self, entry: DirectSignal) -> ResolvedSignal {
-        let offset = self.entries.len();
-        let id = *self
-            .by_signal
-            .entry(entry.signal)
-            .or_insert_with(|| SignalId::from_backend_index(u64::MAX - offset as u64));
-        let resolved = ResolvedSignal {
-            path: entry.path.clone(),
-            id,
-            width: entry.width,
-        };
-        self.by_path.insert(entry.path.clone(), offset);
-        self.entries.push(entry);
-        resolved
-    }
-}
-
-fn declaration_order(left: &Declaration, right: &Declaration) -> std::cmp::Ordering {
-    left.path
-        .components()
-        .take(left.path.len().saturating_sub(1))
-        .cmp(
-            right
-                .path
-                .components()
-                .take(right.path.len().saturating_sub(1)),
-        )
-        .then_with(|| left.entry.name.cmp(&right.entry.name))
-}
-
-enum SignalSource {
-    Signal(ondas::Signal),
-    Concat(Vec<ondas::Signal>),
-}
-
-struct HierarchyIndex {
-    scopes: Vec<ScopeEntry>,
-    scope_by_path: HashMap<ondas::HierarchyPath, Vec<usize>>,
-    declarations: Vec<Declaration>,
-    declarations_by_scope: Vec<Vec<usize>>,
-    by_path: HashMap<ondas::HierarchyPath, Vec<usize>>,
-    signals: Vec<SignalSource>,
 }
 
 impl OndasBackend {
@@ -141,11 +60,8 @@ impl OndasBackend {
 
     fn new(inner: ondas::Waveform, path: &Path) -> Self {
         Self {
-            inner: RefCell::new(inner),
+            inner,
             path: path.to_owned(),
-            index: OnceCell::new(),
-            direct: RefCell::new(DirectSignals::default()),
-            compositions: RefCell::new(HashMap::new()),
         }
     }
 
@@ -154,7 +70,7 @@ impl OndasBackend {
     }
 
     pub fn format_name(&self) -> &'static str {
-        match self.inner.borrow().format() {
+        match self.inner.format() {
             Format::Vcd => "vcd",
             Format::Fst => "fst",
             Format::Fsdb => "fsdb",
@@ -164,7 +80,7 @@ impl OndasBackend {
     }
 
     pub fn metadata(&self) -> Result<WaveformMetadata, WavepeekError> {
-        Self::format_metadata(self.inner.borrow().metadata())
+        Self::format_metadata(self.inner.metadata())
     }
 
     pub fn read_metadata(path: &Path) -> Result<WaveformMetadata, WavepeekError> {
@@ -194,21 +110,27 @@ impl OndasBackend {
         })
     }
 
-    fn index(&self) -> &HierarchyIndex {
-        self.index
-            .get_or_init(|| HierarchyIndex::new(self.inner.borrow().hierarchy(), false))
-    }
-
     pub fn scopes_depth_first(
         &self,
         max_depth: Option<usize>,
     ) -> Result<Vec<ScopeEntry>, WavepeekError> {
-        let mut scopes = self.index.get().map_or_else(
-            || HierarchyIndex::new(self.inner.borrow().hierarchy(), true).scopes,
-            |index| index.scopes.clone(),
-        );
-        scopes.retain(|scope| max_depth.is_none_or(|max| scope.depth <= max));
-        Ok(scopes)
+        let mut scopes = self
+            .inner
+            .hierarchy()
+            .scopes()
+            .filter(visible_scope)
+            .map(|scope| (scope.path(), scope_type_alias(scope.kind())))
+            .filter(|(path, _)| max_depth.is_none_or(|max| path.len().saturating_sub(1) <= max))
+            .collect::<Vec<_>>();
+        scopes.sort_by(|left, right| left.0.components().cmp(right.0.components()));
+        Ok(scopes
+            .into_iter()
+            .map(|(path, kind)| ScopeEntry {
+                depth: path.len().saturating_sub(1),
+                path: format_path(&path),
+                kind,
+            })
+            .collect())
     }
 
     pub fn signals_in_scope(&self, path: &str) -> Result<Vec<SignalEntry>, WavepeekError> {
@@ -216,42 +138,19 @@ impl OndasBackend {
     }
 
     pub fn matching_signals(&self, matches: impl Fn(&str, &str) -> bool) -> Vec<SignalEntry> {
-        let temporary;
-        let index = if let Some(index) = self.index.get() {
-            index
-        } else {
-            let inner = self.inner.borrow();
-            let paths = inner
-                .hierarchy()
-                .variables()
-                .filter(|variable| variable.parent().is_none_or(|scope| visible_scope(&scope)))
-                .filter_map(|variable| {
-                    let path = variable.path();
-                    let name =
-                        format_path(&ondas::HierarchyPath::from_components([variable.name()]));
-                    matches(&format_path(&path), &name).then_some(path)
-                })
-                .collect::<HashSet<_>>();
-            if paths.is_empty() {
-                return Vec::new();
+        let hierarchy = self.inner.hierarchy();
+        let variables = hierarchy.variables().filter(|variable| {
+            if variable
+                .parent()
+                .is_some_and(|scope| !visible_scope(&scope))
+            {
+                return false;
             }
-            temporary = HierarchyIndex::build(inner.hierarchy(), false, Some(&paths));
-            &temporary
-        };
-        let mut entries = index
-            .declarations
-            .iter()
-            .filter(|declaration| declaration.visible)
-            .filter(|declaration| {
-                index.by_path[&declaration.path].len() == 1
-                    && matches(&declaration.entry.path, &declaration.entry.name)
-            })
-            .collect::<Vec<_>>();
-        entries.sort_by(|left, right| declaration_order(left, right));
-        entries
-            .into_iter()
-            .map(|declaration| declaration.entry.clone())
-            .collect()
+            let path = format_path(&variable.path());
+            let name = format_path(&ondas::HierarchyPath::from_components([variable.name()]));
+            matches(&path, &name)
+        });
+        self.signal_listing(variables).entries
     }
 
     pub fn signals_in_scope_report(&self, path: &str) -> Result<SignalListing, WavepeekError> {
@@ -263,310 +162,187 @@ impl OndasBackend {
         path: &str,
         max_depth: Option<usize>,
     ) -> Result<SignalListing, WavepeekError> {
-        let index = self.index();
+        let hierarchy = self.inner.hierarchy();
         let parsed = ondas::HierarchyPath::parse(path)
             .map_err(|error| WavepeekError::Scope(error.to_string()))?;
         if parsed.is_empty() {
-            let mut entries = Vec::new();
-            let mut omitted = BTreeSet::new();
-            for declaration in &index.declarations {
-                if !declaration.visible
-                    || max_depth.is_some_and(|max| declaration.path.len().saturating_sub(1) > max)
-                {
-                    continue;
-                }
-                if index.by_path[&declaration.path].len() > 1 {
-                    omitted.insert(declaration.entry.path.clone());
-                } else {
-                    entries.push(declaration);
-                }
-            }
-            entries.sort_by(|left, right| declaration_order(left, right));
-            return Ok(SignalListing {
-                entries: entries
-                    .into_iter()
-                    .map(|declaration| declaration.entry.clone())
-                    .collect(),
-                omitted_ambiguous_paths: omitted.into_iter().collect(),
-            });
+            return Ok(
+                self.signal_listing(hierarchy.variables().filter(|variable| {
+                    variable.parent().is_none_or(|scope| visible_scope(&scope))
+                        && max_depth
+                            .is_none_or(|max| variable.path().len().saturating_sub(1) <= max)
+                })),
+            );
         }
-        let Some(indices) = index.scope_by_path.get(&parsed) else {
+        let scope = hierarchy.scope_path(&parsed).map_err(|error| match error {
+            ondas::LookupError::NotFound { .. } => {
+                WavepeekError::Scope(format!("scope '{path}' not found in dump"))
+            }
+            ondas::LookupError::Ambiguous { .. } => {
+                WavepeekError::Scope(format!("scope '{path}' is ambiguous in dump"))
+            }
+            error => WavepeekError::Scope(error.to_string()),
+        })?;
+        if !visible_scope(&scope) {
             return Err(WavepeekError::Scope(format!(
                 "scope '{path}' not found in dump"
             )));
-        };
-        if indices.len() != 1 {
-            return Err(WavepeekError::Scope(format!(
-                "scope '{path}' is ambiguous in dump"
-            )));
         }
-        let scope_index = indices[0];
-        let scope_depth = index.scopes[scope_index].depth;
-        let subtree_end = if max_depth == Some(0) {
-            scope_index + 1
-        } else {
-            index.scopes[scope_index + 1..]
-                .iter()
-                .position(|scope| scope.depth <= scope_depth)
-                .map_or(index.scopes.len(), |offset| scope_index + 1 + offset)
-        };
-        let mut entries = Vec::new();
-        let mut omitted = BTreeSet::new();
-        for parent in scope_index..subtree_end {
-            let depth = index.scopes[parent].depth - scope_depth;
-            if max_depth.is_some_and(|max| depth > max) {
-                continue;
-            }
-            for &declaration_index in &index.declarations_by_scope[parent] {
-                let declaration = &index.declarations[declaration_index];
-                if !declaration.visible {
-                    continue;
-                }
-                if index.by_path[&declaration.path].len() > 1 {
-                    omitted.insert(declaration.entry.path.clone());
-                } else {
-                    entries.push((parent, &declaration.entry));
-                }
-            }
-        }
-        entries.sort_by(|(left_parent, left), (right_parent, right)| {
-            left_parent
-                .cmp(right_parent)
-                .then_with(|| left.name.cmp(&right.name))
-        });
-        Ok(SignalListing {
-            entries: entries
-                .into_iter()
-                .map(|(_, entry)| entry.clone())
-                .collect(),
-            omitted_ambiguous_paths: omitted.into_iter().collect(),
-        })
+        let mut variables = Vec::new();
+        collect_variables(scope, max_depth, &mut variables);
+        Ok(self.signal_listing(variables.into_iter()))
     }
 
-    fn declaration(&self, path: &str) -> Result<&Declaration, WavepeekError> {
-        let parsed = ondas::HierarchyPath::parse(path)
-            .map_err(|error| WavepeekError::Signal(error.to_string()))?;
-        let index = self.index();
-        let indices = index.by_path.get(&parsed).ok_or_else(|| {
-            WavepeekError::SignalNotFound(format!("signal '{path}' not found in dump"))
-        })?;
-        if indices.len() != 1 {
-            return Err(WavepeekError::Signal(format!(
-                "signal '{path}' is ambiguous in dump: {} source declarations; no candidate was selected",
-                indices.len()
+    fn signal_listing<'h>(
+        &self,
+        variables: impl Iterator<Item = ondas::Variable<'h>>,
+    ) -> SignalListing {
+        let hierarchy = self.inner.hierarchy();
+        let mut entries = Vec::new();
+        let mut omitted = std::collections::BTreeSet::new();
+        for variable in variables {
+            let path = variable.path();
+            if matches!(
+                hierarchy.variable_path(&path),
+                Err(ondas::LookupError::Ambiguous { .. })
+            ) {
+                omitted.insert(format_path(&path));
+            } else {
+                entries.push((path, signal_entry(&variable)));
+            }
+        }
+        entries.sort_by(|(left, a), (right, b)| {
+            left.components()
+                .take(left.len().saturating_sub(1))
+                .cmp(right.components().take(right.len().saturating_sub(1)))
+                .then_with(|| a.name.cmp(&b.name))
+        });
+        SignalListing {
+            entries: entries.into_iter().map(|(_, entry)| entry).collect(),
+            omitted_ambiguous_paths: omitted.into_iter().collect(),
+        }
+    }
+
+    fn resolve_selector(
+        &self,
+        selector: &str,
+        scope: Option<&str>,
+    ) -> Result<ondas::ResolvedSelector<'_>, WavepeekError> {
+        let scope = scope
+            .map(ondas::HierarchyPath::parse)
+            .transpose()
+            .map_err(|error| WavepeekError::Scope(error.to_string()))?;
+        let resolved = self
+            .inner
+            .hierarchy()
+            .resolve_signal(selector, scope.as_ref())
+            .map_err(lookup_error)?;
+        if resolved
+            .declaration()
+            .parent()
+            .is_some_and(|scope| !visible_scope(&scope))
+        {
+            return Err(WavepeekError::SignalNotFound(format!(
+                "signal '{selector}' not found in dump"
             )));
         }
-        Ok(&index.declarations[indices[0]])
+        Ok(resolved)
+    }
+
+    pub fn resolve_signal(
+        &self,
+        selector: &str,
+        scope: Option<&str>,
+    ) -> Result<ResolvedSignal, WavepeekError> {
+        let selected = self.resolve_selector(selector, scope)?;
+        let signal = selected.signal();
+        let path = self.selector_path(&selected);
+        let width = match signal.encoding() {
+            Encoding::Bits { width } => width,
+            Encoding::Event => 0,
+            _ => return Err(unsupported(&path)),
+        };
+        Ok(ResolvedSignal {
+            path,
+            signal,
+            width,
+        })
     }
 
     pub fn resolve_signals(&self, paths: &[String]) -> Result<Vec<ResolvedSignal>, WavepeekError> {
         paths
             .iter()
-            .map(|path| {
-                if let Some(resolved) = self.direct_signal(path) {
-                    return Ok(resolved);
-                }
-                let declaration = match self.value_declaration(path) {
-                    Ok(declaration) => declaration,
-                    Err(error) => {
-                        if (matches!(error, WavepeekError::SignalNotFound(_))
-                            || ondas::HierarchyPath::parse(path).is_err())
-                            && let Some(projected) = self.resolve_projection(path)?
-                        {
-                            return Ok(projected);
-                        }
-                        return Err(error);
-                    }
-                };
-                let width = declaration.entry.width.ok_or_else(|| unsupported(path))?;
-                let id = declaration.id.ok_or_else(|| unsupported(path))?;
-                Ok(ResolvedSignal {
-                    path: declaration.entry.path.clone(),
-                    id,
-                    width,
-                })
-            })
+            .map(|path| self.resolve_signal(path, None))
             .collect()
     }
 
-    pub fn resolve_expr_signal(&self, path: &str) -> Result<ExprResolvedSignal, WavepeekError> {
-        if let Some(resolved) = self.direct_signal(path) {
-            let direct = self.direct.borrow();
-            let expr_type = direct
-                .by_path
-                .get(&resolved.path)
-                .and_then(|&offset| direct.entries[offset].expr_type.clone());
-            if let Some(expr_type) = expr_type {
-                return Ok(ExprResolvedSignal {
-                    path: resolved.path,
-                    id: resolved.id,
-                    expr_type,
-                });
-            }
+    pub fn resolve_expr_signal(
+        &self,
+        selector: &str,
+        scope: Option<&str>,
+    ) -> Result<ExprResolvedSignal, WavepeekError> {
+        let selected = self.resolve_selector(selector, scope)?;
+        let signal = selected.signal();
+        let path = self.selector_path(&selected);
+        let mut expr_type =
+            expression_type(&selected.declaration(), signal).ok_or_else(|| unsupported(&path))?;
+        if let Some((msb, lsb)) = selected.projection() {
+            expr_type.width = msb - lsb + 1;
+            expr_type.kind = ExprTypeKind::BitVector;
+            expr_type.storage = ExprStorage::PackedVector;
+            expr_type.is_signed = false;
+            expr_type.enum_type_id = None;
+            expr_type.enum_labels = None;
         }
-        let declaration = match self.declaration(path) {
-            Ok(declaration) => declaration,
-            Err(error) => {
-                if (matches!(error, WavepeekError::SignalNotFound(_))
-                    || ondas::HierarchyPath::parse(path).is_err())
-                    && let Some(projected) = self.resolve_projection(path)?
-                {
-                    return self.resolve_expr_signal(&projected.path);
-                }
-                return Err(error);
-            }
-        };
         Ok(ExprResolvedSignal {
-            path: declaration.entry.path.clone(),
-            id: declaration.id.ok_or_else(|| unsupported(path))?,
-            expr_type: declaration
-                .expr_type
-                .clone()
-                .ok_or_else(|| unsupported(path))?,
+            path,
+            signal,
+            expr_type,
         })
     }
 
-    fn direct_signal(&self, path: &str) -> Option<ResolvedSignal> {
-        let canonical = ondas::HierarchyPath::parse(path)
-            .map(|path| format_path(&path))
-            .unwrap_or_else(|_| path.to_owned());
-        let mut direct = self.direct.borrow_mut();
-        if let Some(resolved) = direct
-            .resolved(path)
-            .or_else(|| direct.resolved(&canonical))
-        {
-            return Some(resolved);
-        }
-        let inner = self.inner.borrow();
-        let parsed = ondas::HierarchyPath::parse(path).ok()?;
-        let variable = inner.hierarchy().variable_path(&parsed).ok()?;
-        if variable
-            .parent()
-            .is_some_and(|scope| !visible_scope(&scope))
-        {
-            return None;
-        }
-        let signal = variable.signal()?;
-        let width = match signal.encoding() {
-            Encoding::Bits { width } => width,
-            Encoding::Event => 0,
-            _ => return None,
+    fn selector_path(&self, selected: &ondas::ResolvedSelector<'_>) -> String {
+        let base = selected.declaration().path();
+        let Some((msb, lsb)) = selected.projection() else {
+            return format_path(&base);
         };
-        Some(direct.insert(DirectSignal {
-            path: canonical,
-            signal,
-            width,
-            expr_type: expression_type(&variable, signal),
-        }))
-    }
-
-    fn resolve_projection(&self, path: &str) -> Result<Option<ResolvedSignal>, WavepeekError> {
-        let Some((base, range)) = super::selection::parse_trailing_range(path)? else {
-            return Ok(None);
-        };
-        let source = self.resolve_signals(&[base.to_owned()])?.remove(0);
-        self.project_signal(&source, range.msb, range.lsb).map(Some)
-    }
-
-    pub fn project_signal(
-        &self,
-        source: &ResolvedSignal,
-        msb: u32,
-        lsb: u32,
-    ) -> Result<ResolvedSignal, WavepeekError> {
-        let mut path = format!("{}[{msb}:{lsb}]", source.path);
-        // An existing literal declaration retains exact-name priority. Quote
-        // the base component when necessary to make the slice reusable.
+        let name = base.name().unwrap_or_default();
+        let literal_name = format!("{name}[{msb}:{lsb}]");
+        let literal_path = base.parent().map_or_else(
+            || ondas::HierarchyPath::from_components([literal_name.as_str()]),
+            |parent| parent.join(&literal_name),
+        );
+        // Output must retain the projection even when a literal has exact priority.
         if matches!(
-            self.inner.borrow().hierarchy().variable(&path),
+            self.inner.hierarchy().variable_path(&literal_path),
             Ok(_) | Err(ondas::LookupError::Ambiguous { .. })
         ) {
-            let base = ondas::HierarchyPath::parse(&source.path)
-                .map_err(|error| WavepeekError::Signal(error.to_string()))?;
-            let name =
-                serde_json::Value::String(base.name().unwrap_or_default().to_owned()).to_string();
+            let name = serde_json::Value::String(name.to_owned()).to_string();
             let parent = base
                 .parent()
                 .map(|path| format_path(&path))
                 .unwrap_or_default();
-            path = if parent.is_empty() {
+            if parent.is_empty() {
                 format!("{name}[{msb}:{lsb}]")
             } else {
                 format!("{parent}.{name}[{msb}:{lsb}]")
-            };
-        }
-        if let Some(resolved) = self.direct.borrow().resolved(&path) {
-            return Ok(resolved);
-        }
-        let signal = self
-            .signal(source.id)?
-            .slice(msb, lsb)
-            .map_err(|error| WavepeekError::Signal(error.to_string()))?;
-        let mut expr_type = self.resolve_expr_signal(&source.path)?.expr_type;
-        expr_type.width = msb - lsb + 1;
-        expr_type.kind = ExprTypeKind::BitVector;
-        expr_type.storage = ExprStorage::PackedVector;
-        expr_type.is_signed = false;
-        expr_type.enum_type_id = None;
-        expr_type.enum_labels = None;
-        Ok(self.direct.borrow_mut().insert(DirectSignal {
-            path,
-            signal,
-            width: msb - lsb + 1,
-            expr_type: Some(expr_type),
-        }))
-    }
-
-    pub fn prepare_value_signals(&self, paths: &[String]) {
-        for path in paths {
-            self.direct_signal(path);
-        }
-    }
-
-    fn signal(&self, id: SignalId) -> Result<ondas::Signal, WavepeekError> {
-        if id.as_u64() & (1 << 63) != 0 {
-            return self
-                .direct
-                .borrow()
-                .entries
-                .get((u64::MAX - id.as_u64()) as usize)
-                .map(|direct| direct.signal)
-                .ok_or_else(|| {
-                    WavepeekError::Internal("invalid direct waveform signal handle".into())
-                });
-        }
-        match self.index().signals.get(id.as_u64() as usize) {
-            Some(SignalSource::Signal(signal)) => Ok(*signal),
-            Some(SignalSource::Concat(parts)) => {
-                if let Some(signal) = self.compositions.borrow().get(&id) {
-                    return Ok(*signal);
-                }
-                let signal = self
-                    .inner
-                    .borrow_mut()
-                    .concat(parts)
-                    .map_err(|error| read_error(&self.path, "compose signals from", error))?;
-                self.compositions.borrow_mut().insert(id, signal);
-                Ok(signal)
             }
-            _ => Err(WavepeekError::Internal(
-                "invalid waveform signal handle".into(),
-            )),
+        } else {
+            format!("{}[{msb}:{lsb}]", format_path(&base))
         }
     }
 
-    fn values(&mut self, ids: &[SignalId], time: u64) -> Result<Vec<Option<Value>>, WavepeekError> {
-        if ids.is_empty() {
+    fn values(
+        &mut self,
+        signals: &[ondas::Signal],
+        time: u64,
+    ) -> Result<Vec<Option<Value>>, WavepeekError> {
+        if signals.is_empty() {
             return Ok(Vec::new());
         }
-        let signals = ids
-            .iter()
-            .map(|id| self.signal(*id))
-            .collect::<Result<Vec<_>, _>>()?;
         let samples = self
             .inner
-            .borrow_mut()
-            .samples(&signals, Time::from_ticks(time))
+            .samples(signals, Time::from_ticks(time))
             .map_err(|error| read_error(&self.path, "read samples from", error))?;
         Ok(samples
             .into_iter()
@@ -586,7 +362,6 @@ impl OndasBackend {
         if !resolved.is_empty()
             && self
                 .inner
-                .borrow()
                 .metadata()
                 .time_span()
                 .is_some_and(|span| time < span.first().ticks())
@@ -595,8 +370,11 @@ impl OndasBackend {
                 "query time is before first dump timestamp".into(),
             ));
         }
-        let ids = resolved.iter().map(|signal| signal.id).collect::<Vec<_>>();
-        let values = self.values(&ids, time)?;
+        let signals = resolved
+            .iter()
+            .map(|entry| entry.signal)
+            .collect::<Vec<_>>();
+        let values = self.values(&signals, time)?;
         resolved
             .iter()
             .zip(&values)
@@ -612,7 +390,6 @@ impl OndasBackend {
         if !resolved.is_empty()
             && self
                 .inner
-                .borrow()
                 .metadata()
                 .time_span()
                 .is_some_and(|span| times.iter().any(|time| *time < span.first().ticks()))
@@ -623,8 +400,8 @@ impl OndasBackend {
         }
         let signals = resolved
             .iter()
-            .map(|signal| self.signal(signal.id))
-            .collect::<Result<Vec<_>, _>>()?;
+            .map(|entry| entry.signal)
+            .collect::<Vec<_>>();
         let times = times
             .iter()
             .copied()
@@ -632,7 +409,6 @@ impl OndasBackend {
             .collect::<Vec<_>>();
         let rows = self
             .inner
-            .borrow_mut()
             .samples_at(&signals, &times)
             .map_err(|error| read_error(&self.path, "read samples from", error))?;
         rows.iter()
@@ -657,7 +433,7 @@ impl OndasBackend {
                 resolved.path
             )));
         }
-        let values = self.values(&[resolved.id], time)?;
+        let values = self.values(&[resolved.signal], time)?;
         expression_value(resolved, values[0].as_ref().map(Value::as_ref))
     }
 
@@ -674,9 +450,9 @@ impl OndasBackend {
         let signals = query
             .signals
             .iter()
-            .map(|signal| self.signal(signal.id))
-            .collect::<Result<Vec<_>, _>>()?;
-        let mut waveform = self.inner.borrow_mut();
+            .map(|entry| entry.signal)
+            .collect::<Vec<_>>();
+        let waveform = &mut self.inner;
         let mut selection = waveform
             .select(&signals)
             .map_err(|error| read_error(&self.path, "select expression signals from", error))?;
@@ -694,20 +470,57 @@ impl OndasBackend {
                 resolved.path
             )));
         }
-        let values = self.values(&[resolved.id], time)?;
+        let values = self.values(&[resolved.signal], time)?;
         Ok(matches!(values[0], Some(Value::Event { occurrences }) if occurrences > 0))
     }
+}
 
-    pub fn validate_direct_value_supported(&self, path: &str) -> Result<(), WavepeekError> {
-        self.value_declaration(path).map(|_| ())
+fn lookup_error(error: ondas::LookupError) -> WavepeekError {
+    match error {
+        ondas::LookupError::NotFound { path } => WavepeekError::SignalNotFound(format!(
+            "signal '{}' not found in dump",
+            format_path(&path)
+        )),
+        ondas::LookupError::Ambiguous { path, matches } => WavepeekError::Signal(format!(
+            "signal '{}' is ambiguous in dump: {matches} source declarations; no candidate was selected",
+            format_path(&path)
+        )),
+        ondas::LookupError::NoSignal { path } => unsupported(&format_path(&path)),
+        error => WavepeekError::Signal(error.to_string()),
     }
+}
 
-    fn value_declaration(&self, path: &str) -> Result<&Declaration, WavepeekError> {
-        let declaration = self.declaration(path)?;
-        if declaration.entry.width.is_none() {
-            return Err(unsupported(path));
+fn collect_variables<'h>(
+    scope: ondas::Scope<'h>,
+    max_depth: Option<usize>,
+    variables: &mut Vec<ondas::Variable<'h>>,
+) {
+    for item in scope.children() {
+        match item {
+            ondas::Item::Variable(variable) => variables.push(variable),
+            ondas::Item::Scope(child) if max_depth != Some(0) && visible_scope(&child) => {
+                collect_variables(child, max_depth.map(|max| max - 1), variables);
+            }
+            _ => {}
         }
-        Ok(declaration)
+    }
+}
+
+fn signal_entry(variable: &ondas::Variable<'_>) -> SignalEntry {
+    let signal = variable.signal();
+    SignalEntry {
+        name: format_path(&ondas::HierarchyPath::from_components([variable.name()])),
+        path: format_path(&variable.path()),
+        kind: if signal.is_some_and(|signal| matches!(signal.encoding(), Encoding::Event)) {
+            "event".into()
+        } else {
+            var_type_alias(variable.kind())
+        },
+        width: signal.and_then(|signal| match signal.encoding() {
+            Encoding::Bits { width } => Some(width),
+            Encoding::Event => Some(0),
+            _ => None,
+        }),
     }
 }
 
@@ -723,196 +536,6 @@ fn visible_scope(scope: &ondas::Scope<'_>) -> bool {
         current = scope.parent();
     }
     true
-}
-
-impl HierarchyIndex {
-    fn new(hierarchy: &ondas::Hierarchy, scopes_only: bool) -> Self {
-        Self::build(hierarchy, scopes_only, None)
-    }
-
-    fn build(
-        hierarchy: &ondas::Hierarchy,
-        scopes_only: bool,
-        selected: Option<&HashSet<ondas::HierarchyPath>>,
-    ) -> Self {
-        let mut scopes = if selected.is_none() {
-            hierarchy
-                .scopes()
-                .filter(visible_scope)
-                .map(|scope| (scope.path(), scope_type_alias(scope.kind()), scope))
-                .collect::<Vec<_>>()
-        } else {
-            Vec::new()
-        };
-        scopes.sort_by(|left, right| left.0.components().cmp(right.0.components()));
-        let mut scope_by_path: HashMap<ondas::HierarchyPath, Vec<usize>> = HashMap::new();
-        let scope_entries = scopes
-            .iter()
-            .enumerate()
-            .map(|(index, (path, kind, _))| {
-                scope_by_path.entry(path.clone()).or_default().push(index);
-                ScopeEntry {
-                    depth: path.len().saturating_sub(1),
-                    path: format_path(path),
-                    kind: kind.clone(),
-                }
-            })
-            .collect::<Vec<_>>();
-        let mut index = Self {
-            declarations_by_scope: vec![Vec::new(); scope_entries.len()],
-            scopes: scope_entries,
-            scope_by_path,
-            declarations: Vec::new(),
-            by_path: HashMap::new(),
-            signals: Vec::new(),
-        };
-        if scopes_only {
-            return index;
-        }
-        let mut ids = HashMap::new();
-        let mut variables = Vec::new();
-        for variable in hierarchy.variables() {
-            if variable
-                .parent()
-                .is_some_and(|scope| !visible_scope(&scope))
-            {
-                continue;
-            }
-            let path = variable.path();
-            if selected.is_some_and(|paths| !paths.contains(&path)) {
-                continue;
-            }
-            let signal = variable.signal();
-            let id = signal.map(|signal| {
-                *ids.entry(signal).or_insert_with(|| {
-                    let id = SignalId::from_backend_index(index.signals.len() as u64);
-                    index.signals.push(SignalSource::Signal(signal));
-                    id
-                })
-            });
-            let parent = path
-                .parent()
-                .unwrap_or_else(|| ondas::HierarchyPath::from_components(Vec::<String>::new()));
-            let declaration_index = index.declarations.len();
-            if let Some(parents) = index.scope_by_path.get(&parent) {
-                for &parent in parents {
-                    if variable.parent().as_ref() == Some(&scopes[parent].2) {
-                        index.declarations_by_scope[parent].push(declaration_index);
-                    }
-                }
-            }
-            index
-                .by_path
-                .entry(path.clone())
-                .or_default()
-                .push(declaration_index);
-            index.declarations.push(Declaration {
-                path: path.clone(),
-                entry: SignalEntry {
-                    name: format_path(&ondas::HierarchyPath::from_components([variable.name()])),
-                    path: format_path(&path),
-                    kind: if signal
-                        .is_some_and(|signal| matches!(signal.encoding(), Encoding::Event))
-                    {
-                        "event".into()
-                    } else {
-                        var_type_alias(variable.kind())
-                    },
-                    width: signal.and_then(|signal| match signal.encoding() {
-                        Encoding::Bits { width } => Some(width),
-                        Encoding::Event => Some(0),
-                        _ => None,
-                    }),
-                },
-                id,
-                expr_type: signal.and_then(|signal| expression_type(&variable, signal)),
-                visible: true,
-            });
-            variables.push(variable);
-        }
-        for indices in index
-            .by_path
-            .values_mut()
-            .filter(|indices| indices.len() > 1)
-        {
-            let Some(parts) = composition_parts(indices.iter().map(|&i| &variables[i])) else {
-                continue;
-            };
-            let width = parts.iter().map(|part| part.width().unwrap_or(0)).sum();
-            let id = SignalId::from_backend_index(index.signals.len() as u64);
-            index.signals.push(SignalSource::Concat(parts));
-            for &i in &indices[1..] {
-                index.declarations[i].visible = false;
-            }
-            let first = &mut index.declarations[indices[0]];
-            first.id = Some(id);
-            first.entry.width = Some(width);
-            if let Some(expr_type) = &mut first.expr_type {
-                expr_type.width = width;
-                expr_type.storage = ExprStorage::PackedVector;
-                expr_type.enum_labels = None;
-            }
-            indices.truncate(1);
-        }
-        index
-    }
-}
-
-// A shared name alone does not establish a vector. Require explicit ranges in
-// one owning scope and a complete, consistently directed layout.
-fn composition_parts<'a, 'h>(
-    variables: impl Iterator<Item = &'a ondas::Variable<'h>>,
-) -> Option<Vec<ondas::Signal>>
-where
-    'h: 'a,
-{
-    let mut parts = Vec::new();
-    let mut parent = None;
-    let mut direction = None;
-    for variable in variables {
-        if let Some(parent) = &parent {
-            if *parent != variable.parent() {
-                return None;
-            }
-        } else {
-            parent = Some(variable.parent());
-        }
-        let range = variable.range()?;
-        let signal = variable.signal()?;
-        let width = signal.width()?;
-        if range.msb().abs_diff(range.lsb()).checked_add(1)? != u64::from(width) {
-            return None;
-        }
-        if range.msb() != range.lsb() {
-            let descending = range.msb() > range.lsb();
-            if direction.is_some_and(|current| current != descending) {
-                return None;
-            }
-            direction = Some(descending);
-        }
-        parts.push((
-            range.msb().min(range.lsb()),
-            range.msb().max(range.lsb()),
-            signal,
-        ));
-    }
-    parts.sort_by_key(|part| part.0);
-    if parts
-        .windows(2)
-        .any(|pair| pair[0].1.checked_add(1) != Some(pair[1].0))
-    {
-        return None;
-    }
-    let width = parts
-        .iter()
-        .try_fold(0u32, |width, part| width.checked_add(part.2.width()?))?;
-    if width == 0 {
-        return None;
-    }
-    if direction.unwrap_or(true) {
-        parts.reverse();
-    }
-    Some(parts.into_iter().map(|part| part.2).collect())
 }
 
 fn interpreted_bits(bits: ondas::BitsRef<'_>) -> String {

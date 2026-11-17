@@ -298,7 +298,7 @@ mod tests {
         let string = binding.resolve_signal("top.string_value").unwrap();
         let query = ExpressionQuery::new(&binding, &[clk], &[alias, event, real, string]).unwrap();
         assert_ne!(clk, alias);
-        assert_eq!(query.signals[0].id, query.signals[1].id);
+        assert_eq!(query.signals[0].signal, query.signals[1].signal);
         assert_eq!(query.signals.len(), 5);
         let mut ticks = Vec::new();
         wave.borrow_mut()

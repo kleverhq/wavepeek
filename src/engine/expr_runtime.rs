@@ -3,15 +3,14 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::rc::Rc;
 
-use crate::engine::scoped_signal_path;
 use crate::error::WavepeekError;
 use crate::expr::sema::{
     BoundEventKind, BoundInsideItem, BoundLogicalKind, BoundLogicalNode, BoundSelection,
 };
 use crate::expr::{
     BoundEventExpr, BoundLogicalExpr, EventEvalFrame, ExprDiagnostic, ExprValuePayload,
-    ExpressionHost, SampledValue, SignalHandle, bind_event_expr_ast, bind_logical_expr_ast,
-    eval_logical_expr_at, event_matches_at, parse_event_expr_ast, parse_logical_expr_ast,
+    SignalHandle, bind_event_expr_ast, bind_logical_expr_ast, eval_logical_expr_at,
+    event_matches_at, parse_event_expr_ast, parse_logical_expr_ast,
 };
 #[cfg(test)]
 use crate::waveform::ExprResolvedSignal;
@@ -28,69 +27,26 @@ pub(crate) fn open_shared_waveform(path: &Path) -> Result<SharedWaveform, Wavepe
     Ok(Rc::new(RefCell::new(Waveform::open(path)?)))
 }
 
-pub(crate) struct ScopedExprHost<'a> {
-    inner: &'a dyn RuntimeExpressionHost,
-    scope: Option<&'a str>,
-}
-
-impl<'a> ScopedExprHost<'a> {
-    pub(crate) fn new(inner: &'a dyn RuntimeExpressionHost, scope: Option<&'a str>) -> Self {
-        Self { inner, scope }
-    }
-}
-
-impl RuntimeExpressionHost for ScopedExprHost<'_> {
-    fn take_waveform_error(&self) -> Option<WavepeekError> {
-        self.inner.take_waveform_error()
-    }
-}
-
-impl ExpressionHost for ScopedExprHost<'_> {
-    fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
-        let resolved_name = scoped_signal_path(name, self.scope);
-        self.inner.resolve_signal(resolved_name.as_str())
-    }
-
-    fn signal_type(&self, handle: SignalHandle) -> Result<crate::expr::ExprType, ExprDiagnostic> {
-        self.inner.signal_type(handle)
-    }
-
-    fn sample_value(
-        &self,
-        handle: SignalHandle,
-        timestamp: u64,
-    ) -> Result<SampledValue, ExprDiagnostic> {
-        self.inner.sample_value(handle, timestamp)
-    }
-
-    fn event_occurred(&self, handle: SignalHandle, timestamp: u64) -> Result<bool, ExprDiagnostic> {
-        self.inner.event_occurred(handle, timestamp)
-    }
-}
-
 pub(crate) fn bind_waveform_event_expr(
     waveform: SharedWaveform,
     scope: Option<&str>,
     source: &str,
 ) -> Result<(WaveformExprHost, BoundEventExpr), WavepeekError> {
     let host = WaveformExprHost::from_shared_scoped(waveform, scope);
-    let scoped = ScopedExprHost::new(&host, scope);
     let ast =
         parse_event_expr_ast(source).map_err(|diagnostic| expr_diagnostic(source, diagnostic))?;
-    let bound = bind_event_expr_ast(&ast, &scoped)
+    let bound = bind_event_expr_ast(&ast, &host)
         .map_err(|diagnostic| expr_diagnostic(source, diagnostic))?;
     Ok((host, bound))
 }
 
 pub(crate) fn bind_waveform_logical_expr(
     host: &WaveformExprHost,
-    scope: Option<&str>,
     source: &str,
 ) -> Result<BoundLogicalExpr, WavepeekError> {
-    let scoped = ScopedExprHost::new(host, scope);
     let ast =
         parse_logical_expr_ast(source).map_err(|diagnostic| expr_diagnostic(source, diagnostic))?;
-    let bound = bind_logical_expr_ast(&ast, &scoped)
+    let bound = bind_logical_expr_ast(&ast, host)
         .map_err(|diagnostic| expr_diagnostic(source, diagnostic))?;
     bound
         .validate_boolean_context()
@@ -216,7 +172,7 @@ pub(crate) fn candidate_sources_for_handles(
     let mut seen = HashSet::new();
     for handle in handles {
         let resolved = host.resolved_signal_for_handle(*handle)?;
-        if seen.insert(resolved.id) {
+        if seen.insert(resolved.signal) {
             sources.push(resolved);
         }
     }
@@ -311,10 +267,10 @@ mod tests {
     use crate::waveform::expr_host::{RuntimeExpressionHost, WaveformExprHost};
 
     use super::{
-        ScopedExprHost, bind_waveform_event_expr, bind_waveform_logical_expr,
-        candidate_sources_for_handles, eval_bound_logical_truth, event_candidate_handles,
-        event_expr_contains_wildcard, event_expr_is_any_tracked_only, event_expr_is_edge_only,
-        event_expr_matches, expr_diagnostic, open_shared_waveform, referenced_signal_handles,
+        bind_waveform_event_expr, bind_waveform_logical_expr, candidate_sources_for_handles,
+        eval_bound_logical_truth, event_candidate_handles, event_expr_contains_wildcard,
+        event_expr_is_any_tracked_only, event_expr_is_edge_only, event_expr_matches,
+        expr_diagnostic, open_shared_waveform, referenced_signal_handles,
     };
 
     const TEST_VCD: &str = concat!(
@@ -350,12 +306,12 @@ mod tests {
     impl ExpressionHost for StubHost {
         fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
             match name {
-                "top.clk" => Ok(SignalHandle(1)),
-                "top.sig" => Ok(SignalHandle(2)),
-                "top.ev" => Ok(SignalHandle(3)),
-                "top.temp" => Ok(SignalHandle(4)),
-                "top.msg" => Ok(SignalHandle(5)),
-                "top.cpu.valid" => Ok(SignalHandle(6)),
+                "top.clk" | "clk" => Ok(SignalHandle(1)),
+                "top.sig" | "sig" => Ok(SignalHandle(2)),
+                "top.ev" | "ev" => Ok(SignalHandle(3)),
+                "top.temp" | "temp" => Ok(SignalHandle(4)),
+                "top.msg" | "msg" => Ok(SignalHandle(5)),
+                "top.cpu.valid" | "cpu.valid" => Ok(SignalHandle(6)),
                 "top.top.clk" => Ok(SignalHandle(7)),
                 other => Err(ExprDiagnostic {
                     layer: crate::expr::DiagnosticLayer::Semantic,
@@ -416,46 +372,12 @@ mod tests {
     }
 
     #[test]
-    fn scoped_host_resolves_relative_and_canonical_descendants() {
-        let host = StubHost;
-        let scoped = ScopedExprHost::new(&host, Some("top"));
-        assert_eq!(
-            scoped
-                .resolve_signal("cpu.valid")
-                .expect("scoped descendant should resolve"),
-            SignalHandle(6)
-        );
-        assert_eq!(
-            scoped
-                .resolve_signal("top.clk")
-                .expect("canonical descendant should resolve"),
-            SignalHandle(1)
-        );
-    }
-
-    #[test]
-    fn scoped_host_prefixes_short_names_and_passthrough_without_scope() {
-        let host = StubHost;
-        let scoped = ScopedExprHost::new(&host, Some("top"));
-        assert_eq!(
-            scoped.resolve_signal("clk").expect("scoped short name"),
-            SignalHandle(1)
-        );
-
-        let unscoped = ScopedExprHost::new(&host, None);
-        assert_eq!(
-            unscoped.resolve_signal("top.sig").expect("canonical name"),
-            SignalHandle(2)
-        );
-    }
-
-    #[test]
     fn bound_handle_helpers_preserve_unique_signal_order() {
         let host = StubHost;
-        let scoped = ScopedExprHost::new(&host, Some("top"));
+        let scoped = &host;
         let logical_ast = crate::expr::parse_logical_expr_ast("sig && ev.triggered() && sig")
             .expect("logical expr should parse");
-        let bound_logical = crate::expr::bind_logical_expr_ast(&logical_ast, &scoped)
+        let bound_logical = crate::expr::bind_logical_expr_ast(&logical_ast, scoped)
             .expect("logical expr should bind");
         assert_eq!(
             referenced_signal_handles(&bound_logical),
@@ -465,7 +387,7 @@ mod tests {
         let event_ast =
             crate::expr::parse_event_expr_ast("* or posedge clk").expect("event expr should parse");
         let bound_event =
-            crate::expr::bind_event_expr_ast(&event_ast, &scoped).expect("event expr should bind");
+            crate::expr::bind_event_expr_ast(&event_ast, scoped).expect("event expr should bind");
         assert!(event_expr_contains_wildcard(&bound_event));
         assert_eq!(event_candidate_handles(&bound_event), vec![SignalHandle(1)]);
         assert!(!event_expr_is_any_tracked_only(&bound_event));
@@ -473,14 +395,14 @@ mod tests {
 
         let edge_only = crate::expr::bind_event_expr_ast(
             &crate::expr::parse_event_expr_ast("posedge clk or edge sig").expect("parse"),
-            &scoped,
+            scoped,
         )
         .expect("bind");
         assert!(event_expr_is_edge_only(&edge_only));
 
         let any_only = crate::expr::bind_event_expr_ast(
             &crate::expr::parse_event_expr_ast("*").expect("parse"),
-            &scoped,
+            scoped,
         )
         .expect("bind");
         assert!(event_expr_is_any_tracked_only(&any_only));
@@ -513,8 +435,8 @@ mod tests {
         );
 
         let host = WaveformExprHost::open(fixture.path()).expect("host should open");
-        let bound = bind_waveform_logical_expr(&host, Some("top"), "sig")
-            .expect("scoped logical expr should bind");
+        let bound =
+            bind_waveform_logical_expr(&host, "top.sig").expect("scoped logical expr should bind");
         assert!(eval_bound_logical_truth("sig", &bound, &host, 5).expect("eval"));
 
         let wrapped = expr_diagnostic(
@@ -792,7 +714,7 @@ mod tests {
         }
 
         let host = StubHost;
-        let scoped = ScopedExprHost::new(&host, Some("top"));
+        let scoped = &host;
         assert_eq!(
             scoped
                 .sample_value(SignalHandle(2), 5)
@@ -821,7 +743,7 @@ mod tests {
             .starts_with("fatal: expr:")
         );
         assert!(
-            bind_waveform_logical_expr(&wf_host, Some("top"), "ev")
+            bind_waveform_logical_expr(&wf_host, "top.ev")
                 .expect_err("semantic bind failures should map to expr errors")
                 .to_string()
                 .contains("triggered()")

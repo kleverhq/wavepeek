@@ -11,12 +11,11 @@ use crate::cli::limits::LimitArg;
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::expr_runtime::{
-    ScopedExprHost, SharedWaveform, bind_waveform_logical_expr, eval_bound_logical_truth,
+    SharedWaveform, bind_waveform_logical_expr, eval_bound_logical_truth,
     eval_with_waveform_errors, event_candidate_handles, event_expr_is_edge_only,
     event_expr_matches, event_iff_handles, expr_diagnostic, open_shared_waveform,
     referenced_signal_handles,
 };
-use crate::engine::signal_projection::{ProjectedSignal, resolve_projected_signal};
 use crate::engine::time::{
     DumpTimeContext, TimeValidationError, format_raw_timestamp, parse_dump_time_context,
     validate_time_token_to_raw,
@@ -28,6 +27,7 @@ use crate::expr::{
     BoundEventExpr, BoundLogicalExpr, EventEvalFrame, ExpressionHost, SampledValue, SignalHandle,
     bind_event_expr_ast, parse_event_expr_ast,
 };
+use crate::waveform::ResolvedSignal;
 use crate::waveform::display_signal_path;
 use crate::waveform::expr_host::{RuntimeExpressionHost, WaveformExprHost};
 use crate::waveform::expr_query::{ExpressionQuery, ExpressionQueryTick};
@@ -107,7 +107,7 @@ impl ExtractSource {
 struct PayloadSignal {
     display: String,
     relative_path: Option<String>,
-    selected: ProjectedSignal,
+    selected: ResolvedSignal,
     handle: SignalHandle,
 }
 
@@ -595,12 +595,12 @@ fn bind_extract_sources(
     for source in sources {
         let ast = parse_event_expr_ast(&source.on)
             .map_err(|diagnostic| expr_diagnostic(&source.on, diagnostic))?;
-        let bound_event = bind_event_expr_ast(&ast, &ScopedExprHost::new(host, scope))
+        let bound_event = bind_event_expr_ast(&ast, host)
             .map_err(|diagnostic| expr_diagnostic(&source.on, diagnostic))?;
         if !event_expr_is_edge_only(&bound_event) {
             return Err(WavepeekError::Args(EDGE_ONLY_ON_MESSAGE.to_string()));
         }
-        let bound_when = bind_waveform_logical_expr(host, scope, source.when.as_str())?;
+        let bound_when = bind_waveform_logical_expr(host, source.when.as_str())?;
         let payload = resolve_payload_signals(
             waveform,
             host,
@@ -633,7 +633,7 @@ fn resolve_payload_signals(
         let waveform = waveform.borrow();
         payload
             .iter()
-            .map(|token| resolve_projected_signal(&waveform, token, scope))
+            .map(|token| waveform.resolve_signal_with_diagnostic(token, scope, true))
             .collect::<Result<Vec<_>, _>>()?
     };
     selected
@@ -646,7 +646,7 @@ fn resolve_payload_signals(
                 None
             };
             let handle = host
-                .resolve_signal(&selected.source.path)
+                .resolve_signal(&selected.path)
                 .map_err(|diagnostic| expr_diagnostic(&selected.path, diagnostic))?;
             Ok(PayloadSignal {
                 display,
@@ -828,7 +828,7 @@ fn build_payload_value(
     host: &dyn RuntimeExpressionHost,
     timestamp: u64,
 ) -> Result<ExtractPayloadValue, WavepeekError> {
-    let bits = if requested.selected.width() == 0 {
+    let bits = if requested.selected.width == 0 {
         // Raw-event payloads retain the existing zero-width representation.
         eval_with_waveform_errors(&requested.selected.path, host, || {
             host.event_occurred(requested.handle, timestamp)
@@ -861,7 +861,7 @@ fn build_payload_value(
         display: requested.display.clone(),
         path: requested.selected.path.clone(),
         relative_path: requested.relative_path.clone(),
-        value: format_verilog_literal(requested.selected.width(), &bits),
+        value: format_verilog_literal(requested.selected.width, &bits),
     })
 }
 

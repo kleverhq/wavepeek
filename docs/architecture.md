@@ -54,7 +54,7 @@ Key architectural consequences:
 - Local preview composes the separately generated current Playground and documentation under `/wavepeek/` and `/wavepeek/latest/`; production uses the same paths while Mike retains historical documentation versions.
 - Shared `src/logic.rs` defines four-state interpretation for expressions, edges and bit-output sampling. Renderers consume normalized samples; raw expression samples and enum keys retain their original states.
 - Ondas owns format-specific reading and optional native reader access behind the waveform facade. The range engines share the expression query adapter.
-- The lazy hierarchy index keys scopes and declarations by exact Ondas component paths. Direct lookup uses the same components without building a second full index. Confirmed contiguous declaration ranges define Ondas concatenations; samples and projections use their common signal handles. Quoted canonical paths are formatted for output and parsed by selections and expressions.
+- Ondas owns hierarchy identity and selector resolution. The adapter traverses public hierarchy views for listing and retains resolved Signal handles for reading. Selected declaration metadata and explicit projections define expression types; canonical paths are formatted for output. VCD split-vector normalization belongs to Ondas.
 - `value` submits all selected signals to one Ondas point query for a single requested time, or one `samples_at` query for multiple times. Both paths preserve request order and duplicates. Range consumers read through the shared expression query adapter without saved histories or candidate grids.
 - `property` binds drivers, guards and evaluation operands into one ordered Ondas selection. It evaluates candidates during `Selection::query`; a callback host reads only completed `t` and absolute `t - 1`. Transition captures first sample the window start once to establish their baseline, including quiet windows.
 - `extract generic` and its APB/ATB/AXI/AXI-Stream adapters bind all sources into one ordered Ondas selection and query. Drivers produce candidates; each group checks its completed-tick event and `iff`, then reads `when` and payload at absolute `t - 1`. Rows retain source declaration order, aliases, projections, and repeated payload fields. A complete matching row beyond the limit establishes truncation.
@@ -140,7 +140,7 @@ src/
 
 | Crate | Version | Purpose | Notes |
 |-------|---------|---------|-------|
-| `ondas` | =2.1.0 | VCD/FST parsing and optional FSDB/SHM access | Native features forward to `ondas/fsdb-lib` and `ondas/shm-lib`; VCD/FST support byte input for WASM |
+| `ondas` | Git `e5de800b223d381dbe32387ef55cbb0c9cc2cf62` | VCD/FST parsing and optional FSDB/SHM access | Native features forward to `ondas/fsdb-lib` and `ondas/shm-lib`; VCD/FST support byte input for WASM |
 | `clap` | ~4 | CLI argument parsing | Derive API for declarative CLI definitions |
 | `serde` | ~1 | Serialization | Used for machine-readable output structures |
 | `serde_json` | ~1 | JSON output | Envelope and JSONL record rendering |
@@ -193,8 +193,9 @@ Non-fatal diagnostics do not change the exit code.
 
 ## Waveform Access
 
-The facade uses registry `ondas = "=2.1.0"`. Metadata and hierarchy commands use
-Ondas metadata and exact hierarchy components. `value` sends all selected handles
+The facade pins Ondas to Git revision `e5de800b223d381dbe32387ef55cbb0c9cc2cf62`.
+This includes the selector result and VCD normalization APIs beyond registry 2.1.0.
+Metadata and hierarchy commands use Ondas metadata and exact hierarchy components. `value` sends all selected handles
 to one `samples` call for a single time, or one `samples_at` call for multiple
 times. Request order and duplicates are preserved.
 
@@ -204,13 +205,18 @@ output range. Protocol state belongs to its walker; sampled values belong to one
 callback. APB, ATB, AXI, and AXI-Stream use generic extraction. Browser byte input
 enters the same facade and command engines through `ondas::open_bytes`.
 
-The lazy hierarchy index supports exact lookup and listing. The direct-signal
-cache avoids building the full index for point selections; the composition cache
-retains Ondas handles for metadata-backed vectors. Binding caches map names to
-expression handles and types. These caches live for one waveform invocation.
-Query values are cached only for the current callback. WavePeek does not retain
-range histories or materialize candidate grids, and format names do not select
-reading algorithms.
+`Hierarchy::resolve_signal` resolves each selector with its component scope prefix.
+The result retains the selected declaration, Signal, and explicit normalized
+projection, including a full-width slice. WavePeek applies expression type policy
+and formats reusable selectors; it does not parse slices or maintain a separate
+hierarchy or waveform identity index. Listing omits ambiguous paths according to
+Ondas exact lookup. VCD split declarations are normalized by Ondas before hierarchy
+publication; other formats retain the hierarchy supplied by the library.
+
+Binding caches map operand names to expression handles and selected declaration
+types. Query values are cached only for the current callback. WavePeek does not
+retain range histories or materialize candidate grids, and format names do not
+select reading algorithms.
 
 The application stops callbacks through `Break`, including typed sink and
 expression failures. Exact result completeness can require a matching row beyond

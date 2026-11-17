@@ -13,7 +13,6 @@ use crate::engine::expr_runtime::{
     event_expr_contains_wildcard, event_expr_is_edge_only, event_expr_matches, event_iff_handles,
     open_shared_waveform,
 };
-use crate::engine::signal_projection::{ProjectedSignal, resolve_projected_signal};
 use crate::engine::time::{
     DumpTimeContext, ParsedTime, TimeValidationError, format_raw_timestamp,
     parse_dump_time_context, validate_time_token_to_raw,
@@ -26,7 +25,7 @@ use crate::expr::{
 };
 use crate::waveform::expr_host::RuntimeExpressionHost;
 use crate::waveform::expr_query::{ExpressionQuery, ExpressionQueryTick};
-use crate::waveform::{SampledSignalState, Waveform, display_signal_path};
+use crate::waveform::{ResolvedSignal, SampledSignalState, Waveform, display_signal_path};
 
 const PRE_EDGE_REQUIRES_EDGE_ONLY_ON: &str = "--sample-mode pre-edge requires --on with only edge event terms (posedge, negedge, or edge); use --sample-mode native for wildcard or plain signal triggers";
 
@@ -51,7 +50,7 @@ pub struct ChangeSnapshot {
 struct RequestedSignal {
     display: String,
     relative_path: Option<String>,
-    selected: ProjectedSignal,
+    selected: ResolvedSignal,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -402,7 +401,7 @@ fn sample_requested(
             };
             Ok(SampledSignalState {
                 path: signal.selected.path.clone(),
-                width: signal.selected.width(),
+                width: signal.selected.width,
                 bits,
             })
         })
@@ -509,13 +508,6 @@ fn resolve_requested_signals(
 ) -> Result<Vec<RequestedSignal>, WavepeekError> {
     if let Some(scope) = scope {
         waveform.signals_in_scope(scope)?;
-    } else if args.signals.len() > 1 {
-        let paths = args
-            .signals
-            .iter()
-            .map(|token| crate::engine::scoped_signal_path(token.trim(), None))
-            .collect::<Vec<_>>();
-        waveform.prepare_value_signals(&paths);
     }
 
     let mut resolved = Vec::with_capacity(args.signals.len());
@@ -528,7 +520,7 @@ fn resolve_requested_signals(
             ));
         }
 
-        let selected = resolve_projected_signal(waveform, display, scope)?;
+        let selected = waveform.resolve_signal_with_diagnostic(display, scope, true)?;
         resolved.push(RequestedSignal {
             display: display.to_string(),
             relative_path: None,

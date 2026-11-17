@@ -11,7 +11,6 @@ pub mod property;
 pub mod scope;
 pub mod signal;
 mod signal_mapping;
-mod signal_projection;
 pub mod skill;
 pub mod time;
 pub mod value;
@@ -32,27 +31,6 @@ pub(crate) fn signal_token(text: &str) -> String {
         return crate::waveform::format_path(&path);
     }
     text.trim().to_string()
-}
-
-pub(crate) fn scoped_signal_path(name: &str, scope: Option<&str>) -> String {
-    let canonical = |text: &str| {
-        ondas::HierarchyPath::parse(text.trim_start())
-            .map(|path| crate::waveform::format_path(&path))
-            .unwrap_or_else(|_| text.trim().to_string())
-    };
-    let name = canonical(name);
-    match scope.map(canonical) {
-        Some(scope) if scope.is_empty() => name,
-        Some(scope)
-            if name
-                .strip_prefix(&scope)
-                .is_some_and(|suffix| suffix.starts_with('.')) =>
-        {
-            name
-        }
-        Some(scope) => format!("{scope}.{name}"),
-        None => name,
-    }
 }
 
 #[derive(Debug)]
@@ -265,20 +243,7 @@ pub fn run_jsonl<W: std::io::Write>(
 
 #[cfg(test)]
 mod tests {
-    use super::{CommandName, scoped_signal_path};
-
-    #[test]
-    fn scoped_signal_path_resolves_relative_names() {
-        for (name, scope, expected) in [
-            ("top.cpu.valid", None, "top.cpu.valid"),
-            ("valid", Some("top.cpu"), "top.cpu.valid"),
-            ("cpu.valid", Some("top"), "top.cpu.valid"),
-            ("top.cpu.valid", Some("top"), "top.cpu.valid"),
-            ("topology.valid", Some("top"), "top.topology.valid"),
-        ] {
-            assert_eq!(scoped_signal_path(name, scope), expected);
-        }
-    }
+    use super::CommandName;
 
     #[test]
     fn command_name_strings_exercise_all_variants() {

@@ -1060,10 +1060,13 @@ fn value_projects_flat_ranges_and_preserves_request_positions() {
 fn value_rejects_invalid_flat_ranges_before_sampling() {
     let fixture = write_fixture(FLAT_PROJECTION_VCD, "value-invalid-projection.vcd");
     for (projection, message) in [
-        ("data[3:4]", "msb must be greater"),
-        ("data[8:0]", "outside signal 'top.data' width 8"),
-        ("data[WIDTH:0]", "non-negative decimal integers"),
-        ("data[7:4][3:2]", "chained and multidimensional"),
+        ("data[3:4]", "invalid slice [3:4]"),
+        ("data[8:0]", "outside signal width 8"),
+        (
+            "data[WIDTH:0]",
+            "slice index must be an unsigned decimal integer",
+        ),
+        ("data[7:4][3:2]", "signal 'data[7:4][3:2]' not found"),
         ("data[3]", "no dumped signal with basename 'data[3]'"),
     ] {
         wavepeek_cmd()
@@ -1158,5 +1161,50 @@ fn value_batch_missing_observation_fails_without_partial_output() {
                 .unwrap()
                 .contains("no value at or before requested time")
         );
+    }
+}
+
+#[test]
+fn value_scoped_indexed_slices_and_normalized_vcd_bus_preserve_batch_order() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 4 ! bus [7:4] $end\n$var wire 4 \" bus [3:0] $end\n$var wire 8 # mem[0] [7:0] $end\n$upscope $end\n$enddefinitions $end\n#0\nb1010 !\nb0101 \"\nb11110000 #\n#5\nb0011 !\nb1100 \"\nb01010101 #\n",
+        ".vcd",
+    );
+    let output = wavepeek_cmd()
+        .args([
+            "value",
+            "--waves",
+            fixture.path().to_str().unwrap(),
+            "--scope",
+            "top",
+            "--signals",
+            "mem[0][7:4],bus[7:4],top.bus[7:0],mem[0][7:4]",
+            "--at",
+            "0ns,5ns,0ns",
+            "--json",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    assert!(output.stderr.is_empty());
+    let result: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let rows = result["data"].as_array().unwrap();
+    assert_eq!(rows.len(), 3);
+    assert_eq!(rows[0], rows[2]);
+    for (row, values) in rows.iter().zip([
+        ["4'hf", "4'ha", "8'ha5", "4'hf"],
+        ["4'h5", "4'h3", "8'h3c", "4'h5"],
+        ["4'hf", "4'ha", "8'ha5", "4'hf"],
+    ]) {
+        let signals = row["signals"].as_array().unwrap();
+        assert_eq!(signals[0]["path"], r#"top."mem[0]"[7:4]"#);
+        assert_eq!(signals[0]["relative_path"], r#""mem[0]"[7:4]"#);
+        for (signal, value) in signals.iter().zip(values) {
+            assert_eq!(signal["value"], value);
+        }
     }
 }

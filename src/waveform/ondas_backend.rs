@@ -27,6 +27,30 @@ use super::types::{
     WaveformMetadata,
 };
 
+#[derive(Debug)]
+pub(super) enum SignalResolutionError {
+    NotFound(ondas::HierarchyPath),
+    Other(WavepeekError),
+}
+
+impl SignalResolutionError {
+    pub(super) fn into_error(self) -> WavepeekError {
+        match self {
+            Self::NotFound(path) => WavepeekError::SignalNotFound(format!(
+                "signal '{}' not found in dump",
+                format_path(&path)
+            )),
+            Self::Other(error) => error,
+        }
+    }
+}
+
+impl From<WavepeekError> for SignalResolutionError {
+    fn from(error: WavepeekError) -> Self {
+        Self::Other(error)
+    }
+}
+
 pub(super) struct OndasBackend {
     inner: ondas::Waveform,
     path: PathBuf,
@@ -227,7 +251,7 @@ impl OndasBackend {
         &self,
         selector: &str,
         scope: Option<&str>,
-    ) -> Result<ondas::ResolvedSelector<'_>, WavepeekError> {
+    ) -> Result<ondas::ResolvedSelector<'_>, SignalResolutionError> {
         let scope = scope
             .map(ondas::HierarchyPath::parse)
             .transpose()
@@ -242,9 +266,9 @@ impl OndasBackend {
             .parent()
             .is_some_and(|scope| !visible_scope(&scope))
         {
-            return Err(WavepeekError::SignalNotFound(format!(
-                "signal '{selector}' not found in dump"
-            )));
+            return Err(SignalResolutionError::NotFound(
+                resolved.declaration().path(),
+            ));
         }
         Ok(resolved)
     }
@@ -253,14 +277,14 @@ impl OndasBackend {
         &self,
         selector: &str,
         scope: Option<&str>,
-    ) -> Result<ResolvedSignal, WavepeekError> {
+    ) -> Result<ResolvedSignal, SignalResolutionError> {
         let selected = self.resolve_selector(selector, scope)?;
         let signal = selected.signal();
         let path = self.selector_path(&selected);
         let width = match signal.encoding() {
             Encoding::Bits { width } => width,
             Encoding::Event => 0,
-            _ => return Err(unsupported(&path)),
+            _ => return Err(unsupported(&path).into()),
         };
         Ok(ResolvedSignal {
             path,
@@ -272,7 +296,10 @@ impl OndasBackend {
     pub fn resolve_signals(&self, paths: &[String]) -> Result<Vec<ResolvedSignal>, WavepeekError> {
         paths
             .iter()
-            .map(|path| self.resolve_signal(path, None))
+            .map(|path| {
+                self.resolve_signal(path, None)
+                    .map_err(SignalResolutionError::into_error)
+            })
             .collect()
     }
 
@@ -280,7 +307,7 @@ impl OndasBackend {
         &self,
         selector: &str,
         scope: Option<&str>,
-    ) -> Result<ExprResolvedSignal, WavepeekError> {
+    ) -> Result<ExprResolvedSignal, SignalResolutionError> {
         let selected = self.resolve_selector(selector, scope)?;
         let signal = selected.signal();
         let path = self.selector_path(&selected);
@@ -475,18 +502,14 @@ impl OndasBackend {
     }
 }
 
-fn lookup_error(error: ondas::LookupError) -> WavepeekError {
+fn lookup_error(error: ondas::LookupError) -> SignalResolutionError {
     match error {
-        ondas::LookupError::NotFound { path } => WavepeekError::SignalNotFound(format!(
-            "signal '{}' not found in dump",
-            format_path(&path)
-        )),
+        ondas::LookupError::NotFound { path } => SignalResolutionError::NotFound(path),
         ondas::LookupError::Ambiguous { path, matches } => WavepeekError::Signal(format!(
-            "signal '{}' is ambiguous in dump: {matches} source declarations; no candidate was selected",
-            format_path(&path)
-        )),
-        ondas::LookupError::NoSignal { path } => unsupported(&format_path(&path)),
-        error => WavepeekError::Signal(error.to_string()),
+            "signal '{}' is ambiguous in dump: {matches} source declarations; no candidate was selected", format_path(&path)
+        )).into(),
+        ondas::LookupError::NoSignal { path } => unsupported(&format_path(&path)).into(),
+        error => WavepeekError::Signal(error.to_string()).into(),
     }
 }
 

@@ -208,15 +208,12 @@ enters the same facade and command engines through `ondas::open_bytes`.
 `Hierarchy::resolve_signal` resolves each selector with its component scope prefix.
 The result retains the selected declaration, Signal, and explicit normalized
 projection, including a full-width slice. WavePeek applies expression type policy
-and formats reusable selectors; it does not parse slices or maintain a separate
-hierarchy or waveform identity index. Listing omits ambiguous paths according to
+and formats reusable selectors from that result. Listing omits ambiguous paths according to
 Ondas exact lookup. VCD split declarations are normalized by Ondas before hierarchy
 publication; other formats retain the hierarchy supplied by the library.
 
 Binding caches map operand names to expression handles and selected declaration
-types. Query values are cached only for the current callback. WavePeek does not
-retain range histories or materialize candidate grids, and format names do not
-select reading algorithms.
+types. Query values are cached only for the current callback.
 
 The application stops callbacks through `Break`, including typed sink and
 expression failures. Exact result completeness can require a matching row beyond

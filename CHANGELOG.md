@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use declaration metadata for expression types and preserve stored widths. Unknown signedness defaults to unsigned for ordinary vectors, and unknown logic domains use four-state evaluation.
 - Interpret weak logic states as L=0 and H=1 across expressions, edges and output; keep raw enum label matching. Raw events use kind `event` and width 0 across formats.
 - Resolve selectors and scope prefixes through Ondas, retaining exact paths, selected alias metadata, and explicit projections. Ondas normalizes confirmed VCD split vectors; other formats retain their library declarations.
-- Pin Ondas to Git revision `e5de800b223d381dbe32387ef55cbb0c9cc2cf62` for selector results and VCD normalization beyond registry 2.1.0. FSDB native diagnostics remain visible on stderr while stdout retains the command output contract.
+- Use Ondas 2.2.0. FSDB native diagnostics remain visible on stderr while stdout retains the command output contract.
 
 ### Removed
 - Remove hidden `change --tune-*` diagnostic controls.

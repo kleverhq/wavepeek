@@ -28,7 +28,7 @@ serde = { version = "~1", features = ["derive"] }
 serde_json = "~1"
 regex = "~1"
 thiserror = "~2"
-ondas = { git = "https://github.com/kleverhq/ondas", rev = "e5de800b223d381dbe32387ef55cbb0c9cc2cf62" }
+ondas = "=2.2.0"
 include_dir = "~0.7"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

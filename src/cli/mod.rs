@@ -1,3 +1,7 @@
+mod selection;
+use selection::signal_list;
+pub(crate) use selection::signal_token;
+
 pub mod change;
 pub mod extract;
 pub mod info;
@@ -791,43 +795,6 @@ fn dispatch(
 
     let result = engine::run(engine_command)?;
     output::write_result_to(result, stdout, stderr).map_err(Into::into)
-}
-
-// Commas separate selections only outside quoted or Verilog-escaped components.
-fn signal_list(tokens: &[String]) -> Vec<String> {
-    let mut result = Vec::new();
-    for token in tokens {
-        let (mut quoted, mut escaped, mut verilog, mut start) = (false, false, false, 0);
-        for (index, ch) in token.char_indices() {
-            if escaped {
-                escaped = false;
-                continue;
-            }
-            if quoted {
-                if ch == '\\' {
-                    escaped = true;
-                } else if ch == '"' {
-                    quoted = false;
-                }
-            } else if verilog {
-                if ch.is_whitespace() {
-                    verilog = false;
-                }
-            } else {
-                match ch {
-                    '"' => quoted = true,
-                    '\\' => verilog = true,
-                    ',' => {
-                        result.push(token[start..index].to_string());
-                        start = index + 1;
-                    }
-                    _ => {}
-                }
-            }
-        }
-        result.push(token[start..].to_string());
-    }
-    result
 }
 
 fn into_engine_command(command: Command) -> EngineCommand {

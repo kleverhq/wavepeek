@@ -566,7 +566,7 @@ fn normalize_payload(payload: Vec<String>) -> Result<Vec<String>, WavepeekError>
     payload
         .into_iter()
         .map(|token| {
-            let normalized = crate::engine::signal_token(&token);
+            let normalized = crate::cli::signal_token(&token);
             let trimmed = normalized.as_str();
             if trimmed.is_empty() {
                 Err(WavepeekError::Args(

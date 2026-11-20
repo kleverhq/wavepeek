@@ -24,15 +24,6 @@ use crate::error::WavepeekError;
 use crate::output::{self, JsonlWriter};
 use crate::output_mode::OutputMode;
 
-pub(crate) fn signal_token(text: &str) -> String {
-    if text.contains('\\')
-        && let Ok(path) = ondas::HierarchyPath::parse(text.trim_start())
-    {
-        return crate::waveform::format_path(&path);
-    }
-    text.trim().to_string()
-}
-
 #[derive(Debug)]
 pub enum Command {
     Info(cli::info::InfoArgs),

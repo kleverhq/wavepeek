@@ -144,7 +144,7 @@ fn resolve_requested_signals(
 
     let mut resolved = Vec::with_capacity(args.signals.len());
     for token in &args.signals {
-        let normalized = crate::engine::signal_token(token);
+        let normalized = crate::cli::signal_token(token);
         let display = normalized.as_str();
         if display.is_empty() {
             return Err(WavepeekError::Args(

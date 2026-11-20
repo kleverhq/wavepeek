@@ -205,7 +205,9 @@ output range. Protocol state belongs to its walker; sampled values belong to one
 callback. APB, ATB, AXI, and AXI-Stream use generic extraction. Browser byte input
 enters the same facade and command engines through `ondas::open_bytes`.
 
-`Hierarchy::resolve_signal` resolves each selector with its component scope prefix.
+CLI list and single-entry normalization share one lexical walk. It preserves
+selector bytes and required escaped-identifier terminators while trimming outer
+padding. `Hierarchy::resolve_signal` resolves that selector with its component scope prefix.
 The result retains the selected declaration, Signal, and explicit normalized
 projection, including a full-width slice. WavePeek applies expression type policy
 and formats reusable selectors from that result. Listing omits ambiguous paths according to

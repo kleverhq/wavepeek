@@ -1,5 +1,12 @@
 # Release Runbook
 
+The development manifest pins Ondas to Git revision
+`e5de800b223d381dbe32387ef55cbb0c9cc2cf62` for the selector and VCD normalization
+APIs. Release packaging requires a published registry version with these APIs.
+Before preparing a release, select that exact registry version, regenerate
+`Cargo.lock`, and run `just ci`, `just check`, and `cargo package --locked` through
+`./dev`.
+
 This runbook covers production releases for `wavepeek`. Use it with `changelog.md`, `quality.md`, and the release workflow in `.github/workflows/release.yml`.
 
 ## Preconditions

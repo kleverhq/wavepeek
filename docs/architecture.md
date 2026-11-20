@@ -140,7 +140,7 @@ src/
 
 | Crate | Version | Purpose | Notes |
 |-------|---------|---------|-------|
-| `ondas` | Git `e5de800b223d381dbe32387ef55cbb0c9cc2cf62` | VCD/FST parsing and optional FSDB/SHM access | Native features forward to `ondas/fsdb-lib` and `ondas/shm-lib`; VCD/FST support byte input for WASM |
+| `ondas` | 2.2.0 | VCD/FST parsing and optional FSDB/SHM access | Native features forward to `ondas/fsdb-lib` and `ondas/shm-lib`; VCD/FST support byte input for WASM |
 | `clap` | ~4 | CLI argument parsing | Derive API for declarative CLI definitions |
 | `serde` | ~1 | Serialization | Used for machine-readable output structures |
 | `serde_json` | ~1 | JSON output | Envelope and JSONL record rendering |
@@ -193,8 +193,6 @@ Non-fatal diagnostics do not change the exit code.
 
 ## Waveform Access
 
-The facade pins Ondas to Git revision `e5de800b223d381dbe32387ef55cbb0c9cc2cf62`.
-This includes the selector result and VCD normalization APIs beyond registry 2.1.0.
 Metadata and hierarchy commands use Ondas metadata and exact hierarchy components. `value` sends all selected handles
 to one `samples` call for a single time, or one `samples_at` call for multiple
 times. Request order and duplicates are preserved.

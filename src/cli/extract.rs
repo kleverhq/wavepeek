@@ -144,7 +144,7 @@ Notes:
 Behavior:
 - `--on` selects edge-only events. `--when` and `--payload` are always sampled at the pre-edge sample point.
 - `--payload` accepts comma-separated values, repeated options, or both. Entries may end in `[msb:lsb]`, and request order and duplicates are preserved.
-- Use `[n:n]` for one bit. Exact waveform paths take precedence, and `[n]` remains path syntax.
+- Use `[n:n]` for one bit. Quote or escape a literal name that ends in a range. `[n]` remains path syntax.
 - In CLI mode, `--on`, `--when`, and `--payload` define one source named by `--name`.
 - A source file can define one or more sources. `--source` conflicts with `--name`, `--on`, `--when`, and `--payload`.
 - JSON and JSONL rows include `time`, `sample_time`, `source`, and ordered payload values.

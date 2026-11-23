@@ -21,7 +21,7 @@ use crate::expr::{
 use super::expr_host::RuntimeExpressionHost;
 use super::expr_query::{ExpressionQuery, ExpressionQueryTick};
 use super::ondas_error::{open_error, read_error};
-use super::selection::{SelectorPath, component_order, format_path};
+use super::selection::component_order;
 use super::types::{
     ExprResolvedSignal, ResolvedSignal, SampledSignalState, ScopeEntry, SignalEntry, SignalListing,
     WaveformMetadata,
@@ -36,10 +36,9 @@ pub(super) enum SignalResolutionError {
 impl SignalResolutionError {
     pub(super) fn into_error(self) -> WavepeekError {
         match self {
-            Self::NotFound(path) => WavepeekError::SignalNotFound(format!(
-                "signal '{}' not found in dump",
-                format_path(&path)
-            )),
+            Self::NotFound(path) => {
+                WavepeekError::SignalNotFound(format!("signal '{path}' not found in dump"))
+            }
             Self::Other(error) => error,
         }
     }
@@ -143,23 +142,23 @@ impl OndasBackend {
             .hierarchy()
             .scopes()
             .filter(visible_scope)
-            .map(|scope| (scope.path(), scope_type_alias(scope.kind())))
-            .filter(|(path, _)| max_depth.is_none_or(|max| path.len().saturating_sub(1) <= max))
+            .map(|scope| {
+                let path = scope.path();
+                ScopeEntry {
+                    depth: path.len().saturating_sub(1),
+                    path,
+                    kind: scope_type_alias(scope.kind()),
+                }
+            })
+            .filter(|scope| max_depth.is_none_or(|max| scope.depth <= max))
             .collect::<Vec<_>>();
         scopes.sort_by(|left, right| {
-            left.0
+            left.path
                 .components()
                 .map(component_order)
-                .cmp(right.0.components().map(component_order))
+                .cmp(right.path.components().map(component_order))
         });
-        Ok(scopes
-            .into_iter()
-            .map(|(path, kind)| ScopeEntry {
-                depth: path.len().saturating_sub(1),
-                path: format_path(&path),
-                kind,
-            })
-            .collect())
+        Ok(scopes)
     }
 
     pub fn signals_in_scope(&self, path: &str) -> Result<Vec<SignalEntry>, WavepeekError> {
@@ -176,7 +175,7 @@ impl OndasBackend {
                 return false;
             }
             let path = variable.path();
-            matches(&format_path(&path), &signal_name(&path))
+            matches(&path.to_string(), &signal_name(&path))
         });
         self.signal_listing(variables).entries
     }
@@ -202,23 +201,46 @@ impl OndasBackend {
                 })),
             );
         }
-        let scope = hierarchy.scope_path(&parsed).map_err(|error| match error {
-            ondas::LookupError::NotFound { .. } => {
-                WavepeekError::Scope(format!("scope '{path}' not found in dump"))
-            }
-            ondas::LookupError::Ambiguous { .. } => {
-                WavepeekError::Scope(format!("scope '{path}' is ambiguous in dump"))
-            }
-            error => WavepeekError::Scope(error.to_string()),
-        })?;
-        if !visible_scope(&scope) {
-            return Err(WavepeekError::Scope(format!(
-                "scope '{path}' not found in dump"
-            )));
-        }
+        let scope = self.lookup_scope(&parsed, path)?;
         let mut variables = Vec::new();
         collect_variables(scope, max_depth, &mut variables);
         Ok(self.signal_listing(variables.into_iter()))
+    }
+
+    pub(super) fn canonical_scope(
+        &self,
+        path: &ondas::HierarchyPath,
+    ) -> Result<ondas::HierarchyPath, WavepeekError> {
+        if path.is_empty() {
+            return Ok(path.clone());
+        }
+        Ok(self.lookup_scope(path, &path.to_string())?.path())
+    }
+
+    fn lookup_scope(
+        &self,
+        path: &ondas::HierarchyPath,
+        input: &str,
+    ) -> Result<ondas::Scope<'_>, WavepeekError> {
+        let scope = self
+            .inner
+            .hierarchy()
+            .scope_path(path)
+            .map_err(|error| match error {
+                ondas::LookupError::NotFound { .. } => {
+                    WavepeekError::Scope(format!("scope '{input}' not found in dump"))
+                }
+                ondas::LookupError::Ambiguous { .. } => {
+                    WavepeekError::Scope(format!("scope '{input}' is ambiguous in dump"))
+                }
+                error => WavepeekError::Scope(error.to_string()),
+            })?;
+        if !visible_scope(&scope) {
+            return Err(WavepeekError::Scope(format!(
+                "scope '{input}' not found in dump"
+            )));
+        }
+        Ok(scope)
     }
 
     fn signal_listing<'h>(
@@ -234,32 +256,34 @@ impl OndasBackend {
                 hierarchy.variable_path(&path),
                 Err(ondas::LookupError::Ambiguous { .. })
             ) {
-                omitted.insert(format_path(&path));
+                omitted.insert(path.to_string());
             } else {
-                entries.push((path, signal_entry(&variable)));
+                entries.push(signal_entry(&variable, path));
             }
         }
-        entries.sort_by(|(left, a), (right, b)| {
-            left.components()
-                .take(left.len().saturating_sub(1))
+        entries.sort_by(|left, right| {
+            left.path
+                .components()
+                .take(left.path.len().saturating_sub(1))
                 .map(component_order)
                 .cmp(
                     right
+                        .path
                         .components()
-                        .take(right.len().saturating_sub(1))
+                        .take(right.path.len().saturating_sub(1))
                         .map(component_order),
                 )
-                .then_with(|| a.name.cmp(&b.name))
+                .then_with(|| left.name.cmp(&right.name))
         });
         SignalListing {
-            entries: entries.into_iter().map(|(_, entry)| entry).collect(),
+            entries,
             omitted_ambiguous_paths: omitted.into_iter().collect(),
         }
     }
 
     fn resolve_selector(
         &self,
-        selector: &str,
+        selector: &ondas::SignalSelector,
         scope: Option<&str>,
     ) -> Result<ondas::ResolvedSelector<'_>, SignalResolutionError> {
         let scope = scope
@@ -269,7 +293,7 @@ impl OndasBackend {
         let resolved = self
             .inner
             .hierarchy()
-            .resolve_signal(selector, scope.as_ref())
+            .resolve_selector(selector, scope.as_ref())
             .map_err(lookup_error)?;
         if resolved
             .declaration()
@@ -288,10 +312,20 @@ impl OndasBackend {
         selector: &str,
         scope: Option<&str>,
     ) -> Result<ResolvedSignal, SignalResolutionError> {
+        let selector =
+            ondas::SignalSelector::parse(selector).map_err(|error| lookup_error(error.into()))?;
+        self.resolve_typed_signal(&selector, scope)
+    }
+
+    pub(super) fn resolve_typed_signal(
+        &self,
+        selector: &ondas::SignalSelector,
+        scope: Option<&str>,
+    ) -> Result<ResolvedSignal, SignalResolutionError> {
         let selected = self.resolve_selector(selector, scope)?;
         let signal = selected.signal();
-        let selector = self.selector_path(&selected);
-        let path = selector.logical();
+        let selector = selected.selector();
+        let path = logical_selector(&selector);
         let width = match signal.encoding() {
             Encoding::Bits { width } => width,
             Encoding::Event => 0,
@@ -315,22 +349,16 @@ impl OndasBackend {
             .collect()
     }
 
-    pub(super) fn resolve_selector_path(
-        &self,
-        canonical: &str,
-    ) -> Result<SelectorPath, SignalResolutionError> {
-        let selected = self.resolve_selector(canonical, None)?;
-        Ok(self.selector_path(&selected))
-    }
-
     pub fn resolve_expr_signal(
         &self,
         selector: &str,
         scope: Option<&str>,
     ) -> Result<ExprResolvedSignal, SignalResolutionError> {
-        let selected = self.resolve_selector(selector, scope)?;
+        let selector =
+            ondas::SignalSelector::parse(selector).map_err(|error| lookup_error(error.into()))?;
+        let selected = self.resolve_selector(&selector, scope)?;
         let signal = selected.signal();
-        let path = self.selector_path(&selected).logical();
+        let path = logical_selector(&selected.selector());
         let mut expr_type =
             expression_type(&selected.declaration(), signal).ok_or_else(|| unsupported(&path))?;
         if let Some((msb, lsb)) = selected.projection() {
@@ -346,22 +374,6 @@ impl OndasBackend {
             signal,
             expr_type,
         })
-    }
-
-    fn selector_path(&self, selected: &ondas::ResolvedSelector<'_>) -> SelectorPath {
-        let base = selected.declaration().path();
-        let range = selected.projection();
-        // Exact declarations have priority over projections.
-        let explicit_leaf = range.is_some_and(|(msb, lsb)| {
-            let candidate = format!("{}[{msb}:{lsb}]", format_path(&base));
-            ondas::HierarchyPath::parse(&candidate).is_ok_and(|path| {
-                matches!(
-                    self.inner.hierarchy().variable_path(&path),
-                    Ok(_) | Err(ondas::LookupError::Ambiguous { .. })
-                )
-            })
-        });
-        SelectorPath::new(base, range, explicit_leaf)
     }
 
     fn values(
@@ -507,13 +519,19 @@ impl OndasBackend {
     }
 }
 
+fn logical_selector(selector: &ondas::SignalSelector) -> String {
+    selector
+        .format(ondas::PathStyle::Logical)
+        .expect("logical selectors are representable")
+}
+
 fn lookup_error(error: ondas::LookupError) -> SignalResolutionError {
     match error {
         ondas::LookupError::NotFound { path } => SignalResolutionError::NotFound(path),
         ondas::LookupError::Ambiguous { path, matches } => WavepeekError::Signal(format!(
-            "signal '{}' is ambiguous in dump: {matches} source declarations; no candidate was selected", format_path(&path)
+            "signal '{path}' is ambiguous in dump: {matches} source declarations; no candidate was selected"
         )).into(),
-        ondas::LookupError::NoSignal { path } => unsupported(&format_path(&path)).into(),
+        ondas::LookupError::NoSignal { path } => unsupported(&path.to_string()).into(),
         error => WavepeekError::Signal(error.to_string()).into(),
     }
 }
@@ -534,12 +552,11 @@ fn collect_variables<'h>(
     }
 }
 
-fn signal_entry(variable: &ondas::Variable<'_>) -> SignalEntry {
+fn signal_entry(variable: &ondas::Variable<'_>, path: ondas::HierarchyPath) -> SignalEntry {
     let signal = variable.signal();
-    let path = variable.path();
     SignalEntry {
         name: signal_name(&path),
-        path: format_path(&path),
+        path,
         kind: if signal.is_some_and(|signal| matches!(signal.encoding(), Encoding::Event)) {
             "event".into()
         } else {
@@ -554,9 +571,7 @@ fn signal_entry(variable: &ondas::Variable<'_>) -> SignalEntry {
 }
 
 fn signal_name(path: &ondas::HierarchyPath) -> String {
-    format_path(&ondas::HierarchyPath::from_components(
-        path.components().last(),
-    ))
+    ondas::HierarchyPath::from_components(path.components().last()).to_string()
 }
 
 fn visible_scope(scope: &ondas::Scope<'_>) -> bool {

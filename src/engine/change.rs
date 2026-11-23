@@ -250,7 +250,7 @@ fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
         serde_json::json!({"requested_signals": requested_signals.len(), "drivers": drivers.len()})
     });
 
-    let output_scope = paths.context_scope(machine)?;
+    let output_scope = paths.context_scope(&waveform.borrow(), machine)?;
     sink.start(output_scope.as_deref())?;
     debug.event(
         "change.run.start",

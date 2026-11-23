@@ -61,7 +61,7 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
 
     for (index, entry) in scopes.iter().enumerate() {
         ancestors.truncate(entry.depth);
-        if filter.is_match(entry.path.as_str()) {
+        if filter.is_match(&entry.path.to_string()) {
             total += 1;
             if max.numeric().is_none_or(|limit| total <= limit) {
                 included[index] = true;
@@ -83,9 +83,9 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
         .map(|(entry, _)| {
             Ok(ScopeEntry {
                 path: if summary {
-                    entry.path
+                    entry.path.to_string()
                 } else {
-                    paths.exact(entry.path)?
+                    paths.exact(&entry.path)?
                 },
                 depth: entry.depth,
                 kind: entry.kind,

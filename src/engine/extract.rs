@@ -405,7 +405,7 @@ fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
         })
     });
 
-    let output_scope = paths.context_scope(args.include_relative_paths)?;
+    let output_scope = paths.context_scope(&waveform.borrow(), args.include_relative_paths)?;
     sink.start(output_scope.as_deref())?;
     debug.event("extract.emit.start", || {
         serde_json::json!({

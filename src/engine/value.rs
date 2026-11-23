@@ -107,7 +107,7 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
             scope_tree: false,
             signals_abs: args.abs,
         },
-        scope: paths.context_scope(machine)?,
+        scope: paths.context_scope(&waveform, machine)?,
         summary_only: false,
         data: CommandData::Value(snapshots),
         summary: None,

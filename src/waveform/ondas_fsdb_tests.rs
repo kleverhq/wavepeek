@@ -65,12 +65,12 @@ fn fsdb_recursive_listing_uses_structural_depth_for_escaped_scopes() {
         listing
             .entries
             .iter()
-            .map(|entry| entry.path.as_str())
+            .map(|entry| entry.path.to_string())
             .collect::<Vec<_>>(),
         ["top.block.inside"]
     );
     let sibling = backend.signals_in_scope(r#"top."\\block.dot""#).unwrap();
-    assert_eq!(sibling[0].path, r#"top."\\block.dot".outside"#);
+    assert_eq!(sibling[0].path.to_string(), r#"top."\\block.dot".outside"#);
     let bounded = backend
         .signals_in_scope_recursive_report("top", Some(1))
         .unwrap();
@@ -78,7 +78,7 @@ fn fsdb_recursive_listing_uses_structural_depth_for_escaped_scopes() {
         bounded
             .entries
             .iter()
-            .map(|entry| entry.path.as_str())
+            .map(|entry| entry.path.to_string())
             .collect::<Vec<_>>(),
         [r#"top."\\block.dot".outside"#, "top.block.inside"]
     );
@@ -93,7 +93,7 @@ fn fsdb_scope_escape_markers_are_not_public_path_components() {
             .scopes_depth_first(None)
             .unwrap()
             .iter()
-            .any(|scope| scope.path == r#"top."block[0]""#)
+            .any(|scope| scope.path.to_string() == r#"top."block[0]""#)
     );
     assert_eq!(
         backend
@@ -116,7 +116,7 @@ fn fsdb_hierarchy_sorts_scopes_and_filters_max_depth() {
     let expected = [("alpha", 0), ("top", 0), ("top.a", 1), ("top.z", 1)]
         .into_iter()
         .map(|(path, depth)| crate::waveform::ScopeEntry {
-            path: path.into(),
+            path: ondas::HierarchyPath::parse(path).unwrap(),
             depth,
             kind: "module".into(),
         })
@@ -132,7 +132,7 @@ fn fsdb_hierarchy_lists_direct_and_recursive_signals() {
     let paths = |entries: Vec<crate::waveform::SignalEntry>| {
         entries
             .into_iter()
-            .map(|entry| entry.path)
+            .map(|entry| entry.path.to_string())
             .collect::<Vec<_>>()
     };
     assert_eq!(paths(backend.signals_in_scope("top").unwrap()), ["top.clk"]);
@@ -208,7 +208,7 @@ fn fsdb_repeated_scope_declarations_merge_members() {
     assert_eq!(
         entries
             .iter()
-            .map(|entry| entry.path.as_str())
+            .map(|entry| entry.path.to_string())
             .collect::<Vec<_>>(),
         ["top.clk", "top.ev"]
     );
@@ -236,7 +236,7 @@ fn fsdb_repeated_scope_declarations_preserve_sibling_subtrees() {
             .scopes_depth_first(None)
             .unwrap()
             .iter()
-            .map(|scope| scope.path.as_str())
+            .map(|scope| scope.path.to_string())
             .collect::<Vec<_>>(),
         ["top", r#"top."bus[0]""#, "top.wrapped", "top.wrapped.vif"]
     );
@@ -247,7 +247,7 @@ fn fsdb_repeated_scope_declarations_preserve_sibling_subtrees() {
     assert_eq!(
         entries
             .iter()
-            .map(|entry| entry.path.as_str())
+            .map(|entry| entry.path.to_string())
             .collect::<Vec<_>>(),
         [r#"top."bus[0]".value"#]
     );
@@ -263,7 +263,7 @@ fn fsdb_hierarchy_skips_exact_duplicate_signal_declarations() {
         backend.signals_in_scope("top").unwrap(),
         vec![crate::waveform::SignalEntry {
             name: "clk".into(),
-            path: "top.clk".into(),
+            path: ondas::HierarchyPath::parse("top.clk").unwrap(),
             kind: "wire".into(),
             width: Some(1)
         }]
@@ -288,7 +288,7 @@ fn fsdb_hierarchy_preserves_escaped_range_looking_local_names() {
         backend.signals_in_scope("top").unwrap(),
         vec![crate::waveform::SignalEntry {
             name: r#""range.dot[31:0]""#.into(),
-            path: r#"top."range.dot[31:0]""#.into(),
+            path: ondas::HierarchyPath::parse(r#"top."range.dot[31:0]""#).unwrap(),
             kind: "wire".into(),
             width: Some(32)
         }]
@@ -306,7 +306,7 @@ fn fsdb_hierarchy_preserves_scalar_array_element_suffixes() {
         .into_iter()
         .map(|name| crate::waveform::SignalEntry {
             name: ondas::HierarchyPath::from_components([name]).to_string(),
-            path: ondas::HierarchyPath::from_components(["top", name]).to_string(),
+            path: ondas::HierarchyPath::from_components(["top", name]),
             kind: "wire".into(),
             width: Some(1),
         })
@@ -325,14 +325,14 @@ fn fsdb_hierarchy_preserves_escaped_local_names_with_separators() {
         .unwrap();
     let expected = [
         ("dot.name", 1),
+        ("slash/name", 1),
         ("wide.dot[0]", 32),
         ("wide/slash[0]", 32),
-        ("slash/name", 1),
     ]
     .into_iter()
     .map(|(name, width)| crate::waveform::SignalEntry {
         name: ondas::HierarchyPath::from_components([name]).to_string(),
-        path: ondas::HierarchyPath::from_components(["top", name]).to_string(),
+        path: ondas::HierarchyPath::from_components(["top", name]),
         kind: "wire".into(),
         width: Some(width),
     })
@@ -364,7 +364,7 @@ fn fsdb_ambiguous_exact_paths_are_quarantined() {
             listing
                 .entries
                 .iter()
-                .map(|entry| entry.path.as_str())
+                .map(|entry| entry.path.to_string())
                 .collect::<Vec<_>>(),
             ["top.safe"]
         );
@@ -419,11 +419,15 @@ fn fsdb_scope_slashes_and_dots_remain_distinct_components() {
 
     let paths = [r#""\\top/a".first"#.into(), r#""\\top.a".second"#.into()];
     assert_eq!(
-        backend.signals_in_scope(r#""\\top/a""#).unwrap()[0].path,
+        backend.signals_in_scope(r#""\\top/a""#).unwrap()[0]
+            .path
+            .to_string(),
         paths[0]
     );
     assert_eq!(
-        backend.signals_in_scope(r#""\\top.a""#).unwrap()[0].path,
+        backend.signals_in_scope(r#""\\top.a""#).unwrap()[0]
+            .path
+            .to_string(),
         paths[1]
     );
     let signals = backend.resolve_signals(&paths).unwrap();
@@ -513,7 +517,7 @@ fn fsdb_hierarchy_excludes_hidden_subtrees() {
     assert_eq!(
         roots
             .iter()
-            .map(|scope| scope.path.as_str())
+            .map(|scope| scope.path.to_string())
             .collect::<Vec<_>>(),
         ["system"]
     );
@@ -521,15 +525,16 @@ fn fsdb_hierarchy_excludes_hidden_subtrees() {
     assert!(
         scopes
             .iter()
-            .any(|scope| scope.path.ends_with(".mvsim_flag") && scope.kind == "struct")
+            .any(|scope| scope.path.to_string().ends_with(".mvsim_flag") && scope.kind == "struct")
     );
     for hidden in ["$attribute_root", "$_fsdbgate_"] {
-        let prefix = format!("{hidden}.");
-        assert!(
-            !scopes
-                .iter()
-                .any(|scope| scope.path == hidden || scope.path.starts_with(&prefix))
-        );
+        assert!(!scopes.iter().any(|scope| {
+            scope
+                .path
+                .components()
+                .next()
+                .is_some_and(|root| root.name() == hidden)
+        }));
         assert!(backend.signals_in_scope(hidden).is_err());
     }
 }
@@ -548,14 +553,14 @@ fn fsdb_memory_elements_remain_exact_declarations() {
             .scopes_depth_first(None)
             .unwrap()
             .iter()
-            .any(|entry| entry.path == format!("{scope}.maprom"))
+            .any(|entry| entry.path.to_string() == format!("{scope}.maprom"))
     );
     assert!(
         backend
             .signals_in_scope(scope)
             .unwrap()
             .iter()
-            .any(|entry| entry.path == path)
+            .any(|entry| entry.path.to_string() == path)
     );
     assert!(backend.sample_resolved_optional(&resolved, 0).is_ok());
 }
@@ -622,14 +627,14 @@ fn fsdb_reader_hierarchy_smoke() {
     assert_eq!(first, reader.scopes_depth_first(None).unwrap());
     for scope in &first {
         assert!(!scope.path.is_empty());
-        assert!(!scope.path.contains('/'));
+        assert!(!scope.path.to_string().contains('/'));
         assert!(STABLE_SCOPE_KIND_ALIASES.contains(&scope.kind.as_str()));
     }
     let signals = first
         .iter()
         .find_map(|scope| {
             let signals = reader
-                .signals_in_scope_recursive_report(&scope.path, None)
+                .signals_in_scope_recursive_report(&scope.path.to_string(), None)
                 .unwrap()
                 .entries;
             (!signals.is_empty()).then_some(signals)
@@ -637,7 +642,7 @@ fn fsdb_reader_hierarchy_smoke() {
         .expect("bundled FSDB should expose signals");
     for signal in signals {
         assert!(!signal.path.is_empty());
-        assert!(!signal.path.contains('/'));
+        assert!(!signal.path.to_string().contains('/'));
         assert!(STABLE_SIGNAL_KIND_ALIASES.contains(&signal.kind.as_str()));
         if let Some(width) = signal.width {
             assert!(width > 0 || signal.kind == "event");

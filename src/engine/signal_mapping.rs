@@ -1,3 +1,96 @@
+use std::collections::HashSet;
+
+use ondas::{HierarchyPath, SignalSelector};
+use regex::Regex;
+
+use crate::engine::expr_runtime::SharedWaveform;
+use crate::error::WavepeekError;
+
+#[derive(Debug, Clone)]
+pub(super) struct MappedSignal {
+    pub(super) path: String,
+    pub(super) selector: SignalSelector,
+}
+
+impl MappedSignal {
+    pub(super) fn whole(path: HierarchyPath) -> Self {
+        Self {
+            path: path.to_string(),
+            selector: SignalSelector::new(path, None),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct SignalCandidate {
+    pub(super) display: String,
+    pub(super) name: String,
+    pub(super) selection: MappedSignal,
+}
+
+pub(super) fn collect_include_candidates(
+    waveform: &SharedWaveform,
+    scope: Option<&str>,
+    includes: &[Regex],
+) -> Result<Vec<SignalCandidate>, WavepeekError> {
+    if includes.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let waveform = waveform.borrow();
+    let matches = |text: &str| includes.iter().any(|include| include.is_match(text));
+    let entries = if let Some(scope) = scope {
+        waveform
+            .signals_in_scope(scope)?
+            .into_iter()
+            .filter(|entry| matches(&entry.name))
+            .collect()
+    } else {
+        waveform.matching_signals(|path, name| matches(path) || matches(name))
+    };
+    let mut seen = HashSet::new();
+    Ok(entries
+        .into_iter()
+        .filter_map(|entry| {
+            let selection = MappedSignal::whole(entry.path);
+            seen.insert(selection.path.clone())
+                .then(|| SignalCandidate {
+                    display: if scope.is_some() {
+                        entry.name.clone()
+                    } else {
+                        selection.path.clone()
+                    },
+                    name: entry.name,
+                    selection,
+                })
+        })
+        .collect())
+}
+
+pub(super) fn resolve_explicit_mapping(
+    waveform: &SharedWaveform,
+    input: &str,
+    scope: Option<&str>,
+    standard: &str,
+    protocol: &str,
+    help: &str,
+) -> Result<MappedSignal, WavepeekError> {
+    let selector = SignalSelector::parse(input)
+        .map_err(|error| WavepeekError::Signal(ondas::LookupError::from(error).to_string()))?;
+    if scope.is_some() && selector.path().len() != 1 {
+        return Err(WavepeekError::Args(format!(
+            "{protocol} mapping for '{standard}' must use a scope-relative signal when --scope is set. See '{help} --help'."
+        )));
+    }
+    let resolved = waveform
+        .borrow()
+        .resolve_typed_signal_with_diagnostic(input, &selector, scope)?;
+    Ok(MappedSignal {
+        path: resolved.path,
+        selector: resolved.selector,
+    })
+}
+
 pub(crate) fn candidate_matching_standards<'a>(
     candidate_name: &str,
     standards: &[&'a str],

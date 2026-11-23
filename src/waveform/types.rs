@@ -9,7 +9,7 @@ pub struct WaveformMetadata {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopeEntry {
-    pub path: String,
+    pub path: ondas::HierarchyPath,
     pub depth: usize,
     pub kind: String,
 }
@@ -17,7 +17,7 @@ pub struct ScopeEntry {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignalEntry {
     pub name: String,
-    pub path: String,
+    pub path: ondas::HierarchyPath,
     pub kind: String,
     pub width: Option<u32>,
 }
@@ -49,7 +49,7 @@ pub struct ResolvedSignal {
     pub path: String,
     pub signal: ondas::Signal,
     pub width: u32,
-    pub(crate) selector: super::selection::SelectorPath,
+    pub(crate) selector: ondas::SignalSelector,
 }
 
 #[derive(Debug, Clone, PartialEq)]

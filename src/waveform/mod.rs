@@ -11,7 +11,6 @@ mod ondas_backend;
 mod ondas_error;
 pub(crate) mod selection;
 mod types;
-pub(crate) use selection::{SelectorPath, format_path};
 
 use std::cell::RefCell;
 #[cfg(test)]
@@ -255,13 +254,24 @@ impl Waveform {
             .map_err(ondas_backend::SignalResolutionError::into_error)
     }
 
-    pub(crate) fn resolve_selector_path(
+    pub(crate) fn resolve_typed_signal_with_diagnostic(
         &self,
-        canonical: &str,
-    ) -> Result<SelectorPath, WavepeekError> {
+        input: &str,
+        selector: &ondas::SignalSelector,
+        scope: Option<&str>,
+    ) -> Result<ResolvedSignal, WavepeekError> {
         self.backend
-            .resolve_selector_path(canonical)
-            .map_err(ondas_backend::SignalResolutionError::into_error)
+            .resolve_typed_signal(selector, scope)
+            .map_err(|error| {
+                self.missing_signal_diagnostic(input, scope, SignalLookupKind::Direct, false, error)
+            })
+    }
+
+    pub(crate) fn canonical_scope(
+        &self,
+        path: &ondas::HierarchyPath,
+    ) -> Result<ondas::HierarchyPath, WavepeekError> {
+        self.backend.canonical_scope(path)
     }
 
     pub(crate) fn resolve_expr_signal_with_diagnostic(
@@ -298,7 +308,8 @@ impl Waveform {
         };
         let leaf = path.components().last();
         let basename = leaf.map(selection::component_spelling).unwrap_or_default();
-        let basename_chars = format_path(&ondas::HierarchyPath::from_components(leaf))
+        let basename_chars = ondas::HierarchyPath::from_components(leaf)
+            .to_string()
             .chars()
             .collect::<Vec<_>>();
         let max_distance = if basename_chars.len() <= 3 { 1 } else { 2 };
@@ -311,24 +322,20 @@ impl Waveform {
             ) else {
                 continue;
             };
-            let display = display_signal_path(entry.path.as_str(), scope);
+            let canonical = entry.path.to_string();
+            let display = display_signal_path(&canonical, scope);
             if (!recursive && scope.is_some() && display.contains('.'))
-                || !self.signal_candidate_is_resolvable(&entry.path, kind)
+                || !self.signal_candidate_is_resolvable(&canonical, kind)
             {
                 continue;
             }
-            candidates.push((distance, entry));
-            candidates.sort_by(|left, right| {
-                left.0.cmp(&right.0).then_with(|| {
-                    display_signal_path(left.1.path.as_str(), scope)
-                        .cmp(display_signal_path(right.1.path.as_str(), scope))
-                })
-            });
+            candidates.push((distance, display.to_owned()));
+            candidates.sort_unstable();
             candidates.truncate(MAX_SIGNAL_SUGGESTIONS);
         }
         let suggestions = candidates
             .into_iter()
-            .map(|(_, entry)| display_signal_path(entry.path.as_str(), scope).to_string())
+            .map(|(_, path)| path)
             .collect::<Vec<_>>();
 
         let location = match scope {
@@ -373,7 +380,8 @@ impl Waveform {
             omitted_ambiguous_paths: Vec::new(),
         };
         for root in self.scopes_depth_first(Some(0))? {
-            let root_listing = self.signals_in_scope_recursive_report(root.path.as_str(), None)?;
+            let root_listing =
+                self.signals_in_scope_recursive_report(&root.path.to_string(), None)?;
             listing.entries.extend(root_listing.entries);
             listing
                 .omitted_ambiguous_paths
@@ -425,7 +433,7 @@ impl Waveform {
 pub(crate) fn display_signal_path<'a>(canonical_path: &'a str, scope: Option<&str>) -> &'a str {
     let scope = scope.map(|scope| {
         ondas::HierarchyPath::parse(scope)
-            .map(|path| format_path(&path))
+            .map(|path| path.to_string())
             .unwrap_or_else(|_| scope.to_string())
     });
     scope

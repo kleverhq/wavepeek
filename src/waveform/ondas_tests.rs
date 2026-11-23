@@ -142,7 +142,7 @@ fn global_matching_preserves_scope_order_and_split_width() {
     assert_eq!(
         matched
             .iter()
-            .map(|entry| entry.path.as_str())
+            .map(|entry| entry.path.to_string())
             .collect::<Vec<_>>(),
         [
             "top.cfg",
@@ -168,7 +168,7 @@ fn global_matching_preserves_scope_order_and_split_width() {
     let waveform = Waveform::open(fixture.path()).unwrap();
     let entries = waveform.matching_signals(|_, name| name == "memory[0]");
     assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].path, "top.memory[0]");
+    assert_eq!(entries[0].path.to_string(), "top.memory[0]");
     assert_eq!(entries[0].width, Some(8));
     waveform.signals_in_scope("top").unwrap();
     assert_eq!(
@@ -202,7 +202,7 @@ fn vcd_backslash_components_do_not_alias_separator_components() {
         listing
             .entries
             .iter()
-            .map(|entry| entry.path.clone())
+            .map(|entry| entry.path.to_string())
             .collect::<Vec<_>>(),
         paths
     );
@@ -224,7 +224,7 @@ fn vcd_preserves_escaped_simple_declaration_spelling() {
     let mut waveform = Waveform::open(fixture.path()).unwrap();
     let entries = waveform.signals_in_scope("top").unwrap();
     assert_eq!(entries[0].name, "plain");
-    assert_eq!(entries[0].path, "top.plain");
+    assert_eq!(entries[0].path.to_string(), "top.plain");
     let values = waveform
         .sample_signals_at_time(&["top.plain".into()], 0)
         .unwrap();
@@ -241,7 +241,7 @@ fn vcd_escaped_components_remain_distinct_from_nested_paths() {
         .unwrap();
     let paths = [
         r#"top."foo.bar""#,
-        "top.foo/bar",
+        r#"top."foo/bar""#,
         r#"top."block.dot".value"#,
         "top.foo.bar",
     ]
@@ -250,7 +250,7 @@ fn vcd_escaped_components_remain_distinct_from_nested_paths() {
         listing
             .entries
             .iter()
-            .map(|entry| entry.path.clone())
+            .map(|entry| entry.path.to_string())
             .collect::<Vec<_>>(),
         paths
     );
@@ -282,9 +282,9 @@ fn scope_and_signal_preorder_keeps_descendants_before_prefix_siblings() {
     assert_eq!(
         scopes
             .iter()
-            .map(|scope| scope.path.as_str())
+            .map(|scope| scope.path.to_string())
             .collect::<Vec<_>>(),
-        ["top", "top.a", "top.a.z", "top.a$"]
+        ["top", "top.a", "top.a.z", r#"top."a$""#]
     );
     let signals = waveform
         .signals_in_scope_recursive_report("top", None)
@@ -293,9 +293,9 @@ fn scope_and_signal_preorder_keeps_descendants_before_prefix_siblings() {
         signals
             .entries
             .iter()
-            .map(|signal| signal.path.as_str())
+            .map(|signal| signal.path.to_string())
             .collect::<Vec<_>>(),
-        ["top.root", "top.a.base", "top.a.z.deep", "top.a$.tail"]
+        ["top.root", "top.a.base", "top.a.z.deep", r#"top."a$".tail"#]
     );
 }
 
@@ -312,22 +312,22 @@ fn scopes_use_deterministic_depth_first_lexicographic_order_with_kind() {
         scopes,
         vec![
             ScopeEntry {
-                path: "top".to_string(),
+                path: ondas::HierarchyPath::parse("top").unwrap(),
                 depth: 0,
                 kind: "module".to_string()
             },
             ScopeEntry {
-                path: "top.cpu".to_string(),
+                path: ondas::HierarchyPath::parse("top.cpu").unwrap(),
                 depth: 1,
                 kind: "module".to_string()
             },
             ScopeEntry {
-                path: "top.helper".to_string(),
+                path: ondas::HierarchyPath::parse("top.helper").unwrap(),
                 depth: 1,
                 kind: "function".to_string()
             },
             ScopeEntry {
-                path: "top.mem".to_string(),
+                path: ondas::HierarchyPath::parse("top.mem").unwrap(),
                 depth: 1,
                 kind: "module".to_string()
             },
@@ -349,11 +349,11 @@ fn scopes_depth_first_none_includes_all_nested_depths() {
 
     let bounded_paths = bounded
         .iter()
-        .map(|entry| entry.path.clone())
+        .map(|entry| entry.path.to_string())
         .collect::<Vec<_>>();
     let unbounded_paths = unbounded
         .iter()
-        .map(|entry| entry.path.clone())
+        .map(|entry| entry.path.to_string())
         .collect::<Vec<_>>();
 
     assert_eq!(bounded_paths, vec!["top", "top.cpu", "top.mem"]);
@@ -374,7 +374,7 @@ fn signals_in_scope_are_sorted_and_preserve_parser_var_type_aliases() {
 
     assert_eq!(signals.len(), 3);
     assert_eq!(signals[0].name, "cfg");
-    assert_eq!(signals[0].path, "top.cfg");
+    assert_eq!(signals[0].path.to_string(), "top.cfg");
     assert_eq!(signals[0].kind, "parameter");
     assert_eq!(signals[1].name, "clk");
     assert_eq!(signals[1].kind, "wire");
@@ -415,15 +415,15 @@ fn recursive_signals_in_scope_respect_depth_boundaries() {
 
     let depth_0_paths = depth_0
         .iter()
-        .map(|entry| entry.path.clone())
+        .map(|entry| entry.path.to_string())
         .collect::<Vec<_>>();
     let depth_1_paths = depth_1
         .iter()
-        .map(|entry| entry.path.clone())
+        .map(|entry| entry.path.to_string())
         .collect::<Vec<_>>();
     let depth_2_paths = depth_2
         .iter()
-        .map(|entry| entry.path.clone())
+        .map(|entry| entry.path.to_string())
         .collect::<Vec<_>>();
 
     assert_eq!(depth_0_paths, vec!["top.clk"]);
@@ -456,11 +456,11 @@ fn recursive_signals_in_scope_none_depth_includes_all_nested_levels() {
 
     let bounded_paths = bounded
         .iter()
-        .map(|entry| entry.path.clone())
+        .map(|entry| entry.path.to_string())
         .collect::<Vec<_>>();
     let unbounded_paths = unbounded
         .iter()
-        .map(|entry| entry.path.clone())
+        .map(|entry| entry.path.to_string())
         .collect::<Vec<_>>();
 
     assert_eq!(
@@ -493,7 +493,7 @@ fn recursive_signals_in_scope_are_deterministic_depth_first() {
     assert_eq!(first, second);
     let ordered_paths = first
         .iter()
-        .map(|entry| entry.path.clone())
+        .map(|entry| entry.path.to_string())
         .collect::<Vec<_>>();
     assert_eq!(
         ordered_paths,
@@ -646,13 +646,15 @@ fn inline_indices_without_range_metadata_remain_exact_declarations() {
     assert_eq!(
         signals
             .iter()
-            .map(|entry| entry.path.as_str())
+            .map(|entry| entry.path.to_string())
             .collect::<Vec<_>>(),
         ["top.split[0]", "top.split[1]"]
     );
     assert!(waveform.resolve_signals(&["top.split".into()]).is_err());
     for entry in signals {
-        let values = waveform.sample_signals_at_time(&[entry.path], 10).unwrap();
+        let values = waveform
+            .sample_signals_at_time(&[entry.path.to_string()], 10)
+            .unwrap();
         assert_eq!(values[0].bits, "1");
     }
 }
@@ -784,7 +786,10 @@ fn indexed_names_use_public_exact_path_spelling() {
     let direct = variable.path().to_string();
     assert_eq!(direct, "top.memory[0]");
     let backend = OndasBackend::open(fixture.path()).unwrap();
-    assert_eq!(backend.signals_in_scope("top").unwrap()[0].path, direct);
+    assert_eq!(
+        backend.signals_in_scope("top").unwrap()[0].path.to_string(),
+        direct
+    );
 }
 
 #[test]
@@ -1663,18 +1668,19 @@ fn listing_include_and_direct_lookup_share_exact_declarations_and_alias_history(
     let entries = backend.matching_signals(|_, _| true);
     assert_eq!(entries.len(), 4);
     for entry in entries {
-        let found = backend.matching_signals(|path, _| path == entry.path);
+        let canonical = entry.path.to_string();
+        let found = backend.matching_signals(|path, _| path == canonical);
         assert_eq!(found, std::slice::from_ref(&entry));
         let signals = backend
-            .resolve_signals(std::slice::from_ref(&entry.path))
+            .resolve_signals(std::slice::from_ref(&canonical))
             .unwrap();
-        let expr = backend.resolve_expr_signal(&entry.path, None).unwrap();
+        let expr = backend.resolve_expr_signal(&canonical, None).unwrap();
         assert_eq!(signals[0].signal, expr.signal);
         assert_eq!(
             backend.sample_resolved_optional(&signals, 0).unwrap()[0]
                 .bits
                 .as_deref(),
-            Some(if entry.path == r#"top."literal[7:0]""# {
+            Some(if canonical == r#"top."literal[7:0]""# {
                 "1"
             } else {
                 "0"
@@ -1701,7 +1707,7 @@ fn repeated_scope_names_keep_their_declarations_in_their_own_scope() {
         listing
             .entries
             .iter()
-            .map(|entry| entry.path.as_str())
+            .map(|entry| entry.path.to_string())
             .collect::<Vec<_>>(),
         ["top.child.a", "top.child.b"]
     );
@@ -1710,7 +1716,7 @@ fn repeated_scope_names_keep_their_declarations_in_their_own_scope() {
             &listing
                 .entries
                 .iter()
-                .map(|entry| entry.path.clone())
+                .map(|entry| entry.path.to_string())
                 .collect::<Vec<_>>(),
         )
         .unwrap();
@@ -1744,8 +1750,8 @@ fn batch_samples_preserve_aliases_projections_and_composition_missing() {
         "top.alias",
         "top.bus",
         "top.bus[7:4]",
+        r#"top."literal[3:0]""#,
         "top.literal[3:0]",
-        "top.\"literal\"[3:0]",
     ]
     .map(String::from);
     let resolved = backend.resolve_signals(&paths).unwrap();
@@ -1857,7 +1863,7 @@ fn point_and_batch_samples_preserve_window_and_event_boundaries() {
 }
 
 #[test]
-fn selectors_keep_scopes_indexed_bases_and_literal_priority() {
+fn selectors_keep_scopes_indexed_bases_and_literal_identity() {
     let fixture = write_fixture(
         "$timescale 1ns $end\n$scope module top $end\n$var wire 8 ! mem[0] [7:0] $end\n$var wire 8 \" data [7:0] $end\n$var wire 4 # \\data[3:0] $end\n$scope module \\a.b $end\n$var wire 1 $ flag $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\nb10100101 !\nb11110000 \"\nb1010 #\n1$\n",
         "selectors.vcd",
@@ -1866,8 +1872,9 @@ fn selectors_keep_scopes_indexed_bases_and_literal_priority() {
     for (selector, scope, path, bits) in [
         ("mem[0][7:4]", Some("top"), "top.mem[0][7:4]", "1010"),
         ("top.mem[0][7:4]", Some("top"), "top.mem[0][7:4]", "1010"),
-        ("data[3:0]", Some("top"), r#"top."data[3:0]""#, "1010"),
-        (r#""data"[3:0]"#, Some("top"), r#"top."data"[3:0]"#, "0000"),
+        (r#""data[3:0]""#, Some("top"), r#"top."data[3:0]""#, "1010"),
+        ("data[3:0]", Some("top"), "top.data[3:0]", "0000"),
+        (r#""data"[3:0]"#, Some("top"), "top.data[3:0]", "0000"),
         (r#"flag"#, Some(r#"top."a.b""#), r#"top."a.b".flag"#, "1"),
         (r#"top.\a.b .flag"#, Some("top"), r#"top."a.b".flag"#, "1"),
     ] {

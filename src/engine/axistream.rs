@@ -14,6 +14,9 @@ use crate::engine::extract::{
     self, ExtractGenericRow, ExtractPlan, ExtractRowSink, ExtractRunArgs, ExtractSource,
 };
 use crate::engine::signal_mapping::candidate_matching_standards;
+use crate::engine::signal_mapping::{
+    MappedSignal, SignalCandidate, collect_include_candidates, resolve_explicit_mapping,
+};
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions, ResultSummary};
 use crate::error::WavepeekError;
 
@@ -208,13 +211,6 @@ struct BuiltAxiStreamPlan {
     diagnostics: Vec<Diagnostic>,
 }
 
-#[derive(Debug, Clone)]
-struct SignalCandidate {
-    display: String,
-    name: String,
-    path: String,
-}
-
 #[derive(Debug, Clone, Copy)]
 struct AxiStreamProfile {
     spec: &'static AxiStreamProfileSpec,
@@ -285,7 +281,7 @@ fn run_with_sink<S: AxiStreamTransferSink + ?Sized>(
     sink: &mut S,
 ) -> Result<AxiStreamOutcome, WavepeekError> {
     let BuiltAxiStreamPlan {
-        mut context,
+        context,
         plan,
         waveform,
         debug,
@@ -293,18 +289,6 @@ fn run_with_sink<S: AxiStreamTransferSink + ?Sized>(
         diagnostics: build_diagnostics,
     } = build_axistream_plan(&args)?;
     let absolute_paths = args.abs || args.json || args.jsonl;
-    let paths = OutputPaths::new(
-        args.path_output.style(),
-        args.scope.as_deref(),
-        absolute_paths,
-    )?;
-    paths.style_mappings(
-        &waveform.borrow(),
-        context
-            .mappings
-            .iter_mut()
-            .map(|mapping| (&mut mapping.path, &mut mapping.display)),
-    )?;
     let mut generic_sink = GenericToAxiStreamSink {
         context: &context,
         payload_standards: &payload_standards,
@@ -360,10 +344,27 @@ fn build_axistream_plan(args: &AxiStreamArgs) -> Result<BuiltAxiStreamPlan, Wave
     let (mappings_by_standard, diagnostics) = auto_mappings(config.profile, candidates, explicit)?;
     let source = build_extract_source(config.tready_mode, &mappings_by_standard)?;
 
+    let paths = OutputPaths::new(
+        args.path_output.style(),
+        args.scope.as_deref(),
+        args.abs || args.json || args.jsonl,
+    )?;
     let ordered_mappings = STANDARD_SIGNALS
         .iter()
-        .filter_map(|standard| mappings_by_standard.get(*standard).cloned())
-        .collect();
+        .filter_map(|standard| {
+            mappings_by_standard
+                .get(*standard)
+                .map(|mapping| (standard, mapping))
+        })
+        .map(|(standard, mapping)| {
+            let (path, display) = paths.selector(&mapping.selector)?;
+            Ok(AxiStreamSignalMapping {
+                standard: standard.to_string(),
+                path,
+                display,
+            })
+        })
+        .collect::<Result<Vec<_>, WavepeekError>>()?;
     let payload_standards = source.payload_standards;
     let extract_source = ExtractSource::new(
         0,
@@ -548,56 +549,11 @@ fn compile_include_regexes(includes: &[String]) -> Result<Vec<Regex>, WavepeekEr
         .collect()
 }
 
-fn collect_include_candidates(
-    waveform: &SharedWaveform,
-    scope: Option<&str>,
-    includes: &[Regex],
-) -> Result<Vec<SignalCandidate>, WavepeekError> {
-    if includes.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let mut candidates = Vec::new();
-    let mut seen_paths = HashSet::new();
-    if let Some(scope) = scope {
-        for entry in waveform.borrow().signals_in_scope(scope)? {
-            if includes
-                .iter()
-                .any(|include| include.is_match(entry.name.as_str()))
-                && seen_paths.insert(entry.path.clone())
-            {
-                candidates.push(SignalCandidate {
-                    display: entry.name.clone(),
-                    name: entry.name,
-                    path: entry.path,
-                });
-            }
-        }
-        return Ok(candidates);
-    }
-
-    let entries = waveform.borrow().matching_signals(|path, name| {
-        includes
-            .iter()
-            .any(|include| include.is_match(path) || include.is_match(name))
-    });
-    for entry in entries {
-        if seen_paths.insert(entry.path.clone()) {
-            candidates.push(SignalCandidate {
-                display: entry.path.clone(),
-                name: entry.name,
-                path: entry.path,
-            });
-        }
-    }
-    Ok(candidates)
-}
-
 fn explicit_mappings(
     waveform: &SharedWaveform,
     scope: Option<&str>,
     maps: &[(String, String)],
-) -> Result<HashMap<String, AxiStreamSignalMapping>, WavepeekError> {
+) -> Result<HashMap<String, MappedSignal>, WavepeekError> {
     let mut result = HashMap::new();
     for (standard, waves) in maps {
         if !STANDARD_SIGNALS.contains(&standard.as_str()) {
@@ -606,21 +562,9 @@ fn explicit_mappings(
                 standard
             )));
         }
-        if scope.is_some() && ondas::HierarchyPath::parse(waves).is_ok_and(|path| path.len() > 1) {
-            return Err(WavepeekError::Args(format!(
-                "AXI-Stream mapping for '{standard}' must use a scope-relative signal when --scope is set. See 'wavepeek extract axistream --help'."
-            )));
-        }
-        let resolved = waveform
-            .borrow()
-            .resolve_signal_with_diagnostic(waves, scope, false)?;
         result.insert(
             standard.clone(),
-            AxiStreamSignalMapping {
-                standard: standard.clone(),
-                display: crate::waveform::display_signal_path(&resolved.path, scope).to_string(),
-                path: resolved.path,
-            },
+            resolve_explicit_mapping(waveform, waves, scope, standard, "AXI-Stream", HELP)?,
         );
     }
     Ok(result)
@@ -629,8 +573,8 @@ fn explicit_mappings(
 fn auto_mappings(
     profile: AxiStreamProfile,
     candidates: Vec<SignalCandidate>,
-    mut explicit: HashMap<String, AxiStreamSignalMapping>,
-) -> Result<(HashMap<String, AxiStreamSignalMapping>, Vec<Diagnostic>), WavepeekError> {
+    mut explicit: HashMap<String, MappedSignal>,
+) -> Result<(HashMap<String, MappedSignal>, Vec<Diagnostic>), WavepeekError> {
     let mut diagnostics = Vec::new();
     let mut auto: HashMap<String, Vec<SignalCandidate>> = HashMap::new();
     let explicit_paths = explicit
@@ -639,7 +583,7 @@ fn auto_mappings(
         .collect::<HashSet<_>>();
 
     for candidate in candidates {
-        if explicit_paths.contains(candidate.path.as_str()) {
+        if explicit_paths.contains(candidate.selection.path.as_str()) {
             continue;
         }
         let matched = candidate_matching_standards(
@@ -678,8 +622,8 @@ fn auto_mappings(
         let Some(mut candidates) = auto.remove(*standard) else {
             continue;
         };
-        candidates.sort_by(|left, right| left.path.cmp(&right.path));
-        candidates.dedup_by(|left, right| left.path == right.path);
+        candidates.sort_by(|left, right| left.selection.path.cmp(&right.selection.path));
+        candidates.dedup_by(|left, right| left.selection.path == right.selection.path);
         if candidates.len() > 1 {
             let paths = candidates
                 .iter()
@@ -691,14 +635,7 @@ fn auto_mappings(
             )));
         }
         let candidate = candidates.remove(0);
-        explicit.insert(
-            standard.to_string(),
-            AxiStreamSignalMapping {
-                standard: standard.to_string(),
-                display: candidate.display,
-                path: candidate.path,
-            },
-        );
+        explicit.insert(standard.to_string(), candidate.selection);
     }
 
     Ok((explicit, diagnostics))
@@ -714,7 +651,7 @@ struct BuiltAxiStreamSource {
 
 fn build_extract_source(
     tready_mode: TreadyMode,
-    mappings: &HashMap<String, AxiStreamSignalMapping>,
+    mappings: &HashMap<String, MappedSignal>,
 ) -> Result<BuiltAxiStreamSource, WavepeekError> {
     let aclk = mappings.get("aclk").ok_or_else(|| {
         WavepeekError::Args(

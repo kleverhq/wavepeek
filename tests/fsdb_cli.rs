@@ -510,6 +510,24 @@ fn fsdb_value_preserves_exact_projection_like_path_errors() {
     let fixture = convert_vcd_fixture(dir.path(), "projection_ambiguous_exact.vcd");
     let fixture = path_str(&fixture);
 
+    let projected = run_json_success_with_waves(
+        &fixture,
+        &[
+            "value",
+            "--at",
+            "0ns",
+            "--signals",
+            "top.flags[0:0]",
+            "--json",
+        ],
+    );
+    assert_eq!(
+        projected["data"][0]["signals"][0],
+        json!({
+            "path": "top.flags[0:0]", "value": "1'h1"
+        })
+    );
+
     wavepeek_cmd()
         .args([
             "value",
@@ -518,7 +536,7 @@ fn fsdb_value_preserves_exact_projection_like_path_errors() {
             "--at",
             "0ns",
             "--signals",
-            "top.flags[0:0]",
+            r#"top."flags[0:0]""#,
         ])
         .assert()
         .failure()

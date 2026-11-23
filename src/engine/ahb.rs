@@ -17,6 +17,9 @@ use crate::engine::expr_runtime::{
 };
 use crate::engine::extract::{max_entries, parse_bound_time};
 use crate::engine::signal_mapping;
+use crate::engine::signal_mapping::{
+    MappedSignal, SignalCandidate, collect_include_candidates, resolve_explicit_mapping,
+};
 use crate::engine::time::{format_raw_timestamp, parse_dump_time_context};
 use crate::engine::value_format::format_verilog_literal;
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions, ResultSummary};
@@ -274,13 +277,6 @@ struct AhbConfig {
     maps: Vec<(String, String)>,
 }
 
-#[derive(Debug, Clone)]
-struct SignalCandidate {
-    display: String,
-    name: String,
-    path: String,
-}
-
 #[derive(Debug)]
 struct ResolvedMapping {
     mapping: AhbSignalMapping,
@@ -517,10 +513,9 @@ impl EdgeSamples {
                     path: format!("top.{standard}"),
                     signal: wave.hierarchy().signal(&format!("value{index}")).unwrap(),
                     width: bits.len() as u32,
-                    selector: crate::waveform::selection::SelectorPath::new(
+                    selector: ondas::SignalSelector::new(
                         ondas::HierarchyPath::from_components(["top", *standard]),
                         None,
-                        false,
                     ),
                 },
                 handle: SignalHandle(index as u32),
@@ -975,19 +970,6 @@ fn build_ahb(args: &AhbArgs) -> Result<BuiltAhb, WavepeekError> {
     let (mappings_by_standard, diagnostics) = auto_mappings(config.profile, candidates, explicit)?;
     require_mappings(&mappings_by_standard)?;
 
-    let ordered_mappings = config
-        .profile
-        .signals()
-        .iter()
-        .filter_map(|standard| mappings_by_standard.get(*standard).cloned())
-        .collect::<Vec<_>>();
-    let canonical_paths = ordered_mappings
-        .iter()
-        .map(|mapping| mapping.path.clone())
-        .collect::<Vec<_>>();
-    let resolved = waveform
-        .borrow()
-        .resolve_signals(canonical_paths.as_slice())?;
     let clock = mappings_by_standard
         .get("hclk")
         .expect("required mappings checked");
@@ -1001,16 +983,31 @@ fn build_ahb(args: &AhbArgs) -> Result<BuiltAhb, WavepeekError> {
         args.scope.as_deref(),
         absolute_paths,
     )?;
-    let resolved_mappings = ordered_mappings
-        .into_iter()
-        .zip(resolved)
-        .map(|(mut mapping, resolved)| {
+    let resolved_mappings = config
+        .profile
+        .signals()
+        .iter()
+        .filter_map(|standard| {
+            mappings_by_standard
+                .get(*standard)
+                .map(|mapping| (standard, mapping))
+        })
+        .map(|(standard, mapped)| {
+            let resolved = waveform.borrow().resolve_typed_signal_with_diagnostic(
+                &mapped.path,
+                &mapped.selector,
+                None,
+            )?;
             let handle = host
-                .resolve_signal(&mapping.path)
-                .map_err(|diagnostic| expr_diagnostic(&mapping.path, diagnostic))?;
-            paths.style_mapping(&resolved.selector, &mut mapping.path, &mut mapping.display)?;
+                .resolve_signal(&mapped.path)
+                .map_err(|diagnostic| expr_diagnostic(&mapped.path, diagnostic))?;
+            let (path, display) = paths.selector(&mapped.selector)?;
             Ok(ResolvedMapping {
-                mapping,
+                mapping: AhbSignalMapping {
+                    standard: standard.to_string(),
+                    path,
+                    display,
+                },
                 resolved,
                 handle,
             })
@@ -1288,55 +1285,12 @@ fn compile_include_regexes(includes: &[String]) -> Result<Vec<Regex>, WavepeekEr
         .collect()
 }
 
-fn collect_include_candidates(
-    waveform: &SharedWaveform,
-    scope: Option<&str>,
-    includes: &[Regex],
-) -> Result<Vec<SignalCandidate>, WavepeekError> {
-    if includes.is_empty() {
-        return Ok(Vec::new());
-    }
-    let mut candidates = Vec::new();
-    let mut seen_paths = HashSet::new();
-    if let Some(scope) = scope {
-        for entry in waveform.borrow().signals_in_scope(scope)? {
-            if includes
-                .iter()
-                .any(|include| include.is_match(entry.name.as_str()))
-                && seen_paths.insert(entry.path.clone())
-            {
-                candidates.push(SignalCandidate {
-                    display: entry.name.clone(),
-                    name: entry.name,
-                    path: entry.path,
-                });
-            }
-        }
-        return Ok(candidates);
-    }
-    let entries = waveform.borrow().matching_signals(|path, name| {
-        includes
-            .iter()
-            .any(|include| include.is_match(path) || include.is_match(name))
-    });
-    for entry in entries {
-        if seen_paths.insert(entry.path.clone()) {
-            candidates.push(SignalCandidate {
-                display: entry.path.clone(),
-                name: entry.name,
-                path: entry.path,
-            });
-        }
-    }
-    Ok(candidates)
-}
-
 fn explicit_mappings(
     waveform: &SharedWaveform,
     scope: Option<&str>,
     profile: AhbProfile,
     maps: &[(String, String)],
-) -> Result<HashMap<String, AhbSignalMapping>, WavepeekError> {
+) -> Result<HashMap<String, MappedSignal>, WavepeekError> {
     let mut result = HashMap::new();
     for (standard, waves) in maps {
         if !profile.contains_standard(standard) {
@@ -1346,21 +1300,9 @@ fn explicit_mappings(
                 standard
             )));
         }
-        if scope.is_some() && ondas::HierarchyPath::parse(waves).is_ok_and(|path| path.len() > 1) {
-            return Err(WavepeekError::Args(format!(
-                "AHB mapping for '{standard}' must use a scope-relative signal when --scope is set. See 'wavepeek extract ahb --help'."
-            )));
-        }
-        let resolved = waveform
-            .borrow()
-            .resolve_signal_with_diagnostic(waves, scope, false)?;
         result.insert(
             standard.clone(),
-            AhbSignalMapping {
-                standard: standard.clone(),
-                display: crate::waveform::display_signal_path(&resolved.path, scope).to_string(),
-                path: resolved.path,
-            },
+            resolve_explicit_mapping(waveform, waves, scope, standard, "AHB", HELP)?,
         );
     }
     Ok(result)
@@ -1369,8 +1311,8 @@ fn explicit_mappings(
 fn auto_mappings(
     profile: AhbProfile,
     candidates: Vec<SignalCandidate>,
-    mut explicit: HashMap<String, AhbSignalMapping>,
-) -> Result<(HashMap<String, AhbSignalMapping>, Vec<Diagnostic>), WavepeekError> {
+    mut explicit: HashMap<String, MappedSignal>,
+) -> Result<(HashMap<String, MappedSignal>, Vec<Diagnostic>), WavepeekError> {
     let mut diagnostics = Vec::new();
     let mut auto: HashMap<String, Vec<SignalCandidate>> = HashMap::new();
     let explicit_paths = explicit
@@ -1378,7 +1320,7 @@ fn auto_mappings(
         .map(|mapping| mapping.path.as_str())
         .collect::<HashSet<_>>();
     for candidate in candidates {
-        if explicit_paths.contains(candidate.path.as_str()) {
+        if explicit_paths.contains(candidate.selection.path.as_str()) {
             continue;
         }
         let matched = candidate_matching_standards(candidate.name.as_str(), profile.signals());
@@ -1411,8 +1353,8 @@ fn auto_mappings(
         let Some(mut candidates) = auto.remove(*standard) else {
             continue;
         };
-        candidates.sort_by(|left, right| left.path.cmp(&right.path));
-        candidates.dedup_by(|left, right| left.path == right.path);
+        candidates.sort_by(|left, right| left.selection.path.cmp(&right.selection.path));
+        candidates.dedup_by(|left, right| left.selection.path == right.selection.path);
         if candidates.len() > 1 {
             let paths = candidates
                 .iter()
@@ -1424,19 +1366,12 @@ fn auto_mappings(
             )));
         }
         let candidate = candidates.remove(0);
-        explicit.insert(
-            (*standard).to_string(),
-            AhbSignalMapping {
-                standard: (*standard).to_string(),
-                display: candidate.display,
-                path: candidate.path,
-            },
-        );
+        explicit.insert(standard.to_string(), candidate.selection);
     }
     Ok((explicit, diagnostics))
 }
 
-fn require_mappings(mappings: &HashMap<String, AhbSignalMapping>) -> Result<(), WavepeekError> {
+fn require_mappings(mappings: &HashMap<String, MappedSignal>) -> Result<(), WavepeekError> {
     let missing = REQUIRED_SIGNALS
         .iter()
         .filter(|standard| !mappings.contains_key(**standard))
@@ -1500,8 +1435,8 @@ fn tokenize_candidate(name: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        AHB_LITE_PROFILE, AHB_LITE_SIGNALS, AHB5_PROFILE, AHB5_SIGNALS, AhbSignalMapping,
-        Direction, EdgeSamples, Inclusion, PipelineState, SignalCandidate, Walker, auto_mappings,
+        AHB_LITE_PROFILE, AHB_LITE_SIGNALS, AHB5_PROFILE, AHB5_SIGNALS, Direction, EdgeSamples,
+        Inclusion, MappedSignal, PipelineState, SignalCandidate, Walker, auto_mappings,
         candidate_matching_standards, is_mapping_decoy, parse_cli_maps, parse_profile,
     };
     use std::collections::HashMap;
@@ -1684,16 +1619,12 @@ mod tests {
         let profile = parse_profile("ahb-lite").unwrap();
         let explicit = HashMap::from([(
             "haddr".to_string(),
-            AhbSignalMapping {
-                standard: "haddr".to_string(),
-                display: "manual".to_string(),
-                path: "top.manual".to_string(),
-            },
+            MappedSignal::whole(ondas::HierarchyPath::parse("top.manual").unwrap()),
         )]);
         let candidates = vec![SignalCandidate {
             display: "ahb_haddr_i".to_string(),
             name: "ahb_haddr_i".to_string(),
-            path: "top.ahb_haddr_i".to_string(),
+            selection: MappedSignal::whole(ondas::HierarchyPath::parse("top.ahb_haddr_i").unwrap()),
         }];
         let (mapped, _) = auto_mappings(profile, candidates, explicit).unwrap();
         assert_eq!(mapped["haddr"].path, "top.manual");
@@ -1702,12 +1633,12 @@ mod tests {
             SignalCandidate {
                 display: "a_haddr".to_string(),
                 name: "a_haddr".to_string(),
-                path: "top.a_haddr".to_string(),
+                selection: MappedSignal::whole(ondas::HierarchyPath::parse("top.a_haddr").unwrap()),
             },
             SignalCandidate {
                 display: "b_haddr".to_string(),
                 name: "b_haddr".to_string(),
-                path: "top.b_haddr".to_string(),
+                selection: MappedSignal::whole(ondas::HierarchyPath::parse("top.b_haddr").unwrap()),
             },
         ];
         assert!(auto_mappings(profile, ambiguous, HashMap::new()).is_err());

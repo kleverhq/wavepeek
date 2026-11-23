@@ -145,7 +145,7 @@ Behavior:
 - `--at` and `--signals` accept comma-separated values, repeated options, or both. The command prints one row per `--at` value and preserves request order and duplicates.
 - Uses canonical signal paths by default. With `--scope`, names may be relative or canonical paths inside that scope, and both forms may be mixed.
 - A trailing `[msb:lsb]` selects bits from a flat integral signal. Use `[n:n]` for one bit; `[n]` remains part of an ordinary waveform path.
-- Exact waveform paths take precedence over projection syntax.
+- Quote or escape a literal name that ends in a range.
 - Text values use Verilog literals such as `8'h0f`, including `x` and `z` digits.
 - The command fails if a signal cannot be resolved or a requested time is finer than the dump resolution.
 - The whole command fails if a selected persistent signal has no observation at or before a requested time.
@@ -170,7 +170,7 @@ Notes:
 
 Behavior:
 - `--on` selects events, and `--signals` selects the values printed for each event. `--signals` accepts comma-separated values, repeated options, or both.
-- Signal names may end in `[msb:lsb]`. Sparse rows, delta rows, and wildcard comparisons use the projected values. Exact waveform paths take precedence, and `[n]` remains path syntax.
+- Signal names may end in `[msb:lsb]`. Sparse rows, delta rows, and wildcard comparisons use the projected values. Quote or escape a literal name that ends in a range. `[n]` remains path syntax.
 - `--row-mode dense` prints every sampled event. `sparse` prints only samples that changed from the previous selected sample.
 - `--row-values full` prints every requested value. `delta` prints changed values, except that its first row is always full.
 - Pre-edge sampling reads values before edge-only triggers while keeping the trigger timestamp as the row time. Events without an earlier representable sample are skipped.

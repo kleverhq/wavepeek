@@ -153,6 +153,55 @@ fn vcd_escaped_instance_paths_are_reusable() {
 }
 
 #[test]
+fn sv_output_uses_escape_metadata_from_the_dump() {
+    let waves = vcd(
+        "$scope module \\plain $end\n$var wire 1 ~ \\q $end\n$upscope $end\n",
+        "0~\n",
+    );
+    let json: Value = serde_json::from_str(&run(
+        waves.path(),
+        &[
+            "signal",
+            "--scope",
+            "top.plain",
+            "--path-style",
+            "sv",
+            "--json",
+        ],
+    ))
+    .unwrap();
+    assert_eq!(json["context"]["scope"], r"top.\plain ");
+    assert_eq!(json["data"][0]["path"], r"top.\plain .\q ");
+    assert_eq!(json["data"][0]["name"], r"\q ");
+    assert_eq!(json["data"][0]["relative_path"], r"\q ");
+}
+
+#[test]
+fn signal_limit_uses_logical_leaf_order_in_both_styles() {
+    let waves = vcd(
+        "$var wire 1 ~ a $end\n$var wire 1 % \\z.dot $end\n",
+        "0~\n0%\n",
+    );
+    for (style, expected) in [("logical", r#"top."z.dot""#), ("sv", r"top.\z.dot ")] {
+        let result: Value = serde_json::from_str(&run(
+            waves.path(),
+            &[
+                "signal",
+                "--scope",
+                "top",
+                "--max",
+                "1",
+                "--path-style",
+                style,
+                "--json",
+            ],
+        ))
+        .unwrap();
+        assert_eq!(result["data"][0]["path"], expected);
+    }
+}
+
+#[test]
 fn style_preserves_scope_filtering_and_lexical_order_before_limit() {
     let waves = vcd(
         "$scope module u[2] $end\n$var reg 1 ~ q $end\n$upscope $end\n\

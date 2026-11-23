@@ -107,9 +107,12 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
         entries
             .into_iter()
             .map(|entry| {
-                let (path, relative_path) = paths.listed(&entry.path)?;
+                let name = paths.exact(&ondas::HierarchyPath::from_components(
+                    entry.path.components().last(),
+                ))?;
+                let (path, relative_path) = paths.listed(entry.path)?;
                 Ok(SignalEntry {
-                    name: paths.exact(entry.name)?,
+                    name,
                     relative_path,
                     path,
                     kind: entry.kind,
@@ -126,7 +129,7 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
             scope_tree: false,
             signals_abs: abs,
         },
-        scope: paths.context_scope(machine)?,
+        scope: paths.context_scope(&waveform, machine)?,
         summary_only: summary,
         summary: Some(ResultSummary {
             complete: returned == total,

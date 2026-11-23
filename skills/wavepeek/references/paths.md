@@ -1,6 +1,6 @@
 # Path and scope resolution
 
-WavePeek formats paths from exact Ondas hierarchy components. A path is a sequence of components separated by dots. In the default `logical` style, names with dots, literal brackets, commas, quotes, backslashes, or whitespace use JSON string syntax:
+WavePeek formats paths from exact Ondas hierarchy components. A path is a sequence of components separated by dots. The default `logical` style writes names matching `[A-Za-z][A-Za-z0-9_]*` bare and uses JSON string syntax for other names.
 
 ```text
 top.cpu.valid
@@ -11,7 +11,7 @@ top."literal[7:0]"
 
 The middle two paths select different declarations. An index follows the name, as in `top.u_reg[0].q`. Brackets inside a quoted or escaped name are literal characters, as in `top."u_reg[0]".q`. Listing paths can be reused in selections. Scope depth counts components, regardless of punctuation inside a name.
 
-Use `--path-style sv` after `scope`, `signal`, `value`, `change`, or an `extract` subcommand to print SystemVerilog paths. A backslash starts an escaped name. An ASCII space terminates it, even at the end of a path. Both styles are accepted as input. Path suggestions in diagnostics use logical syntax.
+Use `--path-style sv` after `scope`, `signal`, `value`, `change`, or an `extract` subcommand to print paths with SystemVerilog escapes. The formatter preserves explicit escapes supplied by the waveform reader and escapes names outside the bare-name pattern. An ASCII space terminates each escaped name, even at the end of a path. Both styles are accepted as input. Filters, includes, and path suggestions use the canonical logical spelling, including its quotes.
 
 An unrepresentable result path under `--path-style sv` returns `WPK-F0001` with the message `--path-style sv: path component cannot be represented in Verilog` followed by the component name.
 
@@ -28,6 +28,8 @@ wavepeek value --path-style sv --waves dump.vcd --at 0ns \
 ## Relative paths
 
 `signal`, `value`, `change`, `property`, and `extract` support `--scope`. With `--scope top`, both `cpu.valid` and `top.cpu.valid` resolve inside that scope. Names without the exact selected scope's component prefix are relative to it. Use `signal --scope ''` for root-level declarations; add `--recursive` to include signals in child scopes.
+
+Protocol `--map` with `--scope` takes one local component and an optional projection, for example `tdata=data[3:0]`.
 
 ```sh
 wavepeek value --waves dump.vcd --at 10ns \
@@ -51,7 +53,7 @@ SystemVerilog escaped identifiers require terminating whitespace. `top.\a.b .c` 
 
 ## Bit projections and composite signals
 
-`value --signals`, `change --signals`, and `extract generic` payloads may append one flat static decimal `[msb:lsb]` projection. Resolution first tries the complete name, then a trailing projection outside quoted or escaped components. `[n]` names a declaration. Use `[n:n]` for one projected bit. Only one trailing projection is applied to an exact declaration. An indexed declaration such as `mem[0]` can be the base. Bit zero is the rightmost normalized sampled bit. When a literal declaration conflicts with a projection spelling, the projection uses an explicit base name, such as `top."mem"[0][3:0]` in logical or `top.\mem [0][3:0]` in SV.
+`value --signals`, `change --signals`, and `extract` payload selectors accept one trailing static decimal `[msb:lsb]` projection. A range outside quotes or an escaped name selects bits from the base declaration. Use `top.data[3:0]` for a projection and `top."data[3:0]"` for the literal name. `[n]` selects an array element. Use `[n:n]` for one projected bit. An indexed declaration such as `mem[0]` can be the base. Bit zero is the rightmost normalized sampled bit.
 
 ```sh
 wavepeek value --waves dump.vcd --at 10ns \

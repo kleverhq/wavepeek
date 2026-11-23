@@ -14,7 +14,7 @@
     },
     {
       "path": "tests/fixtures/hand/projection_ambiguous_exact.vcd",
-      "reason": "Uses duplicate escaped range-looking signal names to verify FSDB exact-path ambiguity takes precedence over projection fallback."
+      "reason": "Uses duplicate escaped range-looking signal names to check exact-path ambiguity separately from bit projection."
     },
     {
       "path": "tests/fixtures/hand/same_time_updates.vcd",

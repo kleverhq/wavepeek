@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use assert_cmd::prelude::*;
 use serde_json::{Value, json};
 use tempfile::NamedTempFile;
 
@@ -250,7 +251,7 @@ fn path_style_preserves_comma_lists_and_indexed_projection_identity() {
         (
             "logical",
             [
-                r#"top."mem"[0][3:0]"#,
+                "top.mem[0][3:0]",
                 r#"top."comma,name""#,
                 r#"top."mem[0][3:0]""#,
                 "top.mem[0]",
@@ -260,7 +261,7 @@ fn path_style_preserves_comma_lists_and_indexed_projection_identity() {
         (
             "sv",
             [
-                r"top.\mem [0][3:0]",
+                "top.mem[0][3:0]",
                 r"top.\comma,name ",
                 r"top.\mem[0][3:0] ",
                 "top.mem[0]",
@@ -446,10 +447,11 @@ fn indexed_paths_from_output_can_be_used_in_event_and_logical_expressions() {
     assert_eq!(signals.len(), 2);
     for (signal, index) in signals.iter().zip([0, -1]) {
         let sv = signal["path"].as_str().unwrap();
-        assert_eq!(sv, format!(r"top.\logic [{index}].q"));
         let logical = format!("top.logic[{index}].q");
+        assert_eq!(sv, logical);
         let quoted = format!(r#"top."logic"[{index}].q"#);
-        for path in [logical.as_str(), quoted.as_str(), sv] {
+        let escaped = format!(r"top.\logic [{index}].q");
+        for path in [sv, quoted.as_str(), escaped.as_str()] {
             let change = run_json(
                 waves.path(),
                 &[
@@ -560,6 +562,24 @@ b10100101 $
 "#,
         ".vcd",
     );
+    for selector in ["top.top.data[3:0]", r#"top.top."data"[3:0]"#, "[3:0]"] {
+        wavepeek_cmd()
+            .args([
+                "extract",
+                "axistream",
+                "--scope",
+                "top",
+                "--map",
+                &format!("tdata={selector}"),
+                "--waves",
+            ])
+            .arg(waves.path())
+            .assert()
+            .failure()
+            .stderr(predicates::str::contains(
+                "must use a scope-relative signal",
+            ));
+    }
     for style in ["logical", "sv"] {
         let result = run_json(
             waves.path(),
@@ -567,15 +587,15 @@ b10100101 $
                 "extract",
                 "axistream",
                 "--scope",
-                "top",
+                "top.top",
                 "--tready-mode",
                 "implicit-high",
                 "--map",
-                r#"aclk=top.top."clock"[0:0]"#,
+                "aclk=clock[0:0]",
                 "--map",
-                r#"tvalid=top.top."valid"[0:0]"#,
+                "tvalid=valid[0:0]",
                 "--map",
-                r#"tdata=top.top."data"[3:0]"#,
+                r#"tdata="data"[3:0]"#,
                 "--path-style",
                 style,
             ],

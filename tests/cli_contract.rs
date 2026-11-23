@@ -457,7 +457,7 @@ fn change_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
         "`--row-values full` prints every requested value.",
         "Range boundaries are inclusive.",
         "Signal names may end in `[msb:lsb]`.",
-        "Exact waveform paths take precedence",
+        "Quote or escape a literal name that ends in a range",
         "wildcard comparisons use the projected values",
     ] {
         assert!(
@@ -915,7 +915,7 @@ fn extract_generic_help_is_self_descriptive() {
         "always sampled at the pre-edge sample point",
         "`--payload` accepts comma-separated values, repeated options, or both.",
         "Entries may end in `[msb:lsb]`",
-        "Exact waveform paths take precedence",
+        "Quote or escape a literal name that ends in a range",
         "Payload paths or flat projections, comma-separated or repeated",
         "Scope for relative event, predicate, and payload names (for example, top.fifo)",
         "`--source` conflicts with `--name`, `--on`, `--when`, and `--payload`",

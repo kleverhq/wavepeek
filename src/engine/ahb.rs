@@ -960,6 +960,11 @@ fn build_ahb(args: &AhbArgs) -> Result<BuiltAhb, WavepeekError> {
             })
         });
     }
+    if includes.is_empty()
+        && let Some(scope) = args.scope.as_deref()
+    {
+        waveform.borrow().validate_scope(scope)?;
+    }
     let candidates = collect_include_candidates(&waveform, args.scope.as_deref(), &includes)?;
     let explicit = explicit_mappings(
         &waveform,

@@ -274,6 +274,10 @@ impl Waveform {
         self.backend.canonical_scope(path)
     }
 
+    pub(crate) fn validate_scope(&self, input: &str) -> Result<(), WavepeekError> {
+        self.backend.validate_scope(input)
+    }
+
     pub(crate) fn resolve_expr_signal_with_diagnostic(
         &self,
         selector: &str,

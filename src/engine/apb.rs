@@ -9,7 +9,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use crate::cli::extract::ApbArgs;
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
-use crate::engine::expr_runtime::{SharedWaveform, open_shared_waveform};
+use crate::engine::expr_runtime::{SharedWaveform, open_shared_waveform, signal_operand};
 use crate::engine::extract::{
     self, ExtractGenericRow, ExtractPlan, ExtractRowSink, ExtractRunArgs, ExtractSource,
 };
@@ -530,7 +530,6 @@ fn build_apb_plan(args: &ApbArgs) -> Result<BuiltApbPlan, WavepeekError> {
         config.profile,
         config.pready_mode,
         config.include_wait,
-        args.scope.as_deref(),
         &mappings_by_standard,
     )?;
 
@@ -951,7 +950,6 @@ fn build_extract_sources(
     profile: ApbProfile,
     pready_mode: PreadyMode,
     include_wait: bool,
-    scope: Option<&str>,
     mappings: &HashMap<String, ApbSignalMapping>,
 ) -> Result<Vec<BuiltApbSource>, WavepeekError> {
     let pclk = mappings
@@ -965,14 +963,14 @@ fn build_extract_sources(
         .ok_or_else(|| WavepeekError::Internal("validated APB plan has no penable".to_string()))?;
     let pready = mappings.get("pready");
     let reset = mappings.get("presetn");
-    let on = format!("posedge {}", expr_name(pclk, scope));
+    let on = format!("posedge {}", signal_operand(&pclk.path));
 
     let mut event_predicates = vec![(
         "setup",
         format!(
             "{} && !{}",
-            expr_name(psel, scope),
-            expr_name(penable, scope)
+            signal_operand(&psel.path),
+            signal_operand(&penable.path)
         ),
     )];
     if pready_mode == PreadyMode::Mapped && include_wait {
@@ -981,9 +979,9 @@ fn build_extract_sources(
             "access-wait",
             format!(
                 "{} && {} && !{}",
-                expr_name(psel, scope),
-                expr_name(penable, scope),
-                expr_name(pready, scope)
+                signal_operand(&psel.path),
+                signal_operand(&penable.path),
+                signal_operand(&pready.path)
             ),
         ));
     }
@@ -992,17 +990,14 @@ fn build_extract_sources(
         match pready_mode {
             PreadyMode::Mapped => format!(
                 "{} && {} && {}",
-                expr_name(psel, scope),
-                expr_name(penable, scope),
-                expr_name(
-                    pready.expect("mapped mode was validated with pready"),
-                    scope
-                )
+                signal_operand(&psel.path),
+                signal_operand(&penable.path),
+                signal_operand(&pready.expect("mapped mode was validated with pready").path)
             ),
             PreadyMode::ImplicitHigh => format!(
                 "{} && {}",
-                expr_name(psel, scope),
-                expr_name(penable, scope)
+                signal_operand(&psel.path),
+                signal_operand(&penable.path)
             ),
         },
     ));
@@ -1011,7 +1006,7 @@ fn build_extract_sources(
         .into_iter()
         .map(|(event, predicate)| {
             let when = match reset {
-                Some(reset) => format!("{} && {predicate}", expr_name(reset, scope)),
+                Some(reset) => format!("{} && {predicate}", signal_operand(&reset.path)),
                 None => predicate,
             };
             let payload = ordered_standard_names(profile)
@@ -1035,7 +1030,7 @@ fn build_extract_sources(
                 when,
                 payload_waves: payload
                     .iter()
-                    .map(|(_, mapping)| selection_name(mapping, scope).to_string())
+                    .map(|(_, mapping)| mapping.path.clone())
                     .collect(),
                 payload_standards: payload
                     .iter()
@@ -1044,18 +1039,6 @@ fn build_extract_sources(
             })
         })
         .collect()
-}
-
-fn expr_name(mapping: &ApbSignalMapping, scope: Option<&str>) -> String {
-    crate::engine::expr_runtime::signal_operand(selection_name(mapping, scope))
-}
-
-fn selection_name<'a>(mapping: &'a ApbSignalMapping, scope: Option<&str>) -> &'a str {
-    if scope.is_some() {
-        mapping.display.as_str()
-    } else {
-        mapping.path.as_str()
-    }
 }
 
 fn ordered_standard_names(profile: ApbProfile) -> Vec<&'static str> {

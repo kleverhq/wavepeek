@@ -9,7 +9,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use crate::cli::extract::AxiArgs;
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
-use crate::engine::expr_runtime::{SharedWaveform, open_shared_waveform};
+use crate::engine::expr_runtime::{SharedWaveform, open_shared_waveform, signal_operand};
 use crate::engine::extract::{
     self, ExtractGenericRow, ExtractPlan, ExtractRowSink, ExtractRunArgs, ExtractSource,
 };
@@ -1347,8 +1347,7 @@ fn build_axi_plan(args: &AxiArgs) -> Result<BuiltAxiPlan, WavepeekError> {
         &config.maps,
     )?;
     let (mappings_by_standard, diagnostics) = auto_mappings(config.profile, candidates, explicit)?;
-    let sources =
-        build_extract_sources(config.profile, args.scope.as_deref(), &mappings_by_standard)?;
+    let sources = build_extract_sources(config.profile, &mappings_by_standard)?;
 
     let ordered_mappings = ordered_standard_names(config.profile)
         .into_iter()
@@ -1709,7 +1708,6 @@ struct BuiltAxiSource {
 
 fn build_extract_sources(
     profile: AxiProfile,
-    scope: Option<&str>,
     mappings: &HashMap<String, AxiSignalMapping>,
 ) -> Result<Vec<BuiltAxiSource>, WavepeekError> {
     let aclk = mappings.get("aclk").ok_or_else(|| {
@@ -1748,15 +1746,19 @@ fn build_extract_sources(
 
         let valid = mappings.get(channel.valid).expect("valid checked");
         let ready = mappings.get(channel.ready).expect("ready checked");
-        let on = format!("posedge {}", expr_name(aclk, scope));
+        let on = format!("posedge {}", signal_operand(&aclk.path));
         let when = match reset {
             Some(reset) => format!(
                 "{} && {} && {}",
-                expr_name(reset, scope),
-                expr_name(valid, scope),
-                expr_name(ready, scope)
+                signal_operand(&reset.path),
+                signal_operand(&valid.path),
+                signal_operand(&ready.path)
             ),
-            None => format!("{} && {}", expr_name(valid, scope), expr_name(ready, scope)),
+            None => format!(
+                "{} && {}",
+                signal_operand(&valid.path),
+                signal_operand(&ready.path)
+            ),
         };
         sources.push(BuiltAxiSource {
             channel: channel.name,
@@ -1764,7 +1766,7 @@ fn build_extract_sources(
             when,
             payload_waves: payload
                 .iter()
-                .map(|(_, mapping)| selection_name(mapping, scope).to_string())
+                .map(|(_, mapping)| mapping.path.clone())
                 .collect(),
             payload_standards: payload
                 .iter()
@@ -1781,18 +1783,6 @@ fn build_extract_sources(
     }
 
     Ok(sources)
-}
-
-fn expr_name(mapping: &AxiSignalMapping, scope: Option<&str>) -> String {
-    crate::engine::expr_runtime::signal_operand(selection_name(mapping, scope))
-}
-
-fn selection_name<'a>(mapping: &'a AxiSignalMapping, scope: Option<&str>) -> &'a str {
-    if scope.is_some() {
-        mapping.display.as_str()
-    } else {
-        mapping.path.as_str()
-    }
 }
 
 fn ordered_standard_names(profile: AxiProfile) -> Vec<&'static str> {

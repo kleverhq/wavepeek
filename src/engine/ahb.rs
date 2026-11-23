@@ -13,7 +13,7 @@ use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::expr_runtime::{
     SharedWaveform, bind_waveform_event_expr, eval_with_waveform_errors, event_candidate_handles,
-    event_expr_matches, expr_diagnostic, open_shared_waveform,
+    event_expr_matches, expr_diagnostic, open_shared_waveform, signal_operand,
 };
 use crate::engine::extract::{max_entries, parse_bound_time};
 use crate::engine::signal_mapping;
@@ -991,7 +991,7 @@ fn build_ahb(args: &AhbArgs) -> Result<BuiltAhb, WavepeekError> {
     let clock = mappings_by_standard
         .get("hclk")
         .expect("required mappings checked");
-    let clock_name = expr_name(clock, args.scope.as_deref());
+    let clock_name = signal_operand(&clock.path);
     let source = format!("posedge {clock_name}");
     let (host, event) =
         bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), source.as_str())?;
@@ -1449,18 +1449,6 @@ fn require_mappings(mappings: &HashMap<String, AhbSignalMapping>) -> Result<(), 
             "AHB extraction requires mappings for {}. See 'wavepeek extract ahb --help'.",
             missing.join(", ")
         )))
-    }
-}
-
-fn expr_name(mapping: &AhbSignalMapping, scope: Option<&str>) -> String {
-    crate::engine::expr_runtime::signal_operand(selection_name(mapping, scope))
-}
-
-fn selection_name<'a>(mapping: &'a AhbSignalMapping, scope: Option<&str>) -> &'a str {
-    if scope.is_some() {
-        mapping.display.as_str()
-    } else {
-        mapping.path.as_str()
     }
 }
 

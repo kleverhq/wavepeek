@@ -9,7 +9,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use crate::cli::extract::AxiStreamArgs;
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
-use crate::engine::expr_runtime::{SharedWaveform, open_shared_waveform};
+use crate::engine::expr_runtime::{SharedWaveform, open_shared_waveform, signal_operand};
 use crate::engine::extract::{
     self, ExtractGenericRow, ExtractPlan, ExtractRowSink, ExtractRunArgs, ExtractSource,
 };
@@ -358,11 +358,7 @@ fn build_axistream_plan(args: &AxiStreamArgs) -> Result<BuiltAxiStreamPlan, Wave
         collect_include_candidates(&waveform, args.scope.as_deref(), &include_regexes)?;
     let explicit = explicit_mappings(&waveform, args.scope.as_deref(), &config.maps)?;
     let (mappings_by_standard, diagnostics) = auto_mappings(config.profile, candidates, explicit)?;
-    let source = build_extract_source(
-        config.tready_mode,
-        args.scope.as_deref(),
-        &mappings_by_standard,
-    )?;
+    let source = build_extract_source(config.tready_mode, &mappings_by_standard)?;
 
     let ordered_mappings = STANDARD_SIGNALS
         .iter()
@@ -718,7 +714,6 @@ struct BuiltAxiStreamSource {
 
 fn build_extract_source(
     tready_mode: TreadyMode,
-    scope: Option<&str>,
     mappings: &HashMap<String, AxiStreamSignalMapping>,
 ) -> Result<BuiltAxiStreamSource, WavepeekError> {
     let aclk = mappings.get("aclk").ok_or_else(|| {
@@ -753,11 +748,11 @@ fn build_extract_source(
     let reset = mappings.get("aresetn");
     let mut predicates = Vec::new();
     if let Some(reset) = reset {
-        predicates.push(expr_name(reset, scope));
+        predicates.push(signal_operand(&reset.path));
     }
-    predicates.push(expr_name(valid, scope));
+    predicates.push(signal_operand(&valid.path));
     if let Some(ready) = ready {
-        predicates.push(expr_name(ready, scope));
+        predicates.push(signal_operand(&ready.path));
     }
 
     let payload = PAYLOAD_SIGNALS
@@ -766,29 +761,17 @@ fn build_extract_source(
         .collect::<Vec<_>>();
 
     Ok(BuiltAxiStreamSource {
-        on: format!("posedge {}", expr_name(aclk, scope)),
+        on: format!("posedge {}", signal_operand(&aclk.path)),
         when: predicates.join(" && "),
         payload_waves: payload
             .iter()
-            .map(|(_, mapping)| selection_name(mapping, scope).to_string())
+            .map(|(_, mapping)| mapping.path.clone())
             .collect(),
         payload_standards: payload
             .iter()
             .map(|(standard, _)| (*standard).to_string())
             .collect(),
     })
-}
-
-fn expr_name(mapping: &AxiStreamSignalMapping, scope: Option<&str>) -> String {
-    crate::engine::expr_runtime::signal_operand(selection_name(mapping, scope))
-}
-
-fn selection_name<'a>(mapping: &'a AxiStreamSignalMapping, scope: Option<&str>) -> &'a str {
-    if scope.is_some() {
-        mapping.display.as_str()
-    } else {
-        mapping.path.as_str()
-    }
 }
 
 impl AxiStreamProfile {

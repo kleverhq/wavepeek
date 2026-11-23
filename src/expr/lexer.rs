@@ -69,16 +69,19 @@ fn escaped_component_end(source: &str, start: usize) -> usize {
     source.len() - rest[whitespace..].trim_start().len()
 }
 
+pub(super) fn decimal_index_end(source: &str, start: usize) -> Option<usize> {
+    let (index, _) = source[start..].strip_prefix('[')?.split_once(']')?;
+    let digits = index.strip_prefix('-').unwrap_or(index);
+    (!digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()))
+        .then_some(start + index.len() + 2)
+}
+
 // A decimal index followed by a dot belongs to the hierarchy. Terminal
 // brackets in a logical expression remain selection operators.
 fn hierarchy_index_end(source: &str, start: usize) -> Option<usize> {
-    let (index, rest) = source[start..].strip_prefix('[')?.split_once(']')?;
-    let digits = index.strip_prefix('-').unwrap_or(index);
-    (rest.starts_with('.')
-        && !triggered_call_suffix(rest)
-        && !digits.is_empty()
-        && digits.bytes().all(|byte| byte.is_ascii_digit()))
-    .then_some(start + index.len() + 2)
+    let end = decimal_index_end(source, start)?;
+    let rest = &source[end..];
+    (rest.starts_with('.') && !triggered_call_suffix(rest)).then_some(end)
 }
 
 fn triggered_call_suffix(tail: &str) -> bool {
@@ -354,11 +357,7 @@ impl<'a> LogicalLexer<'a> {
                     }
                     if next == '\\' {
                         self.index = escaped_component_end(self.source, self.index);
-                        if self.peek_char() == Some('.') {
-                            self.bump_char();
-                            continue;
-                        }
-                        if self.peek_char() == Some('[') {
+                        if matches!(self.peek_char(), Some('.' | '[')) {
                             continue;
                         }
                         break;

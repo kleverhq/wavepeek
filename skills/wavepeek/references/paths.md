@@ -47,7 +47,7 @@ wavepeek property --waves dump.vcd --on 'posedge top.clk' \
   --eval '$signal("\"root.name\"") == 1'
 ```
 
-SystemVerilog escaped identifiers are also accepted, with terminating whitespace: `top.\a.b .c` identifies the same components as `top."a.b".c`.
+SystemVerilog escaped identifiers require terminating whitespace. `top.\a.b .c` identifies the same components as `top."a.b".c`. Event and Boolean operands accept signed hierarchy indices such as `top.\a.b [-1].c`. An escaped event name can be followed by `.triggered()`, as in `top.\ev.pulse .triggered()`.
 
 ## Bit projections and composite signals
 

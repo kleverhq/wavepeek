@@ -424,6 +424,8 @@ fn indexed_paths_from_output_can_be_used_in_event_and_logical_expressions() {
         "$timescale 1ns $end\n\
          $scope module top $end\n$var wire 1 ! clk $end\n\
          $scope module logic[0] $end\n$var wire 1 \" q $end\n$var wire 2 # bus [1:0] $end\n\
+         $upscope $end\n\
+         $scope module logic[-1] $end\n$var wire 1 \" q $end\n$var wire 2 # bus [1:0] $end\n\
          $upscope $end\n$upscope $end\n$enddefinitions $end\n\
          #0\n0!\n0\"\nb10 #\n#5\n1!\n1\"\n",
         ".vcd",
@@ -435,34 +437,82 @@ fn indexed_paths_from_output_can_be_used_in_event_and_logical_expressions() {
             "--at",
             "0ns",
             "--signals",
-            "top.logic[0].q",
+            "top.logic[0].q,top.logic[-1].q",
             "--path-style",
             "sv",
         ],
     );
-    let sv = sampled["data"][0]["signals"][0]["path"].as_str().unwrap();
-    assert_eq!(sv, r"top.\logic [0].q");
-    for path in ["top.logic[0].q", r#"top."logic"[0].q"#, sv] {
-        let change = run_json(
-            waves.path(),
-            &[
-                "change",
-                "--on",
-                &format!("posedge {path}"),
-                "--sample-mode",
-                "native",
-                "--signals",
-                path,
-                "--path-style",
-                "sv",
-            ],
-        );
-        assert_eq!(change["data"][0]["time"], "5ns");
-        assert_eq!(
-            change["data"][0]["signals"][0],
-            json!({"path": sv, "value": "1'h1"})
-        );
-        let extracted = run_json(
+    let signals = sampled["data"][0]["signals"].as_array().unwrap();
+    assert_eq!(signals.len(), 2);
+    for (signal, index) in signals.iter().zip([0, -1]) {
+        let sv = signal["path"].as_str().unwrap();
+        assert_eq!(sv, format!(r"top.\logic [{index}].q"));
+        let logical = format!("top.logic[{index}].q");
+        let quoted = format!(r#"top."logic"[{index}].q"#);
+        for path in [logical.as_str(), quoted.as_str(), sv] {
+            let change = run_json(
+                waves.path(),
+                &[
+                    "change",
+                    "--on",
+                    &format!("posedge {path}"),
+                    "--sample-mode",
+                    "native",
+                    "--signals",
+                    path,
+                    "--path-style",
+                    "sv",
+                ],
+            );
+            assert_eq!(change["data"][0]["time"], "5ns");
+            assert_eq!(
+                change["data"][0]["signals"][0],
+                json!({"path": sv, "value": "1'h1"})
+            );
+            let extracted = run_json(
+                waves.path(),
+                &[
+                    "extract",
+                    "generic",
+                    "--on",
+                    "posedge top.clk",
+                    "--when",
+                    &format!(
+                        "{}.bus[0] == 1'b0 && {path} == 0",
+                        path.strip_suffix(".q").unwrap()
+                    ),
+                    "--payload",
+                    path,
+                ],
+            );
+            assert_eq!(extracted["data"][0]["payload"][0]["value"], "1'h0");
+        }
+    }
+}
+
+#[test]
+fn escaped_event_paths_support_triggered_postfix() {
+    let waves = write_fixture(
+        r#"$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! clk $end
+$var event 1 # \ev.pulse $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+#5
+1#
+#6
+1!
+"#,
+        ".vcd",
+    );
+    for predicate in [
+        r#"top."ev.pulse".triggered()"#,
+        r"top.\ev.pulse .triggered()",
+    ] {
+        let result = run_json(
             waves.path(),
             &[
                 "extract",
@@ -470,15 +520,73 @@ fn indexed_paths_from_output_can_be_used_in_event_and_logical_expressions() {
                 "--on",
                 "posedge top.clk",
                 "--when",
-                &format!(
-                    "{}.bus[0] == 1'b0 && {path} == 0",
-                    path.strip_suffix(".q").unwrap()
-                ),
+                predicate,
                 "--payload",
-                path,
+                "top.clk",
             ],
         );
-        assert_eq!(extracted["data"][0]["payload"][0]["value"], "1'h0");
+        assert_eq!(result["data"].as_array().unwrap().len(), 1);
+        assert_eq!(result["data"][0]["time"], "6ns");
+        assert_eq!(result["data"][0]["sample_time"], "5ns");
+    }
+}
+
+#[test]
+fn scoped_axistream_uses_full_mappings_for_clock_predicate_and_payload() {
+    let waves = write_fixture(
+        r#"$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! clock $end
+$var wire 1 " valid $end
+$var wire 8 # data [7:0] $end
+$scope module top $end
+$var wire 1 % clock $end
+$var wire 1 & valid $end
+$var wire 8 $ data [7:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+0"
+b10101010 #
+0%
+1&
+b10100101 $
+#5
+1%
+#10
+1!
+"#,
+        ".vcd",
+    );
+    for style in ["logical", "sv"] {
+        let result = run_json(
+            waves.path(),
+            &[
+                "extract",
+                "axistream",
+                "--scope",
+                "top",
+                "--tready-mode",
+                "implicit-high",
+                "--map",
+                r#"aclk=top.top."clock"[0:0]"#,
+                "--map",
+                r#"tvalid=top.top."valid"[0:0]"#,
+                "--map",
+                r#"tdata=top.top."data"[3:0]"#,
+                "--path-style",
+                style,
+            ],
+        );
+        assert_eq!(
+            result["context"]["mappings"]["tdata"]["path"],
+            "top.top.data[3:0]"
+        );
+        assert_eq!(result["data"].as_array().unwrap().len(), 1);
+        assert_eq!(result["data"][0]["time"], "5ns");
+        assert_eq!(result["data"][0]["payload"]["tdata"], "4'h5");
     }
 }
 

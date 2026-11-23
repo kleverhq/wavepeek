@@ -9,7 +9,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use crate::cli::extract::AtbArgs;
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
-use crate::engine::expr_runtime::{SharedWaveform, open_shared_waveform};
+use crate::engine::expr_runtime::{SharedWaveform, open_shared_waveform, signal_operand};
 use crate::engine::extract::{
     self, ExtractGenericRow, ExtractPlan, ExtractRowSink, ExtractRunArgs, ExtractSource,
 };
@@ -410,8 +410,7 @@ fn build_atb_plan(args: &AtbArgs) -> Result<BuiltAtbPlan, WavepeekError> {
         &config.maps,
     )?;
     let (mappings_by_standard, diagnostics) = auto_mappings(config.profile, candidates, explicit)?;
-    let sources =
-        build_extract_sources(config.profile, args.scope.as_deref(), &mappings_by_standard)?;
+    let sources = build_extract_sources(config.profile, &mappings_by_standard)?;
 
     let ordered_mappings = config
         .profile
@@ -754,7 +753,6 @@ struct BuiltAtbSource {
 
 fn build_extract_sources(
     profile: AtbProfile,
-    scope: Option<&str>,
     mappings: &HashMap<String, AtbSignalMapping>,
 ) -> Result<Vec<BuiltAtbSource>, WavepeekError> {
     let atclk = mappings.get("atclk").ok_or_else(|| {
@@ -763,7 +761,7 @@ fn build_extract_sources(
         )
     })?;
     let reset = mappings.get("atresetn");
-    let on = format!("posedge {}", expr_name(atclk, scope));
+    let on = format!("posedge {}", signal_operand(&atclk.path));
     let mut sources = Vec::new();
 
     let transfer_complete = require_complete_pair(mappings, "transfer", "atvalid", "atready")?;
@@ -783,10 +781,10 @@ fn build_extract_sources(
         sources.push(BuiltAtbSource {
             event: "transfer",
             on: on.clone(),
-            when: gated_predicate(reset, scope, &[valid, ready]),
+            when: gated_predicate(reset, &[valid, ready]),
             payload_waves: mapped_transfer_payload
                 .iter()
-                .map(|(_, mapping)| selection_name(mapping, scope).to_string())
+                .map(|(_, mapping)| mapping.path.clone())
                 .collect(),
             payload_standards: mapped_transfer_payload
                 .iter()
@@ -802,7 +800,7 @@ fn build_extract_sources(
         sources.push(BuiltAtbSource {
             event: "flush",
             on: on.clone(),
-            when: gated_predicate(reset, scope, &[valid, ready]),
+            when: gated_predicate(reset, &[valid, ready]),
             payload_waves: Vec::new(),
             payload_standards: Vec::new(),
         });
@@ -820,7 +818,7 @@ fn build_extract_sources(
         sources.push(BuiltAtbSource {
             event: "sync-request",
             on,
-            when: gated_predicate(reset, scope, &[syncreq]),
+            when: gated_predicate(reset, &[syncreq]),
             payload_waves: Vec::new(),
             payload_standards: Vec::new(),
         });
@@ -845,29 +843,13 @@ fn require_complete_pair(
     Ok(valid_mapped)
 }
 
-fn gated_predicate(
-    reset: Option<&AtbSignalMapping>,
-    scope: Option<&str>,
-    signals: &[&AtbSignalMapping],
-) -> String {
+fn gated_predicate(reset: Option<&AtbSignalMapping>, signals: &[&AtbSignalMapping]) -> String {
     reset
         .into_iter()
         .chain(signals.iter().copied())
-        .map(|mapping| expr_name(mapping, scope))
+        .map(|mapping| signal_operand(&mapping.path))
         .collect::<Vec<_>>()
         .join(" && ")
-}
-
-fn expr_name(mapping: &AtbSignalMapping, scope: Option<&str>) -> String {
-    crate::engine::expr_runtime::signal_operand(selection_name(mapping, scope))
-}
-
-fn selection_name<'a>(mapping: &'a AtbSignalMapping, scope: Option<&str>) -> &'a str {
-    if scope.is_some() {
-        mapping.display.as_str()
-    } else {
-        mapping.path.as_str()
-    }
 }
 
 fn candidate_matching_standards<'a>(

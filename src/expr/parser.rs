@@ -5,7 +5,8 @@ use super::ast::{
 use super::diagnostic::{DiagnosticLayer, ExprDiagnostic, Span};
 use super::host::IntegerLikeKind;
 use super::lexer::{
-    LogicalToken, LogicalTokenKind, Token, TokenKind, lex_event_expr, lex_logical_expr,
+    LogicalToken, LogicalTokenKind, Token, TokenKind, decimal_index_end, lex_event_expr,
+    lex_logical_expr,
 };
 
 pub fn parse_event_expr_ast(source: &str) -> Result<EventExprAst, ExprDiagnostic> {
@@ -1514,6 +1515,9 @@ fn invalid_name_char(name: &str) -> Option<(usize, char)> {
             match ch {
                 '"' => quoted = true,
                 '\\' => verilog = true,
+                '-' if index > 0
+                    && name.as_bytes()[index - 1] == b'['
+                    && decimal_index_end(name, index - 1).is_some() => {}
                 _ if !is_name_char(ch) => return Some((index, ch)),
                 _ => {}
             }

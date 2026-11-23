@@ -1,6 +1,6 @@
 # Path and scope resolution
 
-WavePeek formats paths from exact Ondas hierarchy components. A path is a sequence of components separated by dots. The default `logical` style writes names matching `[A-Za-z][A-Za-z0-9_]*` bare and uses JSON string syntax for other names.
+WavePeek formats paths from exact Ondas hierarchy components. A path is a sequence of components separated by dots. The default `logical` style writes names matching `[A-Za-z_][A-Za-z0-9_$]*` bare and uses JSON string syntax for other names.
 
 ```text
 top.cpu.valid

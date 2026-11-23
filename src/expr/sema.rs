@@ -179,22 +179,22 @@ pub fn bind_event_expr_ast(
         let event = match &term.event {
             BasicEventAst::AnyTracked { .. } => BoundEventKind::AnyTracked,
             BasicEventAst::Named { name, span } => {
-                BoundEventKind::Named(resolve_event_signal(host, name, *span)?)
+                BoundEventKind::Named(resolve_operand(host, name, *span)?)
             }
             BasicEventAst::Posedge { name, span } => {
-                let handle = resolve_event_signal(host, name, *span)?;
+                let handle = resolve_operand(host, name, *span)?;
                 let ty = host.signal_type(handle)?;
                 ensure_integral(&ty, *span, "posedge operand")?;
                 BoundEventKind::Posedge(handle)
             }
             BasicEventAst::Negedge { name, span } => {
-                let handle = resolve_event_signal(host, name, *span)?;
+                let handle = resolve_operand(host, name, *span)?;
                 let ty = host.signal_type(handle)?;
                 ensure_integral(&ty, *span, "negedge operand")?;
                 BoundEventKind::Negedge(handle)
             }
             BasicEventAst::Edge { name, span } => {
-                let handle = resolve_event_signal(host, name, *span)?;
+                let handle = resolve_operand(host, name, *span)?;
                 let ty = host.signal_type(handle)?;
                 ensure_integral(&ty, *span, "edge operand")?;
                 BoundEventKind::Edge(handle)
@@ -215,7 +215,7 @@ pub fn bind_event_expr_ast(
     Ok(BoundEventExpr { terms })
 }
 
-fn resolve_event_signal(
+fn resolve_operand(
     host: &dyn ExpressionHost,
     name: &str,
     span: Span,
@@ -246,7 +246,9 @@ fn bind_logical_node(
     host: &dyn ExpressionHost,
 ) -> Result<BoundLogicalNode, ExprDiagnostic> {
     match node {
-        LogicalExprNode::OperandRef { name, span } => bind_logical_operand_ref(name, *span, host),
+        LogicalExprNode::OperandRef { name, span } => {
+            bind_resolved_logical_signal(resolve_operand(host, name, *span)?, *span, host)
+        }
         LogicalExprNode::IntegralLiteral { literal, span } => {
             let value = decode_integral_literal(literal)?;
             let is_four_state = match literal.base {
@@ -308,19 +310,7 @@ fn bind_logical_node(
             label_span,
             span,
         } => {
-            let handle = host
-                .resolve_signal(operand)
-                .map_err(|inner| ExprDiagnostic {
-                    layer: DiagnosticLayer::Semantic,
-                    code: "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
-                    message: format!("unknown signal '{operand}'"),
-                    primary_span: *operand_span,
-                    notes: if inner.message.is_empty() {
-                        vec![]
-                    } else {
-                        vec![format!("host detail: {}", inner.message)]
-                    },
-                })?;
+            let handle = resolve_operand(host, operand, *operand_span)?;
             let ty = host.signal_type(handle)?;
             ensure_enum_type(&ty, *operand_span, "enum label operand")?;
             let bits = lookup_enum_label_bits(&ty, label.as_str(), *label_span)?;
@@ -362,139 +352,10 @@ fn bind_logical_node(
             base,
             selection,
             span,
-        } => {
-            if let Some(bound) = try_bind_canonical_signal_selection(base, selection, *span, host)?
-            {
-                return Ok(bound);
-            }
-
-            let base = bind_logical_node(base, host)?;
-            ensure_integral(&base.ty, base.span, "selection base")?;
-            if base.ty.storage != ExprStorage::PackedVector {
-                return Err(sema_diag(
-                    "EXPR-SEMANTIC-SELECTION-BASE",
-                    "selection base must be a packed integral value",
-                    base.span,
-                    &["selection of scalar integer-like or enum-core values is invalid"],
-                ));
-            }
-
-            let (selection, ty) = match selection {
-                SelectionKindAst::Bit { index } => {
-                    let index = bind_logical_node(index, host)?;
-                    ensure_integral(&index.ty, index.span, "bit-select index")?;
-                    (
-                        BoundSelection::Bit {
-                            index: Box::new(index),
-                        },
-                        bit_vector_type(1, base.ty.is_four_state, false, false),
-                    )
-                }
-                SelectionKindAst::Part { msb, lsb } => {
-                    let msb = bind_logical_node(msb, host)?;
-                    let lsb = bind_logical_node(lsb, host)?;
-                    let msb_value = eval_const_i64(&msb, "part-select msb", msb.span)?;
-                    let lsb_value = eval_const_i64(&lsb, "part-select lsb", lsb.span)?;
-                    let width = part_select_width(msb_value, lsb_value, *span)?;
-                    let is_four_state =
-                        invalid_part_select_forces_four_state(&base.ty, msb_value, lsb_value);
-                    (
-                        BoundSelection::Part {
-                            msb: msb_value,
-                            lsb: lsb_value,
-                        },
-                        bit_vector_type(width as u32, is_four_state, false, width > 1),
-                    )
-                }
-                SelectionKindAst::IndexedUp {
-                    base: index_base,
-                    width,
-                } => {
-                    let index_base = bind_logical_node(index_base, host)?;
-                    ensure_integral(&index_base.ty, index_base.span, "indexed part-select base")?;
-                    let width = bind_logical_node(width, host)?;
-                    let width_value =
-                        eval_const_i64(&width, "indexed part-select width", width.span)?;
-                    let width_value = usize::try_from(width_value).map_err(|_| {
-                        sema_diag(
-                            "EXPR-SEMANTIC-CONST-RANGE",
-                            "indexed part-select width must be positive",
-                            width.span,
-                            &["width must be a positive constant integer expression"],
-                        )
-                    })?;
-                    if width_value == 0 {
-                        return Err(sema_diag(
-                            "EXPR-SEMANTIC-CONST-RANGE",
-                            "indexed part-select width must be positive",
-                            width.span,
-                            &["width must be a positive constant integer expression"],
-                        ));
-                    }
-                    let is_four_state = indexed_part_select_may_produce_x(
-                        &base.ty,
-                        &index_base,
-                        width_value,
-                        true,
-                    )?;
-                    (
-                        BoundSelection::IndexedUp {
-                            base: Box::new(index_base),
-                            width: width_value,
-                        },
-                        bit_vector_type(width_value as u32, is_four_state, false, width_value > 1),
-                    )
-                }
-                SelectionKindAst::IndexedDown {
-                    base: index_base,
-                    width,
-                } => {
-                    let index_base = bind_logical_node(index_base, host)?;
-                    ensure_integral(&index_base.ty, index_base.span, "indexed part-select base")?;
-                    let width = bind_logical_node(width, host)?;
-                    let width_value =
-                        eval_const_i64(&width, "indexed part-select width", width.span)?;
-                    let width_value = usize::try_from(width_value).map_err(|_| {
-                        sema_diag(
-                            "EXPR-SEMANTIC-CONST-RANGE",
-                            "indexed part-select width must be positive",
-                            width.span,
-                            &["width must be a positive constant integer expression"],
-                        )
-                    })?;
-                    if width_value == 0 {
-                        return Err(sema_diag(
-                            "EXPR-SEMANTIC-CONST-RANGE",
-                            "indexed part-select width must be positive",
-                            width.span,
-                            &["width must be a positive constant integer expression"],
-                        ));
-                    }
-                    let is_four_state = indexed_part_select_may_produce_x(
-                        &base.ty,
-                        &index_base,
-                        width_value,
-                        false,
-                    )?;
-                    (
-                        BoundSelection::IndexedDown {
-                            base: Box::new(index_base),
-                            width: width_value,
-                        },
-                        bit_vector_type(width_value as u32, is_four_state, false, width_value > 1),
-                    )
-                }
-            };
-
-            Ok(BoundLogicalNode {
-                ty,
-                span: *span,
-                kind: BoundLogicalKind::Selection {
-                    base: Box::new(base),
-                    selection,
-                },
-            })
-        }
+        } => match resolve_indexed_operand(base, selection, host)? {
+            Some(handle) => bind_resolved_logical_signal(handle, *span, host),
+            None => bind_logical_selection(base, selection, *span, host),
+        },
         LogicalExprNode::Unary { op, expr, span } => {
             let expr = bind_logical_node(expr, host)?;
             let ty = match op {
@@ -701,83 +562,186 @@ fn bind_logical_node(
                 },
             })
         }
-        LogicalExprNode::Triggered { expr, span } => match expr.as_ref() {
-            LogicalExprNode::OperandRef {
-                name,
-                span: operand_span,
-            } => {
-                let handle = host.resolve_signal(name).map_err(|inner| ExprDiagnostic {
-                    layer: DiagnosticLayer::Semantic,
-                    code: "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
-                    message: format!("unknown signal '{name}'"),
-                    primary_span: *operand_span,
-                    notes: if inner.message.is_empty() {
-                        vec![]
-                    } else {
-                        vec![format!("host detail: {}", inner.message)]
-                    },
-                })?;
-                let ty = host.signal_type(handle)?;
-                if !matches!(&ty.kind, ExprTypeKind::Event) {
-                    return Err(sema_diag(
-                        "EXPR-SEMANTIC-TRIGGERED",
-                        ".triggered() requires a raw event operand",
-                        *operand_span,
-                        &["only operands with event type support .triggered()"],
-                    ));
-                }
-                Ok(BoundLogicalNode {
-                    ty: bit_vector_type(1, false, false, false),
-                    span: *span,
-                    kind: BoundLogicalKind::Triggered { handle },
-                })
-            }
-            LogicalExprNode::Triggered { .. } => Err(sema_diag(
-                "EXPR-SEMANTIC-TRIGGERED",
-                "chained .triggered() is invalid",
-                *span,
-                &["apply .triggered() only once to a raw event operand reference"],
-            )),
-            other => {
-                if matches!(other, LogicalExprNode::Selection { .. }) {
-                    return match bind_logical_node(other, host) {
-                        Ok(_) => Err(sema_diag(
-                            "EXPR-SEMANTIC-TRIGGERED",
-                            ".triggered() requires a raw event operand",
-                            other.span(),
-                            &["apply .triggered() directly to an event operand reference"],
-                        )),
-                        Err(err) => Err(err),
-                    };
-                }
-                Err(sema_diag(
-                    "EXPR-SEMANTIC-TRIGGERED",
-                    ".triggered() requires a raw event operand",
-                    other.span(),
-                    &["apply .triggered() directly to an event operand reference"],
-                ))
-            }
-        },
+        LogicalExprNode::Triggered { expr, span } => bind_triggered(expr, *span, host),
     }
 }
 
-fn bind_logical_operand_ref(
-    name: &str,
+fn bind_logical_selection(
+    base: &LogicalExprNode,
+    selection: &SelectionKindAst,
     span: Span,
     host: &dyn ExpressionHost,
 ) -> Result<BoundLogicalNode, ExprDiagnostic> {
-    let handle = host.resolve_signal(name).map_err(|inner| ExprDiagnostic {
-        layer: DiagnosticLayer::Semantic,
-        code: "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
-        message: format!("unknown signal '{name}'"),
-        primary_span: span,
-        notes: if inner.message.is_empty() {
-            vec![]
-        } else {
-            vec![format!("host detail: {}", inner.message)]
+    let base = bind_logical_node(base, host)?;
+    ensure_integral(&base.ty, base.span, "selection base")?;
+    if base.ty.storage != ExprStorage::PackedVector {
+        return Err(sema_diag(
+            "EXPR-SEMANTIC-SELECTION-BASE",
+            "selection base must be a packed integral value",
+            base.span,
+            &["selection of scalar integer-like or enum-core values is invalid"],
+        ));
+    }
+
+    let (selection, ty) = match selection {
+        SelectionKindAst::Bit { index } => {
+            let index = bind_logical_node(index, host)?;
+            ensure_integral(&index.ty, index.span, "bit-select index")?;
+            (
+                BoundSelection::Bit {
+                    index: Box::new(index),
+                },
+                bit_vector_type(1, base.ty.is_four_state, false, false),
+            )
+        }
+        SelectionKindAst::Part { msb, lsb } => {
+            let msb = bind_logical_node(msb, host)?;
+            let lsb = bind_logical_node(lsb, host)?;
+            let msb_value = eval_const_i64(&msb, "part-select msb", msb.span)?;
+            let lsb_value = eval_const_i64(&lsb, "part-select lsb", lsb.span)?;
+            let width = part_select_width(msb_value, lsb_value, span)?;
+            let is_four_state =
+                invalid_part_select_forces_four_state(&base.ty, msb_value, lsb_value);
+            (
+                BoundSelection::Part {
+                    msb: msb_value,
+                    lsb: lsb_value,
+                },
+                bit_vector_type(width as u32, is_four_state, false, width > 1),
+            )
+        }
+        SelectionKindAst::IndexedUp {
+            base: index_base,
+            width,
+        } => {
+            let index_base = bind_logical_node(index_base, host)?;
+            ensure_integral(&index_base.ty, index_base.span, "indexed part-select base")?;
+            let width = bind_logical_node(width, host)?;
+            let width_value = eval_const_i64(&width, "indexed part-select width", width.span)?;
+            let width_value = usize::try_from(width_value).map_err(|_| {
+                sema_diag(
+                    "EXPR-SEMANTIC-CONST-RANGE",
+                    "indexed part-select width must be positive",
+                    width.span,
+                    &["width must be a positive constant integer expression"],
+                )
+            })?;
+            if width_value == 0 {
+                return Err(sema_diag(
+                    "EXPR-SEMANTIC-CONST-RANGE",
+                    "indexed part-select width must be positive",
+                    width.span,
+                    &["width must be a positive constant integer expression"],
+                ));
+            }
+            let is_four_state =
+                indexed_part_select_may_produce_x(&base.ty, &index_base, width_value, true)?;
+            (
+                BoundSelection::IndexedUp {
+                    base: Box::new(index_base),
+                    width: width_value,
+                },
+                bit_vector_type(width_value as u32, is_four_state, false, width_value > 1),
+            )
+        }
+        SelectionKindAst::IndexedDown {
+            base: index_base,
+            width,
+        } => {
+            let index_base = bind_logical_node(index_base, host)?;
+            ensure_integral(&index_base.ty, index_base.span, "indexed part-select base")?;
+            let width = bind_logical_node(width, host)?;
+            let width_value = eval_const_i64(&width, "indexed part-select width", width.span)?;
+            let width_value = usize::try_from(width_value).map_err(|_| {
+                sema_diag(
+                    "EXPR-SEMANTIC-CONST-RANGE",
+                    "indexed part-select width must be positive",
+                    width.span,
+                    &["width must be a positive constant integer expression"],
+                )
+            })?;
+            if width_value == 0 {
+                return Err(sema_diag(
+                    "EXPR-SEMANTIC-CONST-RANGE",
+                    "indexed part-select width must be positive",
+                    width.span,
+                    &["width must be a positive constant integer expression"],
+                ));
+            }
+            let is_four_state =
+                indexed_part_select_may_produce_x(&base.ty, &index_base, width_value, false)?;
+            (
+                BoundSelection::IndexedDown {
+                    base: Box::new(index_base),
+                    width: width_value,
+                },
+                bit_vector_type(width_value as u32, is_four_state, false, width_value > 1),
+            )
+        }
+    };
+
+    Ok(BoundLogicalNode {
+        ty,
+        span,
+        kind: BoundLogicalKind::Selection {
+            base: Box::new(base),
+            selection,
         },
-    })?;
-    bind_resolved_logical_signal(handle, span, host)
+    })
+}
+
+fn bind_triggered(
+    operand: &LogicalExprNode,
+    span: Span,
+    host: &dyn ExpressionHost,
+) -> Result<BoundLogicalNode, ExprDiagnostic> {
+    let operand_span = operand.span();
+    let handle = match operand {
+        LogicalExprNode::OperandRef { name, .. } => {
+            Some(resolve_operand(host, name, operand_span)?)
+        }
+        LogicalExprNode::Selection {
+            base,
+            selection,
+            span,
+        } => {
+            let handle = resolve_indexed_operand(base, selection, host)?;
+            if handle.is_none() {
+                bind_logical_selection(base, selection, *span, host)?;
+            }
+            handle
+        }
+        LogicalExprNode::Triggered { .. } => {
+            return Err(sema_diag(
+                "EXPR-SEMANTIC-TRIGGERED",
+                "chained .triggered() is invalid",
+                span,
+                &["apply .triggered() only once to a raw event operand reference"],
+            ));
+        }
+        _ => None,
+    };
+    let Some(handle) = handle else {
+        return Err(sema_diag(
+            "EXPR-SEMANTIC-TRIGGERED",
+            ".triggered() requires a raw event operand",
+            operand_span,
+            &["apply .triggered() directly to an event operand reference"],
+        ));
+    };
+    if !matches!(host.signal_type(handle)?.kind, ExprTypeKind::Event) {
+        return Err(sema_diag(
+            "EXPR-SEMANTIC-TRIGGERED",
+            ".triggered() requires a raw event operand",
+            operand_span,
+            &["only operands with event type support .triggered()"],
+        ));
+    }
+    Ok(BoundLogicalNode {
+        ty: bit_vector_type(1, false, false, false),
+        span,
+        kind: BoundLogicalKind::Triggered { handle },
+    })
 }
 
 fn bind_resolved_logical_signal(
@@ -801,44 +765,46 @@ fn bind_resolved_logical_signal(
     })
 }
 
-fn try_bind_canonical_signal_selection(
+fn resolve_indexed_operand(
     base: &LogicalExprNode,
     selection: &SelectionKindAst,
-    span: Span,
     host: &dyn ExpressionHost,
-) -> Result<Option<BoundLogicalNode>, ExprDiagnostic> {
-    let Some(name) = canonical_signal_name_from_selection(base, selection) else {
+) -> Result<Option<SignalHandle>, ExprDiagnostic> {
+    let Some(name) = indexed_operand_name(base, selection) else {
         return Ok(None);
     };
     match host.resolve_signal(name.as_str()) {
-        Ok(handle) => bind_resolved_logical_signal(handle, span, host).map(Some),
+        Ok(handle) => Ok(Some(handle)),
         Err(err) if err.code == "HOST-UNKNOWN-SIGNAL" => Ok(None),
         Err(err) => Err(err),
     }
 }
 
-fn canonical_signal_name_from_selection(
-    base: &LogicalExprNode,
-    selection: &SelectionKindAst,
-) -> Option<String> {
-    let base_name = match base {
-        LogicalExprNode::OperandRef { name, .. } => name,
-        _ => return None,
+fn indexed_operand_name(base: &LogicalExprNode, selection: &SelectionKindAst) -> Option<String> {
+    let LogicalExprNode::OperandRef { name, .. } = base else {
+        return None;
     };
-    let index = match selection {
-        SelectionKindAst::Bit { index } => match index.as_ref() {
-            LogicalExprNode::IntegralLiteral { literal, .. }
-                if literal.width.is_none()
-                    && literal.base == IntegralBase::Decimal
-                    && literal.digits.chars().all(|ch| ch.is_ascii_digit()) =>
-            {
-                literal.digits.as_str()
-            }
-            _ => return None,
-        },
-        _ => return None,
+    let SelectionKindAst::Bit { index } = selection else {
+        return None;
     };
-    Some(format!("{base_name}[{index}]"))
+    let (sign, digits) = match index.as_ref() {
+        LogicalExprNode::Unary {
+            op: UnaryOpAst::Minus,
+            expr,
+            ..
+        } => ("-", expr.as_ref()),
+        digits => ("", digits),
+    };
+    match digits {
+        LogicalExprNode::IntegralLiteral { literal, .. }
+            if literal.width.is_none()
+                && literal.base == IntegralBase::Decimal
+                && literal.digits.bytes().all(|byte| byte.is_ascii_digit()) =>
+        {
+            Some(format!("{name}[{sign}{}]", literal.digits))
+        }
+        _ => None,
+    }
 }
 
 fn ensure_integral(ty: &ExprType, span: Span, context: &str) -> Result<(), ExprDiagnostic> {
@@ -3666,12 +3632,9 @@ mod tests {
         );
 
         let span = Span::new(4, 9);
-        let missing = bind_logical_operand_ref("missing", span, &BranchHost)
+        let missing = resolve_operand(&BranchHost, "missing", span)
             .expect_err("unknown operands should fail without host notes");
         assert!(missing.notes.is_empty());
-        let missing_event = resolve_event_signal(&BranchHost, "missing", span)
-            .expect_err("missing event signals should fail without host notes");
-        assert!(missing_event.notes.is_empty());
         assert_eq!(
             const_bits_node(&[BoundBit::One], false).span(),
             Span::new(0, 0)

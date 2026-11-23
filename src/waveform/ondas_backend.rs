@@ -189,22 +189,31 @@ impl OndasBackend {
         path: &str,
         max_depth: Option<usize>,
     ) -> Result<SignalListing, WavepeekError> {
-        let hierarchy = self.inner.hierarchy();
-        let parsed = ondas::HierarchyPath::parse(path)
-            .map_err(|error| WavepeekError::Scope(error.to_string()))?;
-        if parsed.is_empty() {
+        let Some(scope) = self.scope_from_input(path)? else {
             return Ok(
-                self.signal_listing(hierarchy.variables().filter(|variable| {
+                self.signal_listing(self.inner.hierarchy().variables().filter(|variable| {
                     variable.parent().is_none_or(|scope| visible_scope(&scope))
                         && max_depth
                             .is_none_or(|max| variable.path().len().saturating_sub(1) <= max)
                 })),
             );
-        }
-        let scope = self.lookup_scope(&parsed, path)?;
+        };
         let mut variables = Vec::new();
         collect_variables(scope, max_depth, &mut variables);
         Ok(self.signal_listing(variables.into_iter()))
+    }
+
+    pub(super) fn validate_scope(&self, input: &str) -> Result<(), WavepeekError> {
+        self.scope_from_input(input).map(|_| ())
+    }
+
+    fn scope_from_input(&self, input: &str) -> Result<Option<ondas::Scope<'_>>, WavepeekError> {
+        let path = ondas::HierarchyPath::parse(input)
+            .map_err(|error| WavepeekError::Scope(error.to_string()))?;
+        if path.is_empty() {
+            return Ok(None);
+        }
+        self.lookup_scope(&path, input).map(Some)
     }
 
     pub(super) fn canonical_scope(

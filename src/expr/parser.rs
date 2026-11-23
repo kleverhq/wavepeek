@@ -395,27 +395,7 @@ impl<'a> StrictParser<'a> {
             ));
         }
 
-        let raw = &self.source[start..end];
-        let trimmed_start = raw
-            .find(|ch: char| !ch.is_whitespace())
-            .map(|offset| start + offset)
-            .unwrap_or(start);
-        let trimmed_end = raw
-            .rfind(|ch: char| !ch.is_whitespace())
-            .map(|offset| start + offset + 1)
-            .unwrap_or(end);
-        let payload = self.source[trimmed_start..trimmed_end].to_string();
-
-        if payload.is_empty() {
-            return Err(parse_diag(
-                "EXPR-PARSE-EVENT-EMPTY-IFF",
-                "empty iff payload",
-                iff_span,
-                &["expected logical expression after 'iff'"],
-            ));
-        }
-
-        Ok((payload, Span::new(trimmed_start, trimmed_end)))
+        Ok((self.source[start..end].to_owned(), Span::new(start, end)))
     }
 
     fn current(&self) -> Option<&Token> {

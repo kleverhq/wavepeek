@@ -499,12 +499,14 @@ fn escaped_event_paths_support_triggered_postfix() {
 $scope module top $end
 $var wire 1 ! clk $end
 $var event 1 # \ev.pulse $end
+$var event 1 % ev[0] $end
 $upscope $end
 $enddefinitions $end
 #0
 0!
 #5
 1#
+1%
 #6
 1!
 "#,
@@ -513,6 +515,7 @@ $enddefinitions $end
     for predicate in [
         r#"top."ev.pulse".triggered()"#,
         r"top.\ev.pulse .triggered()",
+        "top.ev[0].triggered()",
     ] {
         let result = run_json(
             waves.path(),
@@ -530,6 +533,187 @@ $enddefinitions $end
         assert_eq!(result["data"].as_array().unwrap().len(), 1);
         assert_eq!(result["data"][0]["time"], "6ns");
         assert_eq!(result["data"][0]["sample_time"], "5ns");
+    }
+}
+
+#[test]
+fn terminal_negative_index_resolves_the_declared_signal_in_predicates() {
+    let waves = write_fixture(
+        r#"$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! clk $end
+$var wire 8 # mem [7:0] $end
+$var wire 1 % mem[-1] $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+b00000000 #
+1%
+#5
+1!
+"#,
+        ".vcd",
+    );
+    let run = |predicate| {
+        run_json(
+            waves.path(),
+            &[
+                "extract",
+                "generic",
+                "--on",
+                "posedge top.clk",
+                "--when",
+                predicate,
+                "--payload",
+                "top.mem[-1]",
+            ],
+        )
+    };
+    let rows = run("top.mem[-1]");
+    assert_eq!(rows["data"].as_array().unwrap().len(), 1);
+    assert_eq!(rows["data"][0]["time"], "5ns");
+    assert_eq!(rows["data"][0]["payload"][0]["value"], "1'h1");
+    assert_eq!(run(r#"$signal("top.mem")[-1]"#)["data"], json!([]));
+}
+
+#[test]
+fn event_expressions_preserve_escaped_name_terminators() {
+    let waves = write_fixture(
+        r#"$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! \clk.pin $end
+$var wire 1 # \en.dot $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+1#
+#5
+1!
+#10
+0!
+#15
+1!
+"#,
+        ".vcd",
+    );
+    let run = |event| {
+        run_json(
+            waves.path(),
+            &[
+                "change",
+                "--on",
+                event,
+                "--signals",
+                r#"top."clk.pin""#,
+                "--sample-mode",
+                "native",
+            ],
+        )
+    };
+    for (sv, logical, times) in [
+        (
+            r"posedge top.\clk.pin  iff top.\en.dot ",
+            r#"posedge top."clk.pin" iff top."en.dot""#,
+            &["5ns", "15ns"][..],
+        ),
+        (
+            r"posedge top.\clk.pin  or negedge top.\clk.pin ",
+            r#"posedge top."clk.pin" or negedge top."clk.pin""#,
+            &["5ns", "10ns", "15ns"][..],
+        ),
+    ] {
+        let result = run(sv);
+        assert_eq!(result["data"], run(logical)["data"]);
+        assert!(
+            result["data"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|row| row["time"].as_str().unwrap())
+                .eq(times.iter().copied())
+        );
+    }
+
+    let output = wavepeek_cmd()
+        .args([
+            "change",
+            "--on",
+            r#"posedge top."clk.pin" iff é"#,
+            "--signals",
+            r#"top."clk.pin""#,
+            "--jsonl",
+            "--waves",
+        ])
+        .arg(waves.path())
+        .assert()
+        .code(1);
+    let error: Value = serde_json::from_slice(&output.get_output().stdout).unwrap();
+    assert_eq!(error["type"], "fatal");
+    assert_eq!(error["seq"], 0);
+    assert_eq!(error["code"], "WPK-F0005");
+}
+
+#[test]
+fn scoped_ahb_rejects_an_ambiguous_scope_with_explicit_maps() {
+    let waves = write_fixture(
+        r#"$timescale 1ns $end
+$scope module top $end
+$scope module bus $end
+$var wire 1 c clock $end
+$upscope $end
+$scope task \bus $end
+$var wire 2 t trans [1:0] $end
+$var wire 1 y ready $end
+$var wire 1 w write $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+0c
+b10 t
+1y
+1w
+#5
+1c
+"#,
+        ".vcd",
+    );
+    for include in [&[][..], &["--include", "^nonexistent$"][..]] {
+        let output = wavepeek_cmd()
+            .args([
+                "extract",
+                "ahb",
+                "--scope",
+                "top.bus",
+                "--map",
+                "hclk=clock",
+                "--map",
+                "htrans=trans",
+                "--map",
+                "hready=ready",
+                "--map",
+                "hwrite=write",
+                "--jsonl",
+                "--path-style",
+                "sv",
+                "--waves",
+            ])
+            .arg(waves.path())
+            .args(include)
+            .assert()
+            .code(1);
+        let error: Value = serde_json::from_slice(&output.get_output().stdout).unwrap();
+        assert_eq!(
+            error,
+            json!({
+                "type": "fatal",
+                "seq": 0,
+                "code": "WPK-F0003",
+                "message": "scope 'top.bus' is ambiguous in dump",
+            })
+        );
     }
 }
 

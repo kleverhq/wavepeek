@@ -64,9 +64,18 @@ fn quoted_component_end(source: &str, start: usize) -> usize {
 }
 
 fn escaped_component_end(source: &str, start: usize) -> usize {
-    let rest = &source[start + 1..];
-    let whitespace = rest.find(char::is_whitespace).unwrap_or(rest.len());
-    source.len() - rest[whitespace..].trim_start().len()
+    let name = &source[start + 1..];
+    let Some((whitespace, terminator)) = name.char_indices().find(|(_, ch)| ch.is_whitespace())
+    else {
+        return source.len();
+    };
+    let end = start + 1 + whitespace + terminator.len_utf8();
+    let continuation = source[end..].trim_start();
+    if continuation.starts_with(['.', '[']) {
+        source.len() - continuation.len()
+    } else {
+        end
+    }
 }
 
 pub(super) fn decimal_index_end(source: &str, start: usize) -> Option<usize> {

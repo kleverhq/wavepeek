@@ -7,6 +7,7 @@ pub mod change;
 mod expr_runtime;
 pub mod extract;
 pub mod info;
+mod output_paths;
 pub mod property;
 pub mod scope;
 pub mod signal;

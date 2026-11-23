@@ -21,7 +21,7 @@ use crate::expr::{
 use super::expr_host::RuntimeExpressionHost;
 use super::expr_query::{ExpressionQuery, ExpressionQueryTick};
 use super::ondas_error::{open_error, read_error};
-use super::selection::format_path;
+use super::selection::{SelectorPath, component_order, format_path};
 use super::types::{
     ExprResolvedSignal, ResolvedSignal, SampledSignalState, ScopeEntry, SignalEntry, SignalListing,
     WaveformMetadata,
@@ -146,7 +146,12 @@ impl OndasBackend {
             .map(|scope| (scope.path(), scope_type_alias(scope.kind())))
             .filter(|(path, _)| max_depth.is_none_or(|max| path.len().saturating_sub(1) <= max))
             .collect::<Vec<_>>();
-        scopes.sort_by(|left, right| left.0.components().cmp(right.0.components()));
+        scopes.sort_by(|left, right| {
+            left.0
+                .components()
+                .map(component_order)
+                .cmp(right.0.components().map(component_order))
+        });
         Ok(scopes
             .into_iter()
             .map(|(path, kind)| ScopeEntry {
@@ -170,9 +175,8 @@ impl OndasBackend {
             {
                 return false;
             }
-            let path = format_path(&variable.path());
-            let name = format_path(&ondas::HierarchyPath::from_components([variable.name()]));
-            matches(&path, &name)
+            let path = variable.path();
+            matches(&format_path(&path), &signal_name(&path))
         });
         self.signal_listing(variables).entries
     }
@@ -238,7 +242,13 @@ impl OndasBackend {
         entries.sort_by(|(left, a), (right, b)| {
             left.components()
                 .take(left.len().saturating_sub(1))
-                .cmp(right.components().take(right.len().saturating_sub(1)))
+                .map(component_order)
+                .cmp(
+                    right
+                        .components()
+                        .take(right.len().saturating_sub(1))
+                        .map(component_order),
+                )
                 .then_with(|| a.name.cmp(&b.name))
         });
         SignalListing {
@@ -280,7 +290,8 @@ impl OndasBackend {
     ) -> Result<ResolvedSignal, SignalResolutionError> {
         let selected = self.resolve_selector(selector, scope)?;
         let signal = selected.signal();
-        let path = self.selector_path(&selected);
+        let selector = self.selector_path(&selected);
+        let path = selector.logical();
         let width = match signal.encoding() {
             Encoding::Bits { width } => width,
             Encoding::Event => 0,
@@ -290,6 +301,7 @@ impl OndasBackend {
             path,
             signal,
             width,
+            selector,
         })
     }
 
@@ -303,6 +315,14 @@ impl OndasBackend {
             .collect()
     }
 
+    pub(super) fn resolve_selector_path(
+        &self,
+        canonical: &str,
+    ) -> Result<SelectorPath, SignalResolutionError> {
+        let selected = self.resolve_selector(canonical, None)?;
+        Ok(self.selector_path(&selected))
+    }
+
     pub fn resolve_expr_signal(
         &self,
         selector: &str,
@@ -310,7 +330,7 @@ impl OndasBackend {
     ) -> Result<ExprResolvedSignal, SignalResolutionError> {
         let selected = self.resolve_selector(selector, scope)?;
         let signal = selected.signal();
-        let path = self.selector_path(&selected);
+        let path = self.selector_path(&selected).logical();
         let mut expr_type =
             expression_type(&selected.declaration(), signal).ok_or_else(|| unsupported(&path))?;
         if let Some((msb, lsb)) = selected.projection() {
@@ -328,35 +348,20 @@ impl OndasBackend {
         })
     }
 
-    fn selector_path(&self, selected: &ondas::ResolvedSelector<'_>) -> String {
+    fn selector_path(&self, selected: &ondas::ResolvedSelector<'_>) -> SelectorPath {
         let base = selected.declaration().path();
-        let Some((msb, lsb)) = selected.projection() else {
-            return format_path(&base);
-        };
-        let name = base.name().unwrap_or_default();
-        let literal_name = format!("{name}[{msb}:{lsb}]");
-        let literal_path = base.parent().map_or_else(
-            || ondas::HierarchyPath::from_components([literal_name.as_str()]),
-            |parent| parent.join(&literal_name),
-        );
-        // Output must retain the projection even when a literal has exact priority.
-        if matches!(
-            self.inner.hierarchy().variable_path(&literal_path),
-            Ok(_) | Err(ondas::LookupError::Ambiguous { .. })
-        ) {
-            let name = serde_json::Value::String(name.to_owned()).to_string();
-            let parent = base
-                .parent()
-                .map(|path| format_path(&path))
-                .unwrap_or_default();
-            if parent.is_empty() {
-                format!("{name}[{msb}:{lsb}]")
-            } else {
-                format!("{parent}.{name}[{msb}:{lsb}]")
-            }
-        } else {
-            format!("{}[{msb}:{lsb}]", format_path(&base))
-        }
+        let range = selected.projection();
+        // Exact declarations have priority over projections.
+        let explicit_leaf = range.is_some_and(|(msb, lsb)| {
+            let candidate = format!("{}[{msb}:{lsb}]", format_path(&base));
+            ondas::HierarchyPath::parse(&candidate).is_ok_and(|path| {
+                matches!(
+                    self.inner.hierarchy().variable_path(&path),
+                    Ok(_) | Err(ondas::LookupError::Ambiguous { .. })
+                )
+            })
+        });
+        SelectorPath::new(base, range, explicit_leaf)
     }
 
     fn values(
@@ -531,9 +536,10 @@ fn collect_variables<'h>(
 
 fn signal_entry(variable: &ondas::Variable<'_>) -> SignalEntry {
     let signal = variable.signal();
+    let path = variable.path();
     SignalEntry {
-        name: format_path(&ondas::HierarchyPath::from_components([variable.name()])),
-        path: format_path(&variable.path()),
+        name: signal_name(&path),
+        path: format_path(&path),
         kind: if signal.is_some_and(|signal| matches!(signal.encoding(), Encoding::Event)) {
             "event".into()
         } else {
@@ -545,6 +551,12 @@ fn signal_entry(variable: &ondas::Variable<'_>) -> SignalEntry {
             _ => None,
         }),
     }
+}
+
+fn signal_name(path: &ondas::HierarchyPath) -> String {
+    format_path(&ondas::HierarchyPath::from_components(
+        path.components().last(),
+    ))
 }
 
 fn visible_scope(scope: &ondas::Scope<'_>) -> bool {

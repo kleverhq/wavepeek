@@ -51,9 +51,9 @@ gates when the installation is configured. Combined `fsdb,shm` builds use both
 local reader installations.
 
 `prepare-shm-test-fixtures` converts a small set of existing VCD fixtures into
-ignored `tests/fixtures/shm/`. One short native recording from
-`tests/fixtures/source/shm_rich.sv` requires `xrun` to cover string, real, and
-event values that VCD conversion cannot preserve fully. `prepare-shm-fixtures [test-name-regex]` prepares
+ignored `tests/fixtures/shm/`. Short native recordings from `shm_rich.sv` and
+`escaped_instances.sv` cover typed values and escaped instance names.
+`prepare-shm-fixtures [test-name-regex]` prepares
 only the selected benchmark inputs. FST benchmarks use an existing current VCD
 or a temporary FST-to-VCD conversion, then convert to SHM outside timed queries.
 Preparation validates DSN/TRN output and source/converter stamps before reuse.

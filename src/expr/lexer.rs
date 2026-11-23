@@ -63,6 +63,31 @@ fn quoted_component_end(source: &str, start: usize) -> usize {
     source.len()
 }
 
+fn escaped_component_end(source: &str, start: usize) -> usize {
+    let rest = &source[start + 1..];
+    let whitespace = rest.find(char::is_whitespace).unwrap_or(rest.len());
+    source.len() - rest[whitespace..].trim_start().len()
+}
+
+// A decimal index followed by a dot belongs to the hierarchy. Terminal
+// brackets in a logical expression remain selection operators.
+fn hierarchy_index_end(source: &str, start: usize) -> Option<usize> {
+    let (index, rest) = source[start..].strip_prefix('[')?.split_once(']')?;
+    let digits = index.strip_prefix('-').unwrap_or(index);
+    (rest.starts_with('.')
+        && !triggered_call_suffix(rest)
+        && !digits.is_empty()
+        && digits.bytes().all(|byte| byte.is_ascii_digit()))
+    .then_some(start + index.len() + 2)
+}
+
+fn triggered_call_suffix(tail: &str) -> bool {
+    let Some(remainder) = tail.strip_prefix(".triggered") else {
+        return false;
+    };
+    remainder.trim_start().starts_with('(')
+}
+
 pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
     let mut tokens = Vec::with_capacity(source.len() / 2 + 1);
     let mut index = 0usize;
@@ -129,15 +154,8 @@ pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
                 continue;
             }
             if current == '\\' {
-                index += 1;
-                while index < source.len() && !source[index..].starts_with(char::is_whitespace) {
-                    index += source[index..].chars().next().map_or(0, char::len_utf8);
-                }
-                while index < source.len() && source[index..].starts_with(char::is_whitespace) {
-                    index += source[index..].chars().next().map_or(0, char::len_utf8);
-                }
-                if source[index..].starts_with('.') {
-                    index += 1;
+                index = escaped_component_end(source, index);
+                if source[index..].starts_with(['.', '[']) {
                     continue;
                 }
                 break;
@@ -309,22 +327,25 @@ impl<'a> LogicalLexer<'a> {
                 continue;
             }
 
-            if ch == '"'
-                && !self.source[quoted_component_end(self.source, self.index)..].starts_with('.')
-            {
-                let literal = self.lex_string_literal()?;
-                let span = literal.span;
-                tokens.push(LogicalToken {
-                    kind: LogicalTokenKind::StringLiteral(literal),
-                    span,
-                });
-                continue;
+            if ch == '"' {
+                let end = quoted_component_end(self.source, self.index);
+                if !self.source[end..].starts_with('.')
+                    && hierarchy_index_end(self.source, end).is_none()
+                {
+                    let literal = self.lex_string_literal()?;
+                    let span = literal.span;
+                    tokens.push(LogicalToken {
+                        kind: LogicalTokenKind::StringLiteral(literal),
+                        span,
+                    });
+                    continue;
+                }
             }
 
             if logical_identifier_start(ch) || matches!(ch, '"' | '\\') {
                 let start = self.index;
                 while let Some(next) = self.peek_char() {
-                    if next == '.' && self.peek_triggered_call_suffix() {
+                    if next == '.' && triggered_call_suffix(&self.source[self.index..]) {
                         break;
                     }
                     if next == '"' {
@@ -332,18 +353,21 @@ impl<'a> LogicalLexer<'a> {
                         continue;
                     }
                     if next == '\\' {
-                        self.bump_char();
-                        while self.peek_char().is_some_and(|ch| !ch.is_whitespace()) {
-                            self.bump_char();
-                        }
-                        while self.peek_char().is_some_and(char::is_whitespace) {
-                            self.bump_char();
-                        }
+                        self.index = escaped_component_end(self.source, self.index);
                         if self.peek_char() == Some('.') {
                             self.bump_char();
                             continue;
                         }
+                        if self.peek_char() == Some('[') {
+                            continue;
+                        }
                         break;
+                    }
+                    if next == '['
+                        && let Some(end) = hierarchy_index_end(self.source, self.index)
+                    {
+                        self.index = end;
+                        continue;
                     }
                     if logical_identifier_char(next) {
                         self.bump_char();
@@ -829,30 +853,6 @@ impl<'a> LogicalLexer<'a> {
         }
     }
 
-    fn peek_triggered_call_suffix(&self) -> bool {
-        let tail = &self.source[self.index..];
-        if !tail.starts_with(".triggered") {
-            return false;
-        }
-
-        let mut remainder = &tail[".triggered".len()..];
-        if matches!(
-            remainder.chars().next(),
-            Some(next) if next.is_ascii_alphanumeric() || matches!(next, '_' | '$' | '.')
-        ) {
-            return false;
-        }
-
-        while let Some(ch) = remainder.chars().next() {
-            if !ch.is_whitespace() {
-                break;
-            }
-            remainder = &remainder[ch.len_utf8()..];
-        }
-
-        matches!(remainder.chars().next(), Some('('))
-    }
-
     fn span(&self, start: usize, end: usize) -> Span {
         Span::new(self.span_offset + start, self.span_offset + end)
     }
@@ -1150,12 +1150,11 @@ mod tests {
             ("sig.triggered   ()", true),
         ];
         for (source, expected) in suffix_cases {
-            let lexer = LogicalLexer {
-                source,
-                span_offset: 0,
-                index: 3,
-            };
-            assert_eq!(lexer.peek_triggered_call_suffix(), expected, "{source}");
+            assert_eq!(
+                super::triggered_call_suffix(&source[3..]),
+                expected,
+                "{source}"
+            );
         }
     }
 }

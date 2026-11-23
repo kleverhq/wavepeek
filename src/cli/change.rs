@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use crate::cli::path_style::PathOutputArgs;
+
 use clap::{Args, ValueEnum};
 
 use crate::cli::limits::LimitArg;
@@ -82,6 +84,8 @@ pub struct ChangeArgs {
     /// Suppress result rows while retaining context and completeness metadata
     #[arg(long, help_heading = "Output options")]
     pub summary: bool,
+    #[command(flatten)]
+    pub(crate) path_output: PathOutputArgs,
     /// Machine-readable JSON output
     #[arg(long, help_heading = "Output options")]
     pub json: bool,

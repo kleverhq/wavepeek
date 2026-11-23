@@ -28,7 +28,7 @@ fn signal_fst_without_range_metadata_keeps_exact_scalar_declarations() {
         .clone();
     let payload: Value = serde_json::from_slice(&output).unwrap();
     for index in 0..4 {
-        let name = format!("\"q_err[{index}]\"");
+        let name = format!("q_err[{index}]");
         let entry = payload["data"]
             .as_array()
             .unwrap()

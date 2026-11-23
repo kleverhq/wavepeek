@@ -538,7 +538,7 @@ fn fsdb_hierarchy_excludes_hidden_subtrees() {
 fn fsdb_memory_elements_remain_exact_declarations() {
     let mut backend = OndasBackend::open(&cpu_fsdb_path()).unwrap();
     let scope = "system.i_cpu.i_CCU.i_maprom";
-    let path = format!("{scope}.\"maprom[0]\"");
+    let path = format!("{scope}.maprom[0]");
     let resolved = backend
         .resolve_signals(std::slice::from_ref(&path))
         .unwrap();

@@ -1051,7 +1051,7 @@ fn value_projects_flat_ranges_and_preserves_request_positions() {
             {"path": "top.data", "relative_path": "data", "value": "8'hff"},
             {"path": "top.data[7:4]", "relative_path": "data[7:4]", "value": "4'hf"},
             {"path": "top.data[0:0]", "relative_path": "data[0:0]", "value": "1'h1"},
-            {"path": "top.\"steps[0]\".flag", "relative_path": "\"steps[0]\".flag", "value": "1'h1"},
+            {"path": "top.steps[0].flag", "relative_path": "steps[0].flag", "value": "1'h1"},
         ])
     );
 }
@@ -1201,8 +1201,8 @@ fn value_scoped_indexed_slices_and_normalized_vcd_bus_preserve_batch_order() {
         ["4'hf", "4'ha", "8'ha5", "4'hf"],
     ]) {
         let signals = row["signals"].as_array().unwrap();
-        assert_eq!(signals[0]["path"], r#"top."mem[0]"[7:4]"#);
-        assert_eq!(signals[0]["relative_path"], r#""mem[0]"[7:4]"#);
+        assert_eq!(signals[0]["path"], "top.mem[0][7:4]");
+        assert_eq!(signals[0]["relative_path"], "mem[0][7:4]");
         for (signal, value) in signals.iter().zip(values) {
             assert_eq!(signal["value"], value);
         }

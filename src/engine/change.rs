@@ -13,6 +13,7 @@ use crate::engine::expr_runtime::{
     event_expr_contains_wildcard, event_expr_is_edge_only, event_expr_matches, event_iff_handles,
     open_shared_waveform,
 };
+use crate::engine::output_paths::OutputPaths;
 use crate::engine::time::{
     DumpTimeContext, ParsedTime, TimeValidationError, format_raw_timestamp,
     parse_dump_time_context, validate_time_token_to_raw,
@@ -25,7 +26,7 @@ use crate::expr::{
 };
 use crate::waveform::expr_host::RuntimeExpressionHost;
 use crate::waveform::expr_query::{ExpressionQuery, ExpressionQueryTick};
-use crate::waveform::{ResolvedSignal, SampledSignalState, Waveform, display_signal_path};
+use crate::waveform::{ResolvedSignal, SampledSignalState, Waveform};
 
 const PRE_EDGE_REQUIRES_EDGE_ONLY_ON: &str = "--sample-mode pre-edge requires --on with only edge event terms (posedge, negedge, or edge); use --sample-mode native for wildcard or plain signal triggers";
 
@@ -49,6 +50,7 @@ pub struct ChangeSnapshot {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct RequestedSignal {
     display: String,
+    path: String,
     relative_path: Option<String>,
     selected: ResolvedSignal,
 }
@@ -62,6 +64,7 @@ struct ChangeRunStats {
 #[derive(Debug)]
 struct ChangeCommandOutcome {
     human_options: HumanRenderOptions,
+    scope: Option<String>,
     diagnostics: Vec<Diagnostic>,
     summary: ResultSummary,
 }
@@ -105,7 +108,6 @@ impl<W: std::io::Write> ChangeSnapshotSink for JsonlChangeSink<'_, W> {
 
 pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
     let output_mode = crate::output_mode::OutputMode::from_json_flags(args.json, args.jsonl);
-    let scope = args.scope.clone();
     let summary_only = args.summary;
     let mut sink = CollectingChangeSink::default();
     let outcome = run_with_sink(args, &mut sink)?;
@@ -114,7 +116,7 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         command: CommandName::Change,
         output_mode,
         human_options: outcome.human_options,
-        scope,
+        scope: outcome.scope,
         summary_only,
         data: CommandData::Change(sink.snapshots),
         summary: Some(outcome.summary),
@@ -216,15 +218,23 @@ fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
                 .map_err(|diagnostic| WavepeekError::Internal(diagnostic.message))
         })
         .collect::<Result<Vec<_>, _>>()?;
-    for requested in &mut requested_signals {
-        let display =
-            display_signal_path(&requested.selected.path, args.scope.as_deref()).to_string();
-        requested.relative_path = if (args.json || args.jsonl) && args.scope.is_some() {
-            Some(display.clone())
-        } else {
-            None
-        };
-        requested.display = display;
+    let machine = args.json || args.jsonl;
+    let paths = OutputPaths::new(
+        args.path_output.style(),
+        args.scope.as_deref(),
+        args.abs || machine,
+    )?;
+    if !args.summary {
+        for requested in &mut requested_signals {
+            let (path, display) = paths.signal(&requested.selected)?;
+            requested.path = path;
+            requested.relative_path = if machine && args.scope.is_some() {
+                Some(display.clone())
+            } else {
+                None
+            };
+            requested.display = display;
+        }
     }
 
     let mut drivers = event_candidate_handles(&bound_event);
@@ -240,7 +250,8 @@ fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
         serde_json::json!({"requested_signals": requested_signals.len(), "drivers": drivers.len()})
     });
 
-    sink.start(args.scope.as_deref())?;
+    let output_scope = paths.context_scope(machine)?;
+    sink.start(output_scope.as_deref())?;
     debug.event(
         "change.run.start",
         || serde_json::json!({"selected_engine": "query"}),
@@ -336,6 +347,7 @@ fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
     }
 
     Ok(ChangeCommandOutcome {
+        scope: output_scope,
         human_options: HumanRenderOptions {
             scope_tree: false,
             signals_abs: args.abs,
@@ -487,7 +499,7 @@ fn build_snapshot(
             })?;
             Ok(ChangeSignalValue {
                 display: requested.display.clone(),
-                path: requested.selected.path.clone(),
+                path: requested.path.clone(),
                 relative_path: requested.relative_path.clone(),
                 value: format_verilog_literal(sampled.width, bits.as_str()),
             })
@@ -523,6 +535,7 @@ fn resolve_requested_signals(
         let selected = waveform.resolve_signal_with_diagnostic(display, scope, true)?;
         resolved.push(RequestedSignal {
             display: display.to_string(),
+            path: selected.path.clone(),
             relative_path: None,
             selected,
         });
@@ -590,6 +603,7 @@ mod tests {
         let fixture = write_fixture(TEST_VCD, "change-helper.vcd");
         let waveform = Waveform::open(fixture.path()).expect("waveform should open");
         let args = ChangeArgs {
+            path_output: Default::default(),
             waves: PathBuf::from(fixture.path()),
             from: None,
             to: None,
@@ -613,6 +627,7 @@ mod tests {
         let snapshot = build_snapshot(
             &[RequestedSignal {
                 display: "sig".to_string(),
+                path: "top.sig".to_string(),
                 relative_path: Some("sig".to_string()),
                 selected: resolved[0].selected.clone(),
             }],
@@ -637,6 +652,7 @@ mod tests {
         let error = build_snapshot(
             &[RequestedSignal {
                 display: "sig".to_string(),
+                path: "top.sig".to_string(),
                 relative_path: Some("sig".to_string()),
                 selected: resolved[0].selected.clone(),
             }],
@@ -666,6 +682,7 @@ mod tests {
         let fixture = write_fixture(TEST_VCD, "change-run.vcd");
 
         let result = run(ChangeArgs {
+            path_output: Default::default(),
             waves: PathBuf::from(fixture.path()),
             from: None,
             to: None,
@@ -692,6 +709,7 @@ mod tests {
         assert_eq!(rows[0].signals[0].value, "1'h1");
 
         let zero_max = run(ChangeArgs {
+            path_output: Default::default(),
             waves: PathBuf::from(fixture.path()),
             from: None,
             to: None,
@@ -715,6 +733,7 @@ mod tests {
         );
 
         let reversed = run(ChangeArgs {
+            path_output: Default::default(),
             waves: PathBuf::from(fixture.path()),
             from: Some("5ns".to_string()),
             to: Some("0ns".to_string()),
@@ -741,6 +760,7 @@ mod tests {
 
         let error = run_with_sink(
             ChangeArgs {
+                path_output: Default::default(),
                 waves: PathBuf::from(fixture.path()),
                 from: None,
                 to: None,
@@ -768,6 +788,7 @@ mod tests {
     fn change_run_and_time_helpers_exercise_diagnostic_and_bound_error_paths() {
         let fixture = write_fixture(TEST_VCD, "change-warning-empty.vcd");
         let empty = run(ChangeArgs {
+            path_output: Default::default(),
             waves: PathBuf::from(fixture.path()),
             from: None,
             to: None,
@@ -798,6 +819,7 @@ mod tests {
         );
         let multi = write_fixture(MULTI_CHANGE_VCD, "change-warning-truncated.vcd");
         let truncated = run(ChangeArgs {
+            path_output: Default::default(),
             waves: PathBuf::from(multi.path()),
             from: None,
             to: None,

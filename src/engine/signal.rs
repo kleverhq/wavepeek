@@ -2,9 +2,10 @@ use crate::cli::limits::LimitArg;
 use crate::cli::signal::SignalArgs;
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
+use crate::engine::output_paths::OutputPaths;
 use crate::engine::{CommandData, CommandName, CommandResult, ResultSummary};
 use crate::error::WavepeekError;
-use crate::waveform::{Waveform, display_signal_path};
+use crate::waveform::Waveform;
 use regex::Regex;
 use serde::Serialize;
 
@@ -28,6 +29,7 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
         max_depth,
         abs,
         summary,
+        path_output,
         json,
         jsonl,
     } = args;
@@ -79,17 +81,6 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
         .entries
         .into_iter()
         .filter(|entry| filter.is_match(entry.name.as_str()))
-        .map(|entry| {
-            let relative_path =
-                display_signal_path(entry.path.as_str(), Some(scope.as_str())).to_string();
-            SignalEntry {
-                name: entry.name,
-                path: entry.path,
-                relative_path,
-                kind: entry.kind,
-                width: entry.width,
-            }
-        })
         .collect::<Vec<_>>();
     debug.event(
         "signal.filter.done",
@@ -107,6 +98,27 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
         ));
     }
 
+    let machine = json || jsonl;
+    let paths = OutputPaths::new(path_output.style(), Some(&scope), abs || machine)?;
+    let returned = entries.len();
+    let data = if summary {
+        Vec::new()
+    } else {
+        entries
+            .into_iter()
+            .map(|entry| {
+                let (path, relative_path) = paths.listed(&entry.path)?;
+                Ok(SignalEntry {
+                    name: paths.exact(entry.name)?,
+                    relative_path,
+                    path,
+                    kind: entry.kind,
+                    width: entry.width,
+                })
+            })
+            .collect::<Result<Vec<_>, WavepeekError>>()?
+    };
+
     Ok(CommandResult {
         command: CommandName::Signal,
         output_mode: crate::output_mode::OutputMode::from_json_flags(json, jsonl),
@@ -114,15 +126,15 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
             scope_tree: false,
             signals_abs: abs,
         },
-        scope: Some(scope),
+        scope: paths.context_scope(machine)?,
         summary_only: summary,
         summary: Some(ResultSummary {
-            complete: entries.len() == total,
-            returned: entries.len(),
+            complete: returned == total,
+            returned,
             limit: max.numeric(),
             total: Some(total),
         }),
-        data: CommandData::Signal(entries),
+        data: CommandData::Signal(data),
         diagnostics,
     })
 }

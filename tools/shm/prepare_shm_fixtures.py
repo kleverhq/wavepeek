@@ -127,11 +127,12 @@ def main() -> None:
             if source is None:
                 parser.error(f"missing test VCD: {name}; run just prepare-waveform-fixtures")
             prepare(source, ROOT / "tests/fixtures/shm" / f"{name}.shm", converter)
-        prepare(
-            ROOT / "tests/fixtures/source/shm_rich.sv",
-            ROOT / "tests/fixtures/shm/shm_rich.shm",
-            home / "tools/bin/64bit/xrun",
-        )
+        for name in ("shm_rich", "escaped_instances"):
+            prepare(
+                ROOT / "tests/fixtures/source" / f"{name}.sv",
+                ROOT / "tests/fixtures/shm" / f"{name}.shm",
+                home / "tools/bin/64bit/xrun",
+            )
     if not args.tests_only:
         catalog = json.loads((ROOT / "bench/e2e/tests.json").read_text())
         sources = sorted({

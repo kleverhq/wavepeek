@@ -186,7 +186,7 @@ fn escaped_names_and_array_declarations_preserve_source_paths_and_values() {
         &[
             "value",
             "--signals",
-            r#"top."block.dot"."data.bus",top."memory[0]""#,
+            r#"top."block.dot"."data.bus",top.memory[0]"#,
             "--at",
             "5ns",
         ],

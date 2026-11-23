@@ -48,6 +48,8 @@ Waveform commands default to human-readable output. Machine-readable output is e
 
 Human-readable output is optimized for compact operator use and may vary when formatting improves. Use `--json` when a client wants one complete result. Use `--jsonl` when a client wants to consume waveform rows incrementally.
 
+`--path-style logical|sv` selects path spelling for `scope`, `signal`, `value`, `change`, and each `extract` subcommand. It applies to all output modes. Filters and includes use logical spellings. See [Path and scope resolution](paths.md).
+
 ## Bounded Output
 
 `wavepeek` is designed to avoid flooding terminals and LLM context windows. Commands therefore keep output bounded by default through one or more of these mechanisms:

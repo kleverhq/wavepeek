@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use crate::cli::path_style::PathOutputArgs;
+
 use clap::{Args, Subcommand, ValueEnum};
 
 use crate::cli::limits::LimitArg;
@@ -263,6 +265,8 @@ pub struct AhbArgs {
     /// Print canonical mapping paths in human output
     #[arg(long, help_heading = "Output options")]
     pub abs: bool,
+    #[command(flatten)]
+    pub(crate) path_output: PathOutputArgs,
     /// Machine-readable JSON output
     #[arg(long, help_heading = "Output options")]
     pub json: bool,
@@ -393,6 +397,8 @@ pub struct ApbArgs {
     /// Print canonical mapping and payload paths in human output
     #[arg(long, help_heading = "Output options")]
     pub abs: bool,
+    #[command(flatten)]
+    pub(crate) path_output: PathOutputArgs,
     /// Machine-readable JSON output
     #[arg(long, help_heading = "Output options")]
     pub json: bool,
@@ -486,6 +492,8 @@ pub struct AtbArgs {
     /// Print canonical mapping and payload paths in human output
     #[arg(long, help_heading = "Output options")]
     pub abs: bool,
+    #[command(flatten)]
+    pub(crate) path_output: PathOutputArgs,
     /// Machine-readable JSON output
     #[arg(long, help_heading = "Output options")]
     pub json: bool,
@@ -649,6 +657,8 @@ pub struct AxiArgs {
     /// Print canonical mapping and payload paths in human output
     #[arg(long, help_heading = "Output options")]
     pub abs: bool,
+    #[command(flatten)]
+    pub(crate) path_output: PathOutputArgs,
     /// Machine-readable JSON output
     #[arg(long, help_heading = "Output options")]
     pub json: bool,
@@ -727,6 +737,8 @@ pub struct AxiStreamArgs {
     /// Print canonical mapping and payload paths in human output
     #[arg(long, help_heading = "Output options")]
     pub abs: bool,
+    #[command(flatten)]
+    pub(crate) path_output: PathOutputArgs,
     /// Machine-readable JSON output
     #[arg(long, help_heading = "Output options")]
     pub json: bool,
@@ -786,6 +798,8 @@ pub struct GenericArgs {
     /// Print canonical payload paths in human output
     #[arg(long, help_heading = "Output options")]
     pub abs: bool,
+    #[command(flatten)]
+    pub(crate) path_output: PathOutputArgs,
     /// Machine-readable JSON output
     #[arg(long, help_heading = "Output options")]
     pub json: bool,

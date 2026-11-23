@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Add `$signal("path")` expression operands for explicit canonical signal names.
+- Add `--path-style logical|sv` for scope, signal, value, change, and extract output.
 
 ### Changed
 - Run `change`, `property`, and extraction through Ondas activity queries, preserving sampling, protocol state, row filtering, and result limits.
@@ -17,13 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use declaration metadata for expression types and preserve stored widths. Unknown signedness defaults to unsigned for ordinary vectors, and unknown logic domains use four-state evaluation.
 - Interpret weak logic states as L=0 and H=1 across expressions, edges and output; keep raw enum label matching. Raw events use kind `event` and width 0 across formats.
 - Resolve selectors and scope prefixes through Ondas, retaining exact paths, selected alias metadata, and explicit projections. Ondas normalizes confirmed VCD split vectors; other formats retain their library declarations.
-- Use Ondas 2.2.0. FSDB native diagnostics remain visible on stderr while stdout retains the command output contract.
+- Use Ondas 3.0.0. FSDB native diagnostics remain visible on stderr while stdout retains the command output contract.
 
 ### Removed
 - Remove hidden `change --tune-*` diagnostic controls.
 - Remove internal candidate timelines, range-history caches, duplicate selector parsing, and the parallel hierarchy and numeric signal identity layers.
 
 ### Fixed
+- Preserve escaped SHM instance names so that literal brackets and array indices resolve independently (#147).
 - Keep ambiguous indexed declarations terminal during expression binding instead of selecting a bit of another signal.
 - Reject string-valued `property --eval` and extraction `--when` predicates; string comparisons remain supported.
 - Preserve agreed enum labels when merging identical branches under an unknown condition.

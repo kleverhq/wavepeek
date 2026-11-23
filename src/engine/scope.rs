@@ -2,6 +2,7 @@ use crate::cli::limits::LimitArg;
 use crate::cli::scope::ScopeArgs;
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
+use crate::engine::output_paths::OutputPaths;
 use crate::engine::{CommandData, CommandName, CommandResult, ResultSummary};
 use crate::error::WavepeekError;
 use crate::waveform::Waveform;
@@ -23,6 +24,7 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
         filter,
         tree,
         summary,
+        path_output,
         json,
         jsonl,
     } = args;
@@ -73,16 +75,23 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
         ancestors.push(index);
     }
 
+    let paths = OutputPaths::new(path_output.style(), None, true)?;
     let entries = scopes
         .into_iter()
         .zip(included)
         .filter(|(_, included)| *included)
-        .map(|(entry, _)| ScopeEntry {
-            path: entry.path,
-            depth: entry.depth,
-            kind: entry.kind,
+        .map(|(entry, _)| {
+            Ok(ScopeEntry {
+                path: if summary {
+                    entry.path
+                } else {
+                    paths.exact(entry.path)?
+                },
+                depth: entry.depth,
+                kind: entry.kind,
+            })
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, WavepeekError>>()?;
     debug.event(
         "scope.collect.done",
         || serde_json::json!({"scopes": entries.len()}),

@@ -145,6 +145,12 @@ Output options:
       --summary
           Suppress result rows while retaining context and completeness metadata
 
+      --path-style <PATH_STYLE>
+          Path syntax for output. Both styles are accepted as input
+
+          [default: logical]
+          [possible values: logical, sv]
+
       --json
           Machine-readable JSON output
 
@@ -204,6 +210,12 @@ Output options:
 
       --summary
           Suppress result rows while retaining context and completeness metadata
+
+      --path-style <PATH_STYLE>
+          Path syntax for output. Both styles are accepted as input
+
+          [default: logical]
+          [possible values: logical, sv]
 
       --json
           Machine-readable JSON output
@@ -279,6 +291,12 @@ Selection options:
 Output options:
       --abs
           Show canonical signal paths
+
+      --path-style <PATH_STYLE>
+          Path syntax for output. Both styles are accepted as input
+
+          [default: logical]
+          [possible values: logical, sv]
 
       --json
           Machine-readable JSON output
@@ -374,6 +392,12 @@ Output options:
 
       --summary
           Suppress result rows while retaining context and completeness metadata
+
+      --path-style <PATH_STYLE>
+          Path syntax for output. Both styles are accepted as input
+
+          [default: logical]
+          [possible values: logical, sv]
 
       --json
           Machine-readable JSON output
@@ -595,6 +619,12 @@ Output options:
       --abs
           Print canonical mapping paths in human output
 
+      --path-style <PATH_STYLE>
+          Path syntax for output. Both styles are accepted as input
+
+          [default: logical]
+          [possible values: logical, sv]
+
       --json
           Machine-readable JSON output
 
@@ -687,6 +717,12 @@ Output options:
       --abs
           Print canonical mapping and payload paths in human output
 
+      --path-style <PATH_STYLE>
+          Path syntax for output. Both styles are accepted as input
+
+          [default: logical]
+          [possible values: logical, sv]
+
       --json
           Machine-readable JSON output
 
@@ -775,6 +811,12 @@ Output options:
       --abs
           Print canonical mapping and payload paths in human output
 
+      --path-style <PATH_STYLE>
+          Path syntax for output. Both styles are accepted as input
+
+          [default: logical]
+          [possible values: logical, sv]
+
       --json
           Machine-readable JSON output
 
@@ -860,6 +902,12 @@ Output options:
 
       --abs
           Print canonical mapping and payload paths in human output
+
+      --path-style <PATH_STYLE>
+          Path syntax for output. Both styles are accepted as input
+
+          [default: logical]
+          [possible values: logical, sv]
 
       --json
           Machine-readable JSON output
@@ -951,6 +999,12 @@ Output options:
       --abs
           Print canonical mapping and payload paths in human output
 
+      --path-style <PATH_STYLE>
+          Path syntax for output. Both styles are accepted as input
+
+          [default: logical]
+          [possible values: logical, sv]
+
       --json
           Machine-readable JSON output
 
@@ -1036,6 +1090,12 @@ Output options:
 
       --abs
           Print canonical payload paths in human output
+
+      --path-style <PATH_STYLE>
+          Path syntax for output. Both styles are accepted as input
+
+          [default: logical]
+          [possible values: logical, sv]
 
       --json
           Machine-readable JSON output

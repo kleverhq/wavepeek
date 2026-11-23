@@ -7,6 +7,7 @@ use regex::Regex;
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize};
 
+use super::output_paths::OutputPaths;
 use crate::cli::extract::AhbArgs;
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
@@ -516,6 +517,11 @@ impl EdgeSamples {
                     path: format!("top.{standard}"),
                     signal: wave.hierarchy().signal(&format!("value{index}")).unwrap(),
                     width: bits.len() as u32,
+                    selector: crate::waveform::selection::SelectorPath::new(
+                        ondas::HierarchyPath::from_components(["top", *standard]),
+                        None,
+                        false,
+                    ),
                 },
                 handle: SignalHandle(index as u32),
             })
@@ -989,14 +995,20 @@ fn build_ahb(args: &AhbArgs) -> Result<BuiltAhb, WavepeekError> {
     let source = format!("posedge {clock_name}");
     let (host, event) =
         bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), source.as_str())?;
+    let absolute_paths = args.abs || args.json || args.jsonl;
+    let paths = OutputPaths::new(
+        args.path_output.style(),
+        args.scope.as_deref(),
+        absolute_paths,
+    )?;
     let resolved_mappings = ordered_mappings
-        .iter()
-        .cloned()
+        .into_iter()
         .zip(resolved)
-        .map(|(mapping, resolved)| {
+        .map(|(mut mapping, resolved)| {
             let handle = host
                 .resolve_signal(&mapping.path)
                 .map_err(|diagnostic| expr_diagnostic(&mapping.path, diagnostic))?;
+            paths.style_mapping(&resolved.selector, &mut mapping.path, &mut mapping.display)?;
             Ok(ResolvedMapping {
                 mapping,
                 resolved,
@@ -1004,6 +1016,10 @@ fn build_ahb(args: &AhbArgs) -> Result<BuiltAhb, WavepeekError> {
             })
         })
         .collect::<Result<Vec<_>, WavepeekError>>()?;
+    let ordered_mappings = resolved_mappings
+        .iter()
+        .map(|mapping| mapping.mapping.clone())
+        .collect();
     let operands = resolved_mappings
         .iter()
         .map(|mapping| mapping.handle)
@@ -1078,7 +1094,7 @@ fn sample_edge(
         .mappings
         .iter()
         .map(|mapping| {
-            let path = &mapping.mapping.path;
+            let path = &mapping.resolved.path;
             let bits = if mapping.resolved.width == 0 {
                 eval_with_waveform_errors(path, host, || {
                     host.event_occurred(mapping.handle, sample_timestamp)
@@ -1543,6 +1559,7 @@ mod tests {
             };
             let error = super::run_with_sink(
                 crate::cli::extract::AhbArgs {
+                    path_output: Default::default(),
                     waves: fixture.path().into(),
                     profile: crate::cli::extract::AhbProfileArg::AhbLite,
                     source: None,

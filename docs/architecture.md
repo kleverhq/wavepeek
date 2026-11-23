@@ -205,7 +205,7 @@ enters the same facade and command engines through `ondas::open_bytes`.
 
 CLI list and single-entry normalization share one lexical walk. It preserves
 selector bytes and required escaped-identifier terminators while trimming outer
-padding. `Hierarchy::resolve_signal` resolves that selector with its component scope prefix.
+padding. `SignalSelector::parse` parses the selector. `Hierarchy::resolve_selector` resolves it with its component scope prefix.
 The result retains the selected declaration, Signal, and explicit normalized
 projection, including a full-width slice. WavePeek applies expression type policy
 and formats reusable selectors from that result. Listing omits ambiguous paths according to

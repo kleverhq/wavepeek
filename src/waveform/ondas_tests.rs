@@ -284,7 +284,7 @@ fn scope_and_signal_preorder_keeps_descendants_before_prefix_siblings() {
             .iter()
             .map(|scope| scope.path.to_string())
             .collect::<Vec<_>>(),
-        ["top", "top.a", "top.a.z", r#"top."a$""#]
+        ["top", "top.a", "top.a.z", "top.a$"]
     );
     let signals = waveform
         .signals_in_scope_recursive_report("top", None)
@@ -295,7 +295,7 @@ fn scope_and_signal_preorder_keeps_descendants_before_prefix_siblings() {
             .iter()
             .map(|signal| signal.path.to_string())
             .collect::<Vec<_>>(),
-        ["top.root", "top.a.base", "top.a.z.deep", r#"top."a$".tail"#]
+        ["top.root", "top.a.base", "top.a.z.deep", "top.a$.tail"]
     );
 }
 

@@ -177,6 +177,29 @@ fn sv_output_uses_escape_metadata_from_the_dump() {
 }
 
 #[test]
+fn simple_names_with_underscores_and_dollars_keep_filter_and_limit_behavior() {
+    let waves = vcd(
+        "$var wire 1 ~ A $end\n$var wire 1 % _done $end\n$var wire 1 & sig$0 $end\n",
+        "0~\n1%\n0&\n",
+    );
+    for style in ["logical", "sv"] {
+        let common = ["signal", "--scope", "top", "--path-style", style, "--json"];
+        for (options, name) in [
+            (["--filter", "^_done$"], "_done"),
+            (["--filter", r"^sig\$0$"], "sig$0"),
+            (["--max", "1"], "A"),
+        ] {
+            let result: Value =
+                serde_json::from_str(&run(waves.path(), &[&common[..], &options].concat()))
+                    .unwrap();
+            assert_eq!(result["data"].as_array().unwrap().len(), 1);
+            assert_eq!(result["data"][0]["name"], name);
+            assert_eq!(result["data"][0]["path"], format!("top.{name}"));
+        }
+    }
+}
+
+#[test]
 fn signal_limit_uses_logical_leaf_order_in_both_styles() {
     let waves = vcd(
         "$var wire 1 ~ a $end\n$var wire 1 % \\z.dot $end\n",

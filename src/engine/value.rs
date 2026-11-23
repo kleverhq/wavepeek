@@ -2,6 +2,7 @@ use serde::Serialize;
 
 use crate::cli::value::ValueArgs;
 use crate::debug_trace::DebugTrace;
+use crate::engine::output_paths::OutputPaths;
 use crate::engine::time::{
     DumpTimeContext, TimeValidationError, format_raw_timestamp, parse_dump_time_context,
     validate_time_token_to_raw,
@@ -9,7 +10,7 @@ use crate::engine::time::{
 use crate::engine::value_format::format_verilog_literal;
 use crate::engine::{CommandData, CommandName, CommandResult};
 use crate::error::WavepeekError;
-use crate::waveform::{ResolvedSignal, Waveform, WaveformMetadata, display_signal_path};
+use crate::waveform::{ResolvedSignal, Waveform, WaveformMetadata};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ValueSignalValue {
@@ -43,6 +44,16 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
     debug.event("metadata.load.done", || serde_json::json!({}));
 
     let requested_signals = resolve_requested_signals(&waveform, args.scope.as_deref(), &args)?;
+    let machine = args.json || args.jsonl;
+    let paths = OutputPaths::new(
+        args.path_output.style(),
+        args.scope.as_deref(),
+        args.abs || machine,
+    )?;
+    let output_paths = requested_signals
+        .iter()
+        .map(|signal| paths.signal(signal))
+        .collect::<Result<Vec<_>, _>>()?;
     debug.event(
         "signal.select.done",
         || serde_json::json!({"signals": requested_signals.len()}),
@@ -61,17 +72,16 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
     for (query_time_raw, sampled) in query_times_raw.into_iter().zip(sampled_rows) {
         let signals = sampled
             .into_iter()
-            .map(|sampled| {
-                let display =
-                    display_signal_path(sampled.path.as_str(), args.scope.as_deref()).to_string();
-                let relative_path = if (args.json || args.jsonl) && args.scope.is_some() {
+            .zip(&output_paths)
+            .map(|(sampled, (path, display))| {
+                let relative_path = if machine && args.scope.is_some() {
                     Some(display.clone())
                 } else {
                     None
                 };
                 ValueSignalValue {
-                    display,
-                    path: sampled.path,
+                    display: display.clone(),
+                    path: path.clone(),
                     relative_path,
                     value: format_verilog_literal(sampled.width, &sampled.bits),
                 }
@@ -97,7 +107,7 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
             scope_tree: false,
             signals_abs: args.abs,
         },
-        scope: args.scope,
+        scope: paths.context_scope(machine)?,
         summary_only: false,
         data: CommandData::Value(snapshots),
         summary: None,
@@ -222,6 +232,7 @@ mod tests {
             &waveform,
             Some("top"),
             &ValueArgs {
+                path_output: Default::default(),
                 waves: PathBuf::from(fixture.path()),
                 at: vec!["5ns".to_string()],
                 scope: Some("top".to_string()),
@@ -238,6 +249,7 @@ mod tests {
                 &waveform,
                 None,
                 &ValueArgs {
+                    path_output: Default::default(),
                     waves: PathBuf::from(fixture.path()),
                     at: vec!["5ns".to_string()],
                     scope: None,
@@ -320,6 +332,7 @@ mod tests {
         );
 
         let result = run(ValueArgs {
+            path_output: Default::default(),
             waves: PathBuf::from(fixture.path()),
             at: vec!["5ns".to_string()],
             scope: Some("top".to_string()),

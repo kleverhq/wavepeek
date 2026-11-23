@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use crate::cli::path_style::PathOutputArgs;
+
 use clap::Args;
 
 #[derive(Debug, Args)]
@@ -29,6 +31,8 @@ pub struct ValueArgs {
     /// Show canonical signal paths
     #[arg(long, help_heading = "Output options")]
     pub abs: bool,
+    #[command(flatten)]
+    pub(crate) path_output: PathOutputArgs,
     /// Machine-readable JSON output
     #[arg(long, help_heading = "Output options")]
     pub json: bool,

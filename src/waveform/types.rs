@@ -49,6 +49,7 @@ pub struct ResolvedSignal {
     pub path: String,
     pub signal: ondas::Signal,
     pub width: u32,
+    pub(crate) selector: super::selection::SelectorPath,
 }
 
 #[derive(Debug, Clone, PartialEq)]

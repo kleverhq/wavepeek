@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 
+use super::output_paths::OutputPaths;
 use crate::cli::extract::GenericArgs;
 use crate::cli::limits::LimitArg;
 use crate::debug_trace::DebugTrace;
@@ -28,7 +29,6 @@ use crate::expr::{
     bind_event_expr_ast, parse_event_expr_ast,
 };
 use crate::waveform::ResolvedSignal;
-use crate::waveform::display_signal_path;
 use crate::waveform::expr_host::{RuntimeExpressionHost, WaveformExprHost};
 use crate::waveform::expr_query::{ExpressionQuery, ExpressionQueryTick};
 
@@ -106,6 +106,7 @@ impl ExtractSource {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PayloadSignal {
     display: String,
+    path: String,
     relative_path: Option<String>,
     selected: ResolvedSignal,
     handle: SignalHandle,
@@ -145,6 +146,9 @@ pub(crate) struct ExtractRunArgs {
     pub(crate) to: Option<String>,
     pub(crate) scope: Option<String>,
     pub(crate) max: LimitArg,
+    pub(crate) path_style: ondas::PathStyle,
+    pub(crate) absolute_paths: bool,
+    pub(crate) summary_only: bool,
     pub(crate) include_relative_paths: bool,
 }
 
@@ -170,12 +174,13 @@ struct EventGroup {
 #[derive(Debug)]
 pub(crate) struct ExtractCommandOutcome {
     pub(crate) source_count: usize,
+    scope: Option<String>,
     pub(crate) diagnostics: Vec<Diagnostic>,
     pub(crate) summary: ResultSummary,
 }
 
 pub(crate) trait ExtractRowSink {
-    fn start(&mut self) -> Result<(), WavepeekError> {
+    fn start(&mut self, _scope: Option<&str>) -> Result<(), WavepeekError> {
         Ok(())
     }
 
@@ -196,12 +201,11 @@ impl ExtractRowSink for CollectingExtractSink {
 
 struct JsonlExtractSink<'a, W: std::io::Write> {
     writer: &'a mut crate::output::JsonlWriter<W>,
-    scope: Option<String>,
 }
 
 impl<W: std::io::Write> ExtractRowSink for JsonlExtractSink<'_, W> {
-    fn start(&mut self) -> Result<(), WavepeekError> {
-        match self.scope.as_deref() {
+    fn start(&mut self, scope: Option<&str>) -> Result<(), WavepeekError> {
+        match scope {
             Some(scope) => self.writer.begin_scope(scope),
             None => self.writer.begin(),
         }
@@ -229,7 +233,6 @@ struct SourceFileSource {
 pub fn run(args: GenericArgs) -> Result<CommandResult, WavepeekError> {
     let output_mode = crate::output_mode::OutputMode::from_json_flags(args.json, args.jsonl);
     let signals_abs = args.abs;
-    let scope = args.scope.clone();
     let summary_only = args.summary;
     let mut sink = CollectingExtractSink::default();
     let outcome = run_with_sink(args, &mut sink)?;
@@ -241,7 +244,7 @@ pub fn run(args: GenericArgs) -> Result<CommandResult, WavepeekError> {
             scope_tree: false,
             signals_abs,
         },
-        scope,
+        scope: outcome.scope,
         summary_only,
         data: CommandData::ExtractGeneric(ExtractGenericData {
             source_count: outcome.source_count,
@@ -258,10 +261,7 @@ pub fn run_jsonl<W: std::io::Write>(
 ) -> Result<(), WavepeekError> {
     writer.suppress_data(args.summary);
     let outcome = {
-        let mut sink = JsonlExtractSink {
-            writer,
-            scope: args.scope.clone(),
-        };
+        let mut sink = JsonlExtractSink { writer };
         run_with_sink(args, &mut sink)?
     };
 
@@ -285,6 +285,9 @@ fn run_with_sink<S: ExtractRowSink + ?Sized>(
             to: args.to,
             scope: args.scope,
             max: args.max,
+            path_style: args.path_output.style(),
+            absolute_paths: args.abs || args.json || args.jsonl,
+            summary_only: args.summary,
             include_relative_paths: args.json || args.jsonl,
         },
         plan,
@@ -372,10 +375,13 @@ fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
     });
 
     let host = WaveformExprHost::from_shared_scoped(waveform.clone(), args.scope.as_deref());
+    let paths = OutputPaths::new(args.path_style, args.scope.as_deref(), args.absolute_paths)?;
     let bound_sources = bind_extract_sources(
         &waveform,
         &host,
         args.scope.as_deref(),
+        &paths,
+        args.summary_only,
         args.include_relative_paths,
         plan.sources,
     )?;
@@ -399,7 +405,8 @@ fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
         })
     });
 
-    sink.start()?;
+    let output_scope = paths.context_scope(args.include_relative_paths)?;
+    sink.start(output_scope.as_deref())?;
     debug.event("extract.emit.start", || {
         serde_json::json!({
             "sources": bound_sources.len(),
@@ -447,6 +454,7 @@ fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
 
     Ok(ExtractCommandOutcome {
         source_count,
+        scope: output_scope,
         diagnostics,
         summary: ResultSummary::from_run(stats.emitted, max_entries, stats.truncated),
     })
@@ -584,6 +592,8 @@ fn bind_extract_sources(
     waveform: &SharedWaveform,
     host: &WaveformExprHost,
     scope: Option<&str>,
+    paths: &OutputPaths,
+    summary_only: bool,
     include_relative_paths: bool,
     sources: Vec<ExtractSource>,
 ) -> Result<Vec<BoundExtractSource>, WavepeekError> {
@@ -605,6 +615,8 @@ fn bind_extract_sources(
             waveform,
             host,
             scope,
+            paths,
+            summary_only,
             include_relative_paths,
             source.payload.as_slice(),
         )?;
@@ -626,6 +638,8 @@ fn resolve_payload_signals(
     waveform: &SharedWaveform,
     host: &WaveformExprHost,
     scope: Option<&str>,
+    paths: &OutputPaths,
+    summary_only: bool,
     include_relative_paths: bool,
     payload: &[String],
 ) -> Result<Vec<PayloadSignal>, WavepeekError> {
@@ -639,7 +653,11 @@ fn resolve_payload_signals(
     selected
         .into_iter()
         .map(|selected| {
-            let display = display_signal_path(selected.path.as_str(), scope).to_string();
+            let (path, display) = if summary_only {
+                (selected.path.clone(), String::new())
+            } else {
+                paths.signal(&selected)?
+            };
             let relative_path = if include_relative_paths && scope.is_some() {
                 Some(display.clone())
             } else {
@@ -650,6 +668,7 @@ fn resolve_payload_signals(
                 .map_err(|diagnostic| expr_diagnostic(&selected.path, diagnostic))?;
             Ok(PayloadSignal {
                 display,
+                path,
                 relative_path,
                 selected,
                 handle,
@@ -859,7 +878,7 @@ fn build_payload_value(
         .collect::<String>();
     Ok(ExtractPayloadValue {
         display: requested.display.clone(),
-        path: requested.selected.path.clone(),
+        path: requested.path.clone(),
         relative_path: requested.relative_path.clone(),
         value: format_verilog_literal(requested.selected.width, &bits),
     })
@@ -921,6 +940,7 @@ mod tests {
         let mut sink = FailingSink(0);
         let error = run_with_sink(
             GenericArgs {
+                path_output: Default::default(),
                 waves: fixture.path().into(),
                 source: None,
                 from: None,
@@ -948,6 +968,7 @@ mod tests {
     #[test]
     fn cli_plan_defaults_source_name_and_payload_order() {
         let plan = build_plan(&GenericArgs {
+            path_output: Default::default(),
             waves: "dump.vcd".into(),
             source: None,
             from: None,

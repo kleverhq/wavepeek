@@ -1,3 +1,4 @@
+use super::output_paths::OutputPaths;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 
@@ -124,7 +125,7 @@ struct GenericToAxiSink<'a, S: AxiTransferSink + ?Sized> {
 }
 
 impl<S: AxiTransferSink + ?Sized> ExtractRowSink for GenericToAxiSink<'_, S> {
-    fn start(&mut self) -> Result<(), WavepeekError> {
+    fn start(&mut self, _scope: Option<&str>) -> Result<(), WavepeekError> {
         self.sink.start(self.context)
     }
 
@@ -1268,13 +1269,26 @@ fn run_with_sink<S: AxiTransferSink + ?Sized>(
     sink: &mut S,
 ) -> Result<AxiOutcome, WavepeekError> {
     let BuiltAxiPlan {
-        context,
+        mut context,
         plan,
         waveform,
         debug,
         payload_standards,
         diagnostics: build_diagnostics,
     } = build_axi_plan(&args)?;
+    let absolute_paths = args.abs || args.json || args.jsonl;
+    let paths = OutputPaths::new(
+        args.path_output.style(),
+        args.scope.as_deref(),
+        absolute_paths,
+    )?;
+    paths.style_mappings(
+        &waveform.borrow(),
+        context
+            .mappings
+            .iter_mut()
+            .map(|mapping| (&mut mapping.path, &mut mapping.display)),
+    )?;
     let mut generic_sink = GenericToAxiSink {
         context: &context,
         payload_standards: &payload_standards,
@@ -1289,6 +1303,9 @@ fn run_with_sink<S: AxiTransferSink + ?Sized>(
             to: args.to,
             scope: args.scope,
             max: args.max,
+            path_style: args.path_output.style(),
+            absolute_paths,
+            summary_only: args.summary,
             include_relative_paths: false,
         },
         plan,

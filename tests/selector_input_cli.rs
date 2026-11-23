@@ -229,3 +229,280 @@ fn scoped_protocol_maps_format_resolved_escaped_leaves() {
         previous_human = Some((output.stdout, output.stderr));
     }
 }
+
+#[test]
+fn path_style_preserves_comma_lists_and_indexed_projection_identity() {
+    let fixture = SELECTORS
+        .replace(
+            "$scope module \\a.b $end",
+            "$var wire 8 & mem[0] [7:0] $end\n\
+         $var wire 4 ' \\mem[0][3:0] $end\n\
+         $scope module \\a.b $end",
+        )
+        .replace("0$\n", "0$\nb10110101 &\nb1111 '\n");
+    let waves = write_fixture(&fixture, ".vcd");
+    let selection = concat!(
+        r#"top."mem"[0][3:0],top.\comma,name ,top."mem[0][3:0]","#,
+        r#"top.mem[0],top."mem[0][3:0]"[1:0]"#,
+    );
+
+    for (style, expected) in [
+        (
+            "logical",
+            [
+                r#"top."mem"[0][3:0]"#,
+                r#"top."comma,name""#,
+                r#"top."mem[0][3:0]""#,
+                "top.mem[0]",
+                r#"top."mem[0][3:0]"[1:0]"#,
+            ],
+        ),
+        (
+            "sv",
+            [
+                r"top.\mem [0][3:0]",
+                r"top.\comma,name ",
+                r"top.\mem[0][3:0] ",
+                "top.mem[0]",
+                r"top.\mem[0][3:0] [1:0]",
+            ],
+        ),
+    ] {
+        let result = run_json(
+            waves.path(),
+            &[
+                "value",
+                "--at",
+                "0ns",
+                "--signals",
+                selection,
+                "--path-style",
+                style,
+            ],
+        );
+        let rows = result["data"][0]["signals"].as_array().unwrap();
+        assert_eq!(rows.len(), expected.len());
+        for ((row, path), value) in rows
+            .iter()
+            .zip(expected)
+            .zip(["4'h5", "8'hca", "4'hf", "8'hb5", "2'h3"])
+        {
+            assert_eq!(*row, json!({"path": path, "value": value}));
+        }
+        let repeated = run_json(
+            waves.path(),
+            &[
+                "value",
+                "--at",
+                "0ns",
+                "--signals",
+                &expected.join(","),
+                "--path-style",
+                style,
+            ],
+        );
+        assert_eq!(result, repeated);
+
+        let result = run_json(
+            waves.path(),
+            &[
+                "extract",
+                "generic",
+                "--scope",
+                "top",
+                "--on",
+                "posedge clk",
+                "--when",
+                "1",
+                "--payload",
+                selection,
+                "--path-style",
+                style,
+            ],
+        );
+        for (index, row) in result["data"][0]["payload"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .enumerate()
+        {
+            assert_eq!(row["path"], rows[index]["path"]);
+            assert_eq!(row["value"], rows[index]["value"]);
+            assert_eq!(
+                row["relative_path"],
+                expected[index].strip_prefix("top.").unwrap()
+            );
+        }
+        let change = run_json(
+            waves.path(),
+            &[
+                "change",
+                "--on",
+                "posedge top.clk",
+                "--signals",
+                selection,
+                "--sample-mode",
+                "pre-edge",
+                "--path-style",
+                style,
+            ],
+        );
+        assert_eq!(change["data"][0]["signals"].as_array().unwrap(), rows);
+    }
+}
+
+#[test]
+fn apb_styles_mappings_and_human_payload_without_changing_machine_rows() {
+    let source = std::fs::read_to_string(fixture_path("extract_apb4.vcd")).unwrap();
+    let waves = write_fixture(&source.replace("uart_apb_pwdata_o", r"\write.data"), ".vcd");
+    let mut args = vec![
+        "extract",
+        "apb",
+        "--scope",
+        "top",
+        "--profile",
+        "apb4",
+        "--include",
+        "^uart_apb_(p_clk_i|presetn_i|psel_o|penable_o|pwrite_o|pready_i|p_addr_o|pprot_o|pstrb_o|prdata_i|pslverr_i)$",
+        "--map",
+        r#"pwdata="write.data""#,
+        "--abs",
+    ];
+    let logical = run_json(waves.path(), &args);
+    args.extend(["--path-style", "sv"]);
+    let sv = run_json(waves.path(), &args);
+    assert_eq!(
+        logical["context"]["mappings"]["pwdata"]["path"],
+        r#"top."write.data""#
+    );
+    assert_eq!(
+        sv["context"]["mappings"]["pwdata"]["path"],
+        r"top.\write.data "
+    );
+    assert_eq!(sv["data"], logical["data"]);
+    assert!(
+        sv["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["payload"]["pwdata"].is_string())
+    );
+    let stream = wavepeek_cmd()
+        .args(&args)
+        .arg("--jsonl")
+        .arg("--waves")
+        .arg(waves.path())
+        .output()
+        .unwrap();
+    assert!(stream.status.success());
+    let records = String::from_utf8(stream.stdout).unwrap();
+    let records = records
+        .lines()
+        .map(|line| serde_json::from_str::<Value>(line).unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(records[0]["context"], sv["context"]);
+    let rows = records
+        .iter()
+        .filter(|record| record["type"] == "data")
+        .map(|record| &record["data"]);
+    assert!(rows.eq(sv["data"].as_array().unwrap()));
+    let output = wavepeek_cmd()
+        .args(args)
+        .arg("--waves")
+        .arg(waves.path())
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("pwdata = top.\\write.data \n"));
+    assert!(stdout.contains("top.\\write.data =8'h"));
+}
+
+#[test]
+fn indexed_paths_from_output_can_be_used_in_event_and_logical_expressions() {
+    let waves = write_fixture(
+        "$timescale 1ns $end\n\
+         $scope module top $end\n$var wire 1 ! clk $end\n\
+         $scope module logic[0] $end\n$var wire 1 \" q $end\n$var wire 2 # bus [1:0] $end\n\
+         $upscope $end\n$upscope $end\n$enddefinitions $end\n\
+         #0\n0!\n0\"\nb10 #\n#5\n1!\n1\"\n",
+        ".vcd",
+    );
+    let sampled = run_json(
+        waves.path(),
+        &[
+            "value",
+            "--at",
+            "0ns",
+            "--signals",
+            "top.logic[0].q",
+            "--path-style",
+            "sv",
+        ],
+    );
+    let sv = sampled["data"][0]["signals"][0]["path"].as_str().unwrap();
+    assert_eq!(sv, r"top.\logic [0].q");
+    for path in ["top.logic[0].q", r#"top."logic"[0].q"#, sv] {
+        let change = run_json(
+            waves.path(),
+            &[
+                "change",
+                "--on",
+                &format!("posedge {path}"),
+                "--sample-mode",
+                "native",
+                "--signals",
+                path,
+                "--path-style",
+                "sv",
+            ],
+        );
+        assert_eq!(change["data"][0]["time"], "5ns");
+        assert_eq!(
+            change["data"][0]["signals"][0],
+            json!({"path": sv, "value": "1'h1"})
+        );
+        let extracted = run_json(
+            waves.path(),
+            &[
+                "extract",
+                "generic",
+                "--on",
+                "posedge top.clk",
+                "--when",
+                &format!(
+                    "{}.bus[0] == 1'b0 && {path} == 0",
+                    path.strip_suffix(".q").unwrap()
+                ),
+                "--payload",
+                path,
+            ],
+        );
+        assert_eq!(extracted["data"][0]["payload"][0]["value"], "1'h0");
+    }
+}
+
+#[test]
+fn axistream_path_style_preserves_automatic_real_predicate_mapping() {
+    let waves = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n\
+         $var wire 1 ! aclk $end\n$var real 1 \" tvalid $end\n\
+         $var wire 1 # tready $end\n$var wire 8 % tdata [7:0] $end\n\
+         $upscope $end\n$enddefinitions $end\n#0\n0!\nr1 \"\n1#\nb10101010 %\n#5\n1!\n",
+        ".vcd",
+    );
+    let mut args = vec![
+        "extract",
+        "axistream",
+        "--include",
+        "^(aclk|tvalid|tready|tdata)$",
+    ];
+    let logical = run_json(waves.path(), &args);
+    assert_eq!(
+        logical["context"]["mappings"]["tvalid"]["path"],
+        "top.tvalid"
+    );
+    assert_eq!(logical["data"][0]["payload"]["tdata"], "8'haa");
+    args.extend(["--path-style", "sv"]);
+    assert_eq!(run_json(waves.path(), &args), logical);
+}

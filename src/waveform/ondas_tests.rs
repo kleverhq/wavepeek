@@ -166,13 +166,13 @@ fn global_matching_preserves_scope_order_and_split_width() {
         "global-array.vcd",
     );
     let waveform = Waveform::open(fixture.path()).unwrap();
-    let entries = waveform.matching_signals(|_, name| name == r#""memory[0]""#);
+    let entries = waveform.matching_signals(|_, name| name == "memory[0]");
     assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].path, r#"top."memory[0]""#);
+    assert_eq!(entries[0].path, "top.memory[0]");
     assert_eq!(entries[0].width, Some(8));
     waveform.signals_in_scope("top").unwrap();
     assert_eq!(
-        waveform.matching_signals(|_, name| name == r#""memory[0]""#),
+        waveform.matching_signals(|_, name| name == "memory[0]"),
         entries
     );
 }
@@ -648,7 +648,7 @@ fn inline_indices_without_range_metadata_remain_exact_declarations() {
             .iter()
             .map(|entry| entry.path.as_str())
             .collect::<Vec<_>>(),
-        [r#"top."split[0]""#, r#"top."split[1]""#]
+        ["top.split[0]", "top.split[1]"]
     );
     assert!(waveform.resolve_signals(&["top.split".into()]).is_err());
     for entry in signals {
@@ -782,13 +782,13 @@ fn indexed_names_use_public_exact_path_spelling() {
     let wave = ondas::open(fixture.path()).unwrap();
     let variable = wave.hierarchy().variables().next().unwrap();
     let direct = variable.path().to_string();
-    assert_eq!(direct, r#"top."memory[0]""#);
+    assert_eq!(direct, "top.memory[0]");
     let backend = OndasBackend::open(fixture.path()).unwrap();
     assert_eq!(backend.signals_in_scope("top").unwrap()[0].path, direct);
 }
 
 #[test]
-fn fst_batch_array_alias_remains_ambiguous() {
+fn fst_indexed_declaration_and_nested_bracket_name_remain_distinct() {
     let source = write_fixture(
         "$timescale 1ns $end\n$scope module top $end\n$var wire 8 ! memory[0] [7:0] $end\n$scope module memory $end\n$var wire 8 \" [0] [7:0] $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\nb00000001 !\nb00000010 \"\n",
         "collision.vcd",
@@ -804,7 +804,7 @@ fn fst_batch_array_alias_remains_ambiguous() {
             .success()
     );
     let mut backend = OndasBackend::open(&fst).unwrap();
-    let paths = [r#"top."memory[0]""#.into(), r#"top.memory."[0]""#.into()];
+    let paths = ["top.memory[0]".into(), r#"top.memory."[0]""#.into()];
     let signals = backend.resolve_signals(&paths).unwrap();
     let values = backend.sample_resolved_optional(&signals, 0).unwrap();
     assert_eq!(values[0].bits.as_deref(), Some("00000001"));
@@ -1428,8 +1428,8 @@ fn unpacked_array_names_preserve_public_scope_components() {
     );
     let mut waveform = Waveform::open(fixture.path()).unwrap();
     for (path, expected) in [
-        (r#"top."memory[0]""#, "00000001"),
-        (r#"top."memory[1]""#, "00000010"),
+        ("top.memory[0]", "00000001"),
+        ("top.memory[1]", "00000010"),
         (r#"top."matrix[2][3]""#, "00000011"),
     ] {
         let signal = waveform.resolve_expr_signal(path).unwrap();
@@ -1447,7 +1447,7 @@ fn unpacked_array_names_preserve_public_scope_components() {
             .iter()
             .map(|entry| entry.name.as_str())
             .collect::<Vec<_>>(),
-        [r#""matrix[2][3]""#, r#""memory[0]""#, r#""memory[1]""#]
+        [r#""matrix[2][3]""#, "memory[0]", "memory[1]"]
     );
 }
 
@@ -1864,13 +1864,8 @@ fn selectors_keep_scopes_indexed_bases_and_literal_priority() {
     );
     let mut backend = OndasBackend::open(fixture.path()).unwrap();
     for (selector, scope, path, bits) in [
-        ("mem[0][7:4]", Some("top"), r#"top."mem[0]"[7:4]"#, "1010"),
-        (
-            "top.mem[0][7:4]",
-            Some("top"),
-            r#"top."mem[0]"[7:4]"#,
-            "1010",
-        ),
+        ("mem[0][7:4]", Some("top"), "top.mem[0][7:4]", "1010"),
+        ("top.mem[0][7:4]", Some("top"), "top.mem[0][7:4]", "1010"),
         ("data[3:0]", Some("top"), r#"top."data[3:0]""#, "1010"),
         (r#""data"[3:0]"#, Some("top"), r#"top."data"[3:0]"#, "0000"),
         (r#"flag"#, Some(r#"top."a.b""#), r#"top."a.b".flag"#, "1"),

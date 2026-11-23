@@ -6,6 +6,7 @@ pub mod change;
 pub mod extract;
 pub mod info;
 pub mod limits;
+pub(crate) mod path_style;
 pub mod property;
 pub mod sampling;
 pub mod scope;

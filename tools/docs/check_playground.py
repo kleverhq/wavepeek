@@ -193,7 +193,7 @@ def check(site: pathlib.Path, native_bin: pathlib.Path) -> None:
                 assert status == 0 and not stderr
                 rows = json.loads(stdout)["data"]
                 assert len(rows) == 3 and rows[0] == rows[2]
-                assert rows[1]["signals"][0]["path"] == 'top."mem[0]"[7:4]'
+                assert rows[1]["signals"][0]["path"] == "top.mem[0][7:4]"
                 assert rows[1]["signals"][0]["value"] == "4'h5"
 
             assert not [

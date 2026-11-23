@@ -11,7 +11,7 @@ mod ondas_backend;
 mod ondas_error;
 pub(crate) mod selection;
 mod types;
-pub(crate) use selection::format_path;
+pub(crate) use selection::{SelectorPath, format_path};
 
 use std::cell::RefCell;
 #[cfg(test)]
@@ -255,6 +255,15 @@ impl Waveform {
             .map_err(ondas_backend::SignalResolutionError::into_error)
     }
 
+    pub(crate) fn resolve_selector_path(
+        &self,
+        canonical: &str,
+    ) -> Result<SelectorPath, WavepeekError> {
+        self.backend
+            .resolve_selector_path(canonical)
+            .map_err(ondas_backend::SignalResolutionError::into_error)
+    }
+
     pub(crate) fn resolve_expr_signal_with_diagnostic(
         &self,
         selector: &str,
@@ -287,8 +296,9 @@ impl Waveform {
         let Ok(listing) = self.signal_candidates(scope, recursive) else {
             return failure.into_error();
         };
-        let basename = path.name().unwrap_or_default();
-        let basename_chars = format_path(&ondas::HierarchyPath::from_components([basename]))
+        let leaf = path.components().last();
+        let basename = leaf.map(selection::component_spelling).unwrap_or_default();
+        let basename_chars = format_path(&ondas::HierarchyPath::from_components(leaf))
             .chars()
             .collect::<Vec<_>>();
         let max_distance = if basename_chars.len() <= 3 { 1 } else { 2 };

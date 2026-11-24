@@ -141,6 +141,8 @@ def check(site: pathlib.Path, native_bin: pathlib.Path) -> None:
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch()
             page = browser.new_page()
+            # Keep the local smoke test independent of remote assets such as fonts.
+            page.route(lambda url: not url.startswith(f"{origin}/"), lambda route: route.abort())
             page.goto(root, wait_until="networkidle")
             page.locator("#source-status").filter(has_text="Ready").wait_for()
 

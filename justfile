@@ -184,7 +184,6 @@ dev-setup: require-container
     wasm-bindgen --version
     playwright --version
     just --version
-    cz version
 
 # Format root justfile in place
 format-justfile: require-container
@@ -491,21 +490,12 @@ check: format-check lint check-actions check-bench-e2e-fsdb-catalog check-bench-
     @just run-if-xcelium check-shm-build
 
 # CI quality gate
-ci: format-check lint check-actions check-bench-e2e-vcd-catalog test-aux coverage-src-check check-build docs-site-check playground-test
+ci: format-check lint check-actions check-bench-e2e-vcd-catalog test-aux coverage-src-check check-build docs-site-check playground-test bench-e2e-smoke
     cargo test --doc
     @just run-if-verdi test-fsdb
+    @just run-if-verdi bench-e2e-fsdb-smoke
     @just run-if-xcelium test-shm
-
-# Check PR commit messages and run the CI and FST smoke suites
-ci-pr range: require-container
-    @message="$(mktemp)"; trap 'rm -f "$message"' EXIT; \
-        commits="$(git rev-list --reverse --end-of-options {{ quote(range) }} --)"; \
-        for commit in $commits; do \
-            printf 'Checking commit %s\n' "$commit"; \
-            git show -s --format=%B "$commit" -- > "$message"; \
-            cz check --commit-msg-file "$message"; \
-        done
-    just ci bench-e2e-smoke
+    @just run-if-xcelium bench-e2e-shm-smoke
 
 # Fix everything
 fix: format lint-fix

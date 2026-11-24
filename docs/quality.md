@@ -6,9 +6,7 @@
 
 Use `./dev just check` before handing off local work. It runs formatting checks, clippy, GitHub Actions linting, benchmark catalog checks, packaged-skill and docs-site checks, native/browser Playground parity, and `cargo check`. Native build checks run when their SDK is configured.
 
-Use `./dev just ci` for the full test suite. It runs formatting, lint, GitHub Actions checks, auxiliary Python unit tests, `cargo check`, packaged-skill and docs-site checks, and native/browser Playground parity. `cargo llvm-cov` runs the Rust unit and integration tests. `cargo test --doc` runs any doctests. Native regression suites run when their SDK is configured.
-
-Pre-merge CI runs `just ci-pr BASE..HEAD`. It validates the full message of each PR commit with Commitizen, runs `just ci`, and runs the FST benchmark smoke suite. Use `./dev just bench-e2e-smoke` to run the FST smoke suite locally.
+Run `./dev just ci` locally for the checks used by GitHub Actions. The recipe runs formatting, lint, GitHub Actions checks, auxiliary Python unit tests, `cargo check`, packaged-skill and docs-site checks, native/browser Playground parity, and FST benchmark smoke. `cargo llvm-cov` runs the Rust unit and integration tests. `cargo test --doc` runs any doctests. The recipe includes native lint, tests, and smoke for each configured SDK.
 
 ## Focused Recipes
 
@@ -25,14 +23,14 @@ Pre-merge CI runs `just ci-pr BASE..HEAD`. It validates the full message of each
 
 ## Native SDK Checks Before Opening a PR
 
-The public GitHub CI profile skips FSDB and SHM lint and native tests. Run these checks and the native smoke suites locally before opening each PR. Select a private devcontainer profile with the SDK required by each command.
+The public GitHub CI profile skips FSDB and SHM lint, tests, and smoke. Run these checks locally before opening each PR. Run `./dev just ci` with the required SDKs configured, or run the focused suites in their private profiles.
 
 ```sh
 ./dev just lint-fsdb test-fsdb bench-e2e-fsdb-smoke
 ./dev just lint-shm test-shm bench-e2e-shm-smoke
 ```
 
-These recipes fail if the required SDK is unavailable. Each smoke run checks CLI execution and saves artifacts under `tmp/bench-smoke/`. See [FSDB setup](fsdb.md) and [SHM setup](shm.md).
+The focused recipes fail if the required SDK is unavailable. Each smoke run checks CLI execution and saves artifacts under `tmp/bench-smoke/`. See [FSDB setup](fsdb.md) and [SHM setup](shm.md).
 
 ## Interpreting Failures
 

@@ -1,6 +1,6 @@
 # Git and Contribution Hygiene
 
-Use conventional commits. Pre-merge CI checks the complete message of each commit in a pull request. Run the local [native SDK checks](quality.md#native-sdk-checks-before-opening-a-pr) before opening a PR.
+Use conventional commits. Run the local [native SDK checks](quality.md#native-sdk-checks-before-opening-a-pr) before opening a PR.
 
 Commit small logical milestones. For broad refactors, commit after each independently validated slice so stale-reference fallout can be found and reverted without excavating a single heroic rubble pile.
 

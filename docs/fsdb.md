@@ -63,7 +63,7 @@ The main gates are FSDB-aware but not Verdi-mandatory:
 - `just lint` runs `just lint-fsdb` when Verdi is available.
 - `just check` runs `just check-fsdb-build` when Verdi is available.
 - `just test` and `just ci` run `just test-fsdb` when Verdi is available; this path prepares only FSDB test fixtures derived from the VCD fixtures under `tests/fixtures/hand/` and `tests/fixtures/generated/`.
-- `just bench-e2e-fsdb-smoke` requires Verdi and prepares the RTL inputs for the selected smoke scenarios. See [quality.md](quality.md) for the pre-PR checks.
+- `just ci` also runs `just bench-e2e-fsdb-smoke` when Verdi is available. The smoke recipe prepares the RTL inputs for its selected scenarios. See [quality.md](quality.md) for the pre-PR checks.
 
 When Verdi is absent, the wrapper prints the `skip: fsdb: ...` message from `tools/fsdb/check_fsdb_env.py` and continues. If Verdi-related environment variables are set but inconsistent, the gates fail instead of silently skipping.
 

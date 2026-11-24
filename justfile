@@ -2,7 +2,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 
 export ONDAS_FIXTURES_DIR := `. ./.devcontainer/env_contract.sh; printf '%s\n' "$ONDAS_FIXTURES_DIR"`
 bench_e2e_fsdb_tests := "bench/e2e/tests_fsdb.json"
-bench_e2e_fsdb_smoke_filter := "^(info_picorv32_ez|scope_scr1_all_depth7_json|signal_scr1_top_recursive_depth2_json|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$"
+bench_e2e_native_smoke_filter := "^(info_picorv32_ez|scope_scr1_all_depth7_json|signal_scr1_top_recursive_depth2_json|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$"
 bench_e2e_fsdb_smoke_artifact_filter := "^(fst0012-picorv32-test-ez-vcd|fst0027-scr1-max-axi-riscv-compliance)$"
 wavepeek_release_bin := "./target/release/wavepeek"
 wavepeek_fsdb_release_bin := "./target/fsdb/release/wavepeek"
@@ -91,11 +91,9 @@ test-shm: prepare-shm-test-fixtures
 bench-e2e-shm-run filter="": (prepare-shm-fixtures filter) build-release-shm
     bash tools/shm/with_shm_env.sh {{ python }} bench/e2e/perf.py run --binary subject=./target/shm/release/wavepeek --tests bench/e2e/tests_shm.json --filter '{{ filter }}'
 
-[private]
-bench-e2e-shm-smoke-commit: (prepare-shm-fixtures bench_e2e_fsdb_smoke_filter) build-release-shm
-    @mkdir -p tmp/shm-smoke; \
-    run_dir="$(mktemp -d tmp/shm-smoke/run.XXXXXXXX)"; trap 'rm -rf "$run_dir"' EXIT; \
-    bash tools/shm/with_shm_env.sh {{ python }} bench/e2e/perf.py run --binary subject=./target/shm/release/wavepeek --tests bench/e2e/tests_shm.json --run-dir "$run_dir" --filter '{{ bench_e2e_fsdb_smoke_filter }}'
+# Run selected SHM benchmark smoke scenarios
+bench-e2e-shm-smoke: (prepare-shm-fixtures bench_e2e_native_smoke_filter) build-release-shm
+    bash tools/shm/with_shm_env.sh {{ python }} bench/e2e/perf.py run --binary subject=./target/shm/release/wavepeek --tests bench/e2e/tests_shm.json --out-dir tmp/bench-smoke/shm --filter '{{ bench_e2e_native_smoke_filter }}' --fail-fast --verbose
 
 [private]
 run-if-verdi recipe: require-container
@@ -187,7 +185,6 @@ dev-setup: require-container
     playwright --version
     just --version
     cz version
-    pre-commit --version
 
 # Format root justfile in place
 format-justfile: require-container
@@ -281,12 +278,12 @@ prepare-and-check-fsdb-ondas-fixtures: require-verdi
     just prepare-fsdb-fixtures
     {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}"
 
-# Prepare and verify only FSDB RTL artifacts required by the pre-commit smoke
+# Prepare and verify the FSDB RTL artifacts required by benchmark smoke
 prepare-and-check-fsdb-smoke-ondas-fixtures: require-verdi
     just check-ondas-fixtures
     just check-bench-e2e-fsdb-catalog
     bash tools/fsdb/prepare_fsdb_fixtures.sh --rtl-only --rtl-filter '{{ bench_e2e_fsdb_smoke_artifact_filter }}'
-    {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}" --filter '{{ bench_e2e_fsdb_smoke_filter }}'
+    {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}" --filter '{{ bench_e2e_native_smoke_filter }}'
 
 # Build release binary with optional FSDB support
 build-release-fsdb: require-verdi
@@ -480,37 +477,35 @@ bench-e2e-vcd-run: prepare-vcd-ondas-fixtures prepare-waveform-fixtures build-re
 bench-e2e-fsdb-run: prepare-and-check-fsdb-ondas-fixtures build-release-fsdb
     {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_fsdb_release_bin }}" --tests "{{ bench_e2e_fsdb_tests }}"
 
-# Run lightweight benchmark e2e smoke for pre-commit
-[private]
-bench-e2e-smoke-commit: check-ondas-fixtures build-release
-    @tmp_revised="$(mktemp -d)"; trap 'rm -rf "$tmp_revised"' EXIT; \
-        {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}" --tests bench/e2e/tests_commit.json --run-dir "$tmp_revised"
-    @just run-if-verdi bench-e2e-fsdb-smoke-commit
-    @just run-if-xcelium bench-e2e-shm-smoke-commit
+# Run the FST benchmark smoke suite
+bench-e2e-smoke: check-ondas-fixtures build-release
+    {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}" --tests bench/e2e/tests_smoke.json --out-dir tmp/bench-smoke/fst --fail-fast --verbose
 
-# Run lightweight FSDB benchmark e2e smoke for pre-commit
-[private]
-bench-e2e-fsdb-smoke-commit: prepare-and-check-fsdb-smoke-ondas-fixtures build-release-fsdb
-    @tmp_revised="$(mktemp -d)"; trap 'rm -rf "$tmp_revised"' EXIT; \
-        {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_fsdb_release_bin }}" --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "$tmp_revised" --filter '{{ bench_e2e_fsdb_smoke_filter }}'
-
-# Run pre-commit hooks on all files
-pre-commit: require-container check-ondas-fixtures prepare-waveform-fixtures
-    pre-commit run --all-files
-
-# Check a commit message, defaulting to Git's standard message file
-check-commit message=`git rev-parse --git-path COMMIT_EDITMSG`: require-container
-    cz check --commit-msg-file {{ quote(message) }}
+# Run selected FSDB benchmark smoke scenarios
+bench-e2e-fsdb-smoke: prepare-and-check-fsdb-smoke-ondas-fixtures build-release-fsdb
+    {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_fsdb_release_bin }}" --tests "{{ bench_e2e_fsdb_tests }}" --out-dir tmp/bench-smoke/fsdb --filter '{{ bench_e2e_native_smoke_filter }}' --fail-fast --verbose
 
 # Check everything
-check: format-check lint check-actions check-bench-e2e-fsdb-catalog check-bench-e2e-vcd-catalog check-bench-e2e-shm-catalog check-build docs-site-check playground-test check-commit
+check: format-check lint check-actions check-bench-e2e-fsdb-catalog check-bench-e2e-vcd-catalog check-bench-e2e-shm-catalog check-build docs-site-check playground-test
     @just run-if-verdi check-fsdb-build
     @just run-if-xcelium check-shm-build
 
-# CI quality gate (no commit-msg hook)
+# CI quality gate
 ci: format-check lint check-actions check-bench-e2e-vcd-catalog test-aux coverage-src-check check-build docs-site-check playground-test
+    cargo test --doc
     @just run-if-verdi test-fsdb
     @just run-if-xcelium test-shm
+
+# Check PR commit messages and run the CI and FST smoke suites
+ci-pr range: require-container
+    @message="$(mktemp)"; trap 'rm -f "$message"' EXIT; \
+        commits="$(git rev-list --reverse --end-of-options {{ quote(range) }} --)"; \
+        for commit in $commits; do \
+            printf 'Checking commit %s\n' "$commit"; \
+            git show -s --format=%B "$commit" -- > "$message"; \
+            cz check --commit-msg-file "$message"; \
+        done
+    just ci bench-e2e-smoke
 
 # Fix everything
 fix: format lint-fix

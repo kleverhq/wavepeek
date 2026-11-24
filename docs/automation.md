@@ -6,8 +6,8 @@ Repository automation is exposed through the root `justfile`. Prefer invoking `j
 
 Run container commands from the host through `./dev`.
 
-- `./dev just dev-setup` verifies the development container; host `./dev --install-hooks` explicitly installs reviewed hook copies.
-- `./dev just check`, `./dev just ci`, and `./dev just pre-commit` are the main quality gates.
+- `./dev just dev-setup` verifies the development container.
+- `./dev just check` and `./dev just ci` are the main local quality gates. See [quality.md](quality.md) for native checks before opening a PR.
 - `just prepare-waveform-fixtures` regenerates ignored VCD/FST fixtures under `tests/fixtures/generated/` from `tests/fixtures/source/` and documented hand-derived outputs.
 - `just playground-build` builds the current browser app; `just playground-preview-build`, `just playground-test`, and `just playground-serve` compose it with current documentation under `/wavepeek/latest/` for local checks and inspection.
 - `just docs-site-build`, `just docs-site-check`, `just docs-site-stage-deploy`, `just docs-site-push-staged`, and `just docs-site-check-deploy` own GitHub Pages documentation and current-Playground publication.
@@ -20,14 +20,14 @@ Root `./dev` manages a container per worktree and configuration. Profile selecti
 
 GitHub Actions uses `.devcontainer/devcontainer.json` directly. Workflows use job-scoped runner authentication when required; the development container does not provision local credentials.
 
-## Workflows and Hooks
+## Workflows
 
-GitHub Actions workflows live under `.github/workflows/`. Pre-merge CI runs only for pull requests targeting `main` or `dev*` branches. The release workflow validates stable `vX.Y.Z` tag/version agreement, runs `just ci` and `cargo package --locked` in the shared devcontainer, uses `cargo-dist` to build VCD/FST binary archives, installers, checksums, and attestations, creates the GitHub Release, then dispatches docs and crates.io publication on the default branch. The docs workflow is manual-only, uses trusted tooling from `main`, builds the current browser Playground from the release tag, downloads installer assets from the created GitHub Release, stages the `gh-pages` update without persisted contents-write checkout credentials, pushes only after verifying the staged bundle in a separate job, and deploys the verified tree through GitHub Pages Actions rather than relying on a branch-push Pages build. Mike accumulates documentation versions; only a promoted latest release replaces the non-versioned root Playground. The crate publication workflow is manual-only, uses trusted tooling from `main`, checks out release source through `refs/tags/<tag>`, and treats already-published crates.io versions as a successful no-op.
+GitHub Actions workflows live under `.github/workflows/`. Pre-merge CI runs `just ci-pr` for pull requests targeting `main` or `dev*` branches. It tests GitHub's merge checkout and validates commit messages in the PR's base-to-head range.
 
-Pre-commit configuration lives in `.pre-commit-config.yaml`, and the reviewed host dispatcher lives at `tools/repo/git-hook`. `./dev --install-hooks` copies the dispatcher and `./dev` into the current worktree's Git directory; hooks then use only `./dev --exec-only` and require that worktree's container to be running. Hooks should stay deterministic, non-interactive, and wired through `just` where possible.
+The release workflow validates stable `vX.Y.Z` tag/version agreement, runs `just ci` and `cargo package --locked` in the shared devcontainer, uses `cargo-dist` to build VCD/FST binary archives, installers, checksums, and attestations, creates the GitHub Release, then dispatches docs and crates.io publication on the default branch. The docs workflow is manual-only, uses trusted tooling from `main`, builds the current browser Playground from the release tag, downloads installer assets from the created GitHub Release, stages the `gh-pages` update without persisted contents-write checkout credentials, pushes only after verifying the staged bundle in a separate job, and deploys the verified tree through GitHub Pages Actions rather than relying on a branch-push Pages build. Mike accumulates documentation versions; only a promoted latest release replaces the non-versioned root Playground. The crate publication workflow is manual-only, uses trusted tooling from `main`, checks out release source through `refs/tags/<tag>`, and treats already-published crates.io versions as a successful no-op.
 
 ## Helper Tool Layout
 
 Helper implementation code belongs in grouped root `tools/` directories with short READMEs and local tests when applicable. The stable interface remains the `just` recipe or workflow step, not an undocumented helper path. Keep helper stdout/stderr stable and return explicit non-zero exits on failure. Waveform fixture generation lives under `tools/waveform/`. Benchmark gate helpers live under `tools/bench/`. Docs-site helpers live under `tools/docs/`; `prepare_mkdocs.py` stages versioned packaged references, `prepare_playground.py` stages the current root app, `check_playground.py` checks the composed local site plus browser parity/privacy, `publish_docs.py` separates local check, staged deploy, and push-only verification, and `check_deploy.py` verifies published Pages state plus one browser/WASM smoke command after deployment.
 
-During path moves, update `justfile`, affected workflow YAML, hooks, docs, and helper tests in the same change.
+During path moves, update `justfile`, affected workflow YAML, docs, and helper tests in the same change.

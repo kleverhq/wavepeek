@@ -10,7 +10,7 @@ Normal entrypoints:
     just update-bench-e2e-fsdb-catalog
     just check-bench-e2e-fsdb-catalog
     just test-fsdb
-    just bench-e2e-fsdb-smoke-commit
+    just bench-e2e-fsdb-smoke
 
 Focused tests:
 

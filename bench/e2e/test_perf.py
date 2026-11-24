@@ -5,6 +5,9 @@ import io
 import json
 import os
 import pathlib
+import shlex
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -147,8 +150,8 @@ class PerfHelpersTest(unittest.TestCase):
         default_args = parser.parse_args(["list"])
         self.assertEqual(default_args.tests, str(perf.TESTS_PATH))
 
-        override_args = parser.parse_args(["list", "--tests", "bench/e2e/tests_commit.json"])
-        self.assertEqual(override_args.tests, "bench/e2e/tests_commit.json")
+        override_args = parser.parse_args(["list", "--tests", "bench/e2e/tests_smoke.json"])
+        self.assertEqual(override_args.tests, "bench/e2e/tests_smoke.json")
 
     def test_run_parser_tests_flag_defaults_and_override(self) -> None:
         parser = perf.build_parser()
@@ -156,8 +159,8 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertEqual(default_args.tests, str(perf.TESTS_PATH))
         self.assertEqual(default_args.schedule, "round-robin")
 
-        override_args = parser.parse_args(["run", "--tests", "bench/e2e/tests_commit.json"])
-        self.assertEqual(override_args.tests, "bench/e2e/tests_commit.json")
+        override_args = parser.parse_args(["run", "--tests", "bench/e2e/tests_smoke.json"])
+        self.assertEqual(override_args.tests, "bench/e2e/tests_smoke.json")
 
     def test_parse_binary_specs_requires_explicit_labeled_binaries(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -331,9 +334,9 @@ class PerfHelpersTest(unittest.TestCase):
                 perf.load_tests(tests_path)
         self.assertIn("error: tests: invalid JSON", str(error.exception))
 
-    def test_tests_commit_catalog_exact_subset_and_distribution(self) -> None:
+    def test_tests_smoke_catalog_exact_subset_and_distribution(self) -> None:
         payload = json.loads(
-            (perf.SCRIPT_DIR / "tests_commit.json").read_text(encoding="utf-8")
+            (perf.SCRIPT_DIR / "tests_smoke.json").read_text(encoding="utf-8")
         )
         tests = payload["tests"]
         names = [test["name"] for test in tests]
@@ -394,7 +397,7 @@ class PerfHelpersTest(unittest.TestCase):
             parts = trigger.split()
             return bool(parts) and parts[0] in {"posedge", "negedge", "edge"}
 
-        for catalog in ("tests.json", "tests_commit.json", "tests_fsdb.json"):
+        for catalog in ("tests.json", "tests_smoke.json", "tests_fsdb.json"):
             payload = json.loads((perf.SCRIPT_DIR / catalog).read_text(encoding="utf-8"))
             for test in payload["tests"]:
                 command = test["command"]
@@ -516,10 +519,10 @@ class PerfHelpersTest(unittest.TestCase):
             },
         )
 
-    def test_tests_commit_catalog_commands_match_tests_json(self) -> None:
+    def test_tests_smoke_catalog_commands_match_tests_json(self) -> None:
         full_payload = json.loads((perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8"))
         commit_payload = json.loads(
-            (perf.SCRIPT_DIR / "tests_commit.json").read_text(encoding="utf-8")
+            (perf.SCRIPT_DIR / "tests_smoke.json").read_text(encoding="utf-8")
         )
 
         full_by_name = {
@@ -808,7 +811,7 @@ class PerfHelpersTest(unittest.TestCase):
             tests = [self._sample_test("a"), self._sample_test("b")]
             order: list[tuple[str, str]] = []
 
-            def fake_run_test(test, label_dir, wavepeek_bin, timeout_seconds, verbose):
+            def fake_run_test(test, label_dir, wavepeek_bin, timeout_seconds, verbose, *, fail_on_timeout):
                 order.append((str(test["name"]), pathlib.Path(label_dir).name))
 
             with (
@@ -893,6 +896,21 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertTrue(good_wavepeek_exists)
         self.assertEqual(run_test_count, 1)
         self.assertEqual(run_test_name, "good")
+
+    def test_timed_benchmark_timeout_status(self) -> None:
+        for strict, expected_status in ((False, 0), (True, 124)):
+            with self.subTest(strict=strict):
+                command = perf.build_timed_benchmark_command(
+                    [sys.executable, "-c", "import time; time.sleep(5)"],
+                    1,
+                    "timeout",
+                    fail_on_timeout=strict,
+                )
+                result = subprocess.run(
+                    shlex.split(command), capture_output=True, text=True, timeout=10,
+                )
+                self.assertEqual(result.returncode, expected_status, result.stderr)
+                self.assertIn("benchmark timeout cap reached", result.stderr)
 
     def test_cmd_run_fail_fast_stops_after_preflight_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -2306,12 +2324,11 @@ class JustfileBenchmarkRecipeTest(unittest.TestCase):
         self.assertNotIn("bench-e2e-update-baseline:", justfile)
         self.assertNotIn("bench-e2e-fsdb-update-baseline:", justfile)
 
-    def test_pre_commit_smoke_no_longer_compares_against_baseline(self) -> None:
-        for recipe_name in ("bench-e2e-smoke-commit", "bench-e2e-fsdb-smoke-commit"):
+    def test_smoke_recipes_run_the_harness_with_fail_fast(self) -> None:
+        for recipe_name in ("bench-e2e-smoke", "bench-e2e-fsdb-smoke", "bench-e2e-shm-smoke"):
             body = self._recipe_body(recipe_name)
             self.assertIn("bench/e2e/perf.py run", body)
-            self.assertNotIn("bench/e2e/perf.py compare", body)
-            self.assertNotIn("baseline", body)
+            self.assertIn("--fail-fast", body)
 
 
 if __name__ == "__main__":

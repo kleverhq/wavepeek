@@ -15,6 +15,7 @@ REPO_ROOT = SCRIPT_DIR.parents[1]
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="timeout wrapper for wavepeek benchmark calls")
     parser.add_argument("--timeout-seconds", required=True, type=int)
+    parser.add_argument("--fail-on-timeout", action="store_true")
     parser.add_argument("--label", default="unknown-test")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     return parser
@@ -44,12 +45,13 @@ def main(argv: list[str] | None = None) -> int:
             timeout=timeout_seconds,
         )
     except subprocess.TimeoutExpired:
+        status, level = (124, "error") if args.fail_on_timeout else (0, "warning")
         print(
-            f"warning: run: benchmark timeout cap reached for `{args.label}` "
+            f"{level}: run: benchmark timeout cap reached for `{args.label}` "
             f"({timeout_seconds}s)",
             file=sys.stderr,
         )
-        return 0
+        return status
 
     return int(result.returncode)
 

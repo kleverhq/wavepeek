@@ -4,24 +4,21 @@ Development, CI, release checks, and docs use `.devcontainer/devcontainer.json` 
 
 ## Host Entrypoint
 
-Agents, credentials, and Git operations run on the host. Run Cargo, Pre-commit, Commitizen, waveform tools, and quality gates through root `./dev`:
+Agents, credentials, and Git operations run on the host. Run Cargo, waveform tools, and quality gates through root `./dev`.
 
 ```sh
-./dev --install-hooks
 ./dev just check
 git commit -m "chore: update development workflow"
 git push
 ```
 
-Install hooks before the first commit in each worktree and after launcher changes. Installation copies `pre-commit`, `commit-msg`, and `./dev` into the worktree's Git directory and sets its `core.hooksPath`. It is idempotent and refuses to replace another hooks path. Branch switches retain the installed copies.
-
 `./dev` starts one container per worktree and configuration, preserving the working directory, arguments, streams, signals, and exit status. Public and private containers can coexist.
 
-`./dev --exec-only COMMAND [ARG ...]` requires a running container and never changes its lifecycle. Git hooks use this mode; start the selected container with `./dev true` before committing.
+`./dev --exec-only COMMAND [ARG ...]` runs a command in an already running container.
 
 ## Configuration
 
-`WAVEPEEK_DEV_CONFIG` selects a file inside the worktree, relative to its root. It defaults to `.devcontainer/devcontainer.json`. Persist a private selection for commands and hooks in ignored root `.env`:
+`WAVEPEEK_DEV_CONFIG` selects a file inside the worktree, relative to its root. It defaults to `.devcontainer/devcontainer.json`. Persist a private selection in ignored root `.env`.
 
 ```dotenv
 WAVEPEEK_DEV_CONFIG=.devcontainer.local/devcontainer.json
@@ -45,7 +42,7 @@ The workspace mounts at `/workspaces/<worktree-name>`. Linked worktrees also mou
 
 Recipes in `justfile` require `WAVEPEEK_IN_CONTAINER=1`. Do not set it on the host to bypass the guard; use `./dev` instead.
 
-Run `./dev just dev-setup` after container creation or rebuild to verify tools. It does not install hooks. `playground-build` builds the standalone browser app; `playground-preview-build`, `playground-test`, and `playground-serve` combine `/wavepeek/` with documentation at `/wavepeek/latest/`.
+Run `./dev just dev-setup` after container creation or rebuild to verify tools. `playground-build` builds the standalone browser app; `playground-preview-build`, `playground-test`, and `playground-serve` combine `/wavepeek/` with documentation at `/wavepeek/latest/`.
 
 ## Fixture Location
 

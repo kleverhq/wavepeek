@@ -233,6 +233,8 @@ def build_timed_benchmark_command(
     command_args: list[str],
     timeout_seconds: int,
     test_name: str,
+    *,
+    fail_on_timeout: bool,
 ) -> str:
     wrapper = SCRIPT_DIR / "wavepeek_timeout_wrapper.py"
     wrapper_args = [
@@ -242,10 +244,10 @@ def build_timed_benchmark_command(
         str(timeout_seconds),
         "--label",
         test_name,
-        "--",
-        *command_args,
     ]
-    return shlex.join(wrapper_args)
+    if fail_on_timeout:
+        wrapper_args.append("--fail-on-timeout")
+    return shlex.join([*wrapper_args, "--", *command_args])
 
 
 def is_timeout_functional_payload(payload: Any) -> bool:
@@ -460,12 +462,15 @@ def run_test(
     wavepeek_bin: str,
     timeout_seconds: int,
     verbose: bool,
+    *,
+    fail_on_timeout: bool,
 ) -> dict[str, Any] | None:
     command_args = resolve_test_command(test, wavepeek_bin)
     benchmark_command = build_timed_benchmark_command(
         command_args,
         timeout_seconds,
         str(test["name"]),
+        fail_on_timeout=fail_on_timeout,
     )
     output_path = hyperfine_result_path(run_dir, str(test["name"]))
 
@@ -1223,7 +1228,10 @@ def cmd_run(args: argparse.Namespace) -> int:
                     )
                 return
 
-            benchmark_failure = run_test(test, label_dir, binary.path, timeout_seconds, verbose)
+            benchmark_failure = run_test(
+                test, label_dir, binary.path, timeout_seconds, verbose,
+                fail_on_timeout=fail_fast,
+            )
             if isinstance(benchmark_failure, dict):
                 benchmark_failure["binary_label"] = binary.label
                 write_failure_artifact(label_dir, test_name, benchmark_failure)

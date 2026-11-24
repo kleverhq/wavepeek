@@ -49,7 +49,6 @@ RUN . /tmp/wavepeek-env-contract.sh && \
     python3 -m venv /opt/wavepeek-python && \
     /opt/wavepeek-python/bin/pip install --no-cache-dir \
         -r /tmp/wavepeek-requirements-docs.txt \
-        "pre-commit==${WAVEPEEK_PRECOMMIT_VERSION}" \
         "commitizen==${WAVEPEEK_COMMITIZEN_VERSION}" \
         "playwright==${WAVEPEEK_PLAYWRIGHT_VERSION}" && \
     rm -f /tmp/wavepeek-requirements-docs.txt
@@ -58,7 +57,7 @@ RUN /opt/wavepeek-python/bin/playwright install --with-deps --only-shell chromiu
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install GitHub Actions workflow linter for hooks and CI checks.
+# Install GitHub Actions workflow linter.
 RUN . /tmp/wavepeek-env-contract.sh && \
     arch="${TARGETARCH:-amd64}" && \
     case "$arch" in \

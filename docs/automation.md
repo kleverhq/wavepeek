@@ -22,7 +22,7 @@ GitHub Actions uses `.devcontainer/devcontainer.json` directly. Workflows use jo
 
 ## Workflows
 
-GitHub Actions workflows live under `.github/workflows/`. Pre-merge CI runs `just ci-pr` for pull requests targeting `main` or `dev*` branches. It tests GitHub's merge checkout and validates commit messages in the PR's base-to-head range.
+GitHub Actions workflows live under `.github/workflows/`. Pre-merge CI runs `just ci` on GitHub's merge checkout for pull requests targeting `main` or `dev*` branches.
 
 The release workflow validates stable `vX.Y.Z` tag/version agreement, runs `just ci` and `cargo package --locked` in the shared devcontainer, uses `cargo-dist` to build VCD/FST binary archives, installers, checksums, and attestations, creates the GitHub Release, then dispatches docs and crates.io publication on the default branch. The docs workflow is manual-only, uses trusted tooling from `main`, builds the current browser Playground from the release tag, downloads installer assets from the created GitHub Release, stages the `gh-pages` update without persisted contents-write checkout credentials, pushes only after verifying the staged bundle in a separate job, and deploys the verified tree through GitHub Pages Actions rather than relying on a branch-push Pages build. Mike accumulates documentation versions; only a promoted latest release replaces the non-versioned root Playground. The crate publication workflow is manual-only, uses trusted tooling from `main`, checks out release source through `refs/tags/<tag>`, and treats already-published crates.io versions as a successful no-op.
 

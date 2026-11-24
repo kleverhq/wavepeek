@@ -21,4 +21,4 @@ This directory owns the public tool-only container definition, fixture provision
 
 ## Safety
 
-Do not store credentials in repository files, `.git/config`, breadcrumbs, logs, or shell history. Selected waveform fixtures are baked into the image by the `ondas_fixtures` stage. Runtime tests should not download them from the network. When changing `WAVEPEEK_ONDAS_FIXTURES_REV`, `WAVEPEEK_ONDAS_FIXTURES`, or `WAVEPEEK_ONDAS_FSDB_FIXTURES`, rebuild the container and run `./dev just ci bench-e2e-smoke` and the native gates in `../docs/quality.md`.
+Do not store credentials in repository files, `.git/config`, breadcrumbs, logs, or shell history. Selected waveform fixtures are baked into the image by the `ondas_fixtures` stage. Runtime tests should not download them from the network. When changing `WAVEPEEK_ONDAS_FIXTURES_REV`, `WAVEPEEK_ONDAS_FIXTURES`, or `WAVEPEEK_ONDAS_FSDB_FIXTURES`, rebuild the container and run the gates in `../docs/quality.md`.

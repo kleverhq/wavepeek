@@ -49,7 +49,6 @@ RUN . /tmp/wavepeek-env-contract.sh && \
     python3 -m venv /opt/wavepeek-python && \
     /opt/wavepeek-python/bin/pip install --no-cache-dir \
         -r /tmp/wavepeek-requirements-docs.txt \
-        "commitizen==${WAVEPEEK_COMMITIZEN_VERSION}" \
         "playwright==${WAVEPEEK_PLAYWRIGHT_VERSION}" && \
     rm -f /tmp/wavepeek-requirements-docs.txt
 RUN /opt/wavepeek-python/bin/playwright install --with-deps --only-shell chromium && \

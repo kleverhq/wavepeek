@@ -48,7 +48,7 @@ Run from the host:
 Unset `XCELIUM_HOME` skips conditional SHM gates. A configured missing library is
 an error. Ondas owns build-time ABI checks; the build gate also launches the binary
 outside Cargo. `lint`, `check`, `test`, and `ci` run their SHM gates when
-the installation is configured. The smoke recipe requires the SDK. See
+the installation is configured. `ci` includes the SHM smoke suite. See
 [quality.md](quality.md) for the pre-PR checks. Combined builds require the
 SDK for each enabled native format.
 

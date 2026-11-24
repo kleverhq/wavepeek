@@ -1,32 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ "${1-}" = "--install-hooks" ]; then
-    [ "$#" -eq 1 ] || {
-        printf '%s\n' "usage: ./dev --install-hooks" >&2
-        exit 2
-    }
-    root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
-        printf '%s\n' "error: dev: current directory is not inside a Git worktree" >&2
-        exit 1
-    }
-    git_dir="$(git rev-parse --path-format=absolute --absolute-git-dir)"
-    hooks_dir="$git_dir/wavepeek-hooks"
-    git config extensions.worktreeConfig true
-    configured="$(git config --worktree --get core.hooksPath || true)"
-    if [ -n "$configured" ] && [ "$configured" != "$hooks_dir" ]; then
-        printf '%s\n' "error: dev: refusing to replace existing worktree core.hooksPath: $configured" >&2
-        exit 1
-    fi
-    install -d -m 0755 "$hooks_dir"
-    install -m 0755 "$root/dev" "$hooks_dir/dev"
-    install -m 0755 "$root/tools/repo/git-hook" "$hooks_dir/pre-commit"
-    install -m 0755 "$root/tools/repo/git-hook" "$hooks_dir/commit-msg"
-    git config --worktree core.hooksPath "$hooks_dir"
-    printf '%s\n' "Installed host Git hooks in $hooks_dir"
-    exit 0
-fi
-
 exec_only=0
 recreate=0
 case "${1-}" in

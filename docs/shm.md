@@ -41,14 +41,16 @@ Run from the host:
 ./dev just check-shm-env
 ./dev just check-shm-build
 ./dev just test-shm
+./dev just bench-e2e-shm-smoke
 ./dev just bench-e2e-shm-run
 ```
 
 Unset `XCELIUM_HOME` skips conditional SHM gates. A configured missing library is
 an error. Ondas owns build-time ABI checks; the build gate also launches the binary
-outside Cargo. `lint`, `check`, `test`, `ci`, and pre-commit smoke run their SHM
-gates when the installation is configured. Combined `fsdb,shm` builds use both
-local reader installations.
+outside Cargo. `lint`, `check`, `test`, and `ci` run their SHM gates when
+the installation is configured. The smoke recipe requires the SDK. See
+[quality.md](quality.md) for the pre-PR checks. Combined builds require the
+SDK for each enabled native format.
 
 `prepare-shm-test-fixtures` converts a small set of existing VCD fixtures into
 ignored `tests/fixtures/shm/`. Short native recordings from `shm_rich.sv` and

@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Interpret weak logic states as L=0 and H=1 across expressions, edges and output; keep raw enum label matching. Raw events use kind `event` and width 0 across formats.
 - Resolve selectors and format paths through Ondas, retaining alias metadata and explicit projections. A trailing `[msb:lsb]` selects bits. Quote or escape a literal range suffix. Ondas normalizes confirmed VCD split vectors.
 - Keep native FSDB diagnostics on stderr while stdout retains the command output contract.
+- Replace Git hooks with pull request CI and local native checks.
 
 ### Removed
 - Remove hidden `change --tune-*` diagnostic controls.

@@ -18,8 +18,7 @@ This directory owns the public tool-only container definition, fixture provision
 - Keep the container credentialless. Do not mount agent state, host GitHub state, token files, or broad host directories.
 - `verdi-tool-wrapper.sh` exposes selected command-line Verdi FSDB utilities and invokes their launchers with Bash for compatibility.
 - Host networking is intentional for VPN-heavy environments.
-- Container lifecycle commands must not install or rewrite host Git hooks. Hook activation is explicit through host `../dev --install-hooks`.
 
 ## Safety
 
-Do not store credentials in repository files, `.git/config`, breadcrumbs, logs, or shell history. Selected waveform fixtures are baked into the image by the `ondas_fixtures` stage. Runtime tests should not download them from the network. When changing `WAVEPEEK_ONDAS_FIXTURES_REV`, `WAVEPEEK_ONDAS_FIXTURES`, or `WAVEPEEK_ONDAS_FSDB_FIXTURES`, rebuild the container and run `./dev just ci` plus `./dev just pre-commit`.
+Do not store credentials in repository files, `.git/config`, breadcrumbs, logs, or shell history. Selected waveform fixtures are baked into the image by the `ondas_fixtures` stage. Runtime tests should not download them from the network. When changing `WAVEPEEK_ONDAS_FIXTURES_REV`, `WAVEPEEK_ONDAS_FIXTURES`, or `WAVEPEEK_ONDAS_FSDB_FIXTURES`, rebuild the container and run `./dev just ci bench-e2e-smoke` and the native gates in `../docs/quality.md`.

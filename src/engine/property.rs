@@ -116,7 +116,7 @@ pub fn run_jsonl<W: std::io::Write>(
     writer.suppress_data(args.summary);
     let outcome = {
         let mut sink = JsonlPropertySink { writer };
-        run_with_sink(args, &mut sink, &mut |_| {})?
+        run_with_sink(args, &mut sink, &|_| {})?
     };
 
     for diagnostic in &outcome.diagnostics {
@@ -458,7 +458,7 @@ mod tests {
     use crate::waveform::WaveformMetadata;
 
     fn run(args: PropertyArgs) -> Result<super::CommandResult, WavepeekError> {
-        super::run(args, &mut |_| {})
+        super::run(args, &|_| {})
     }
 
     const TEST_VCD: &str = concat!(
@@ -704,7 +704,7 @@ mod tests {
                 jsonl: true,
             },
             &mut sink,
-            &mut |_| {},
+            &|_| {},
         )
         .expect_err("sink error should stop the streaming run");
 

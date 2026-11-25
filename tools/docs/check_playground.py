@@ -187,7 +187,9 @@ def check(site: pathlib.Path, native_bin: pathlib.Path) -> None:
                 actual = run_browser(page, command)
                 assert actual == run_native(native_bin, cwd, command), command
                 status, stdout, stderr = actual
-                assert status == 1 and not stdout and stderr.startswith("info: opening waveform\nfatal: ")
+                assert status == 1 and not stdout and stderr.startswith(
+                    "info: opening waveform\ninfo: finding similar signal names\nfatal: "
+                )
                 assert stderr_block.is_visible()
                 assert latest.locator(".playground__stderr--progress").count() == 0
                 assert stderr_block.evaluate("(el) => getComputedStyle(el).color") != progress_color

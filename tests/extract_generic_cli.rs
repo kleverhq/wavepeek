@@ -788,7 +788,7 @@ fn extract_generic_rejects_bad_sources_and_paths_outside_scope() {
         .assert()
         .failure()
         .stderr(predicate::str::starts_with(
-            "info: opening waveform\nfatal: signal:",
+            "info: opening waveform\ninfo: finding similar signal names\nfatal: signal:",
         ))
         .stderr(predicate::str::contains(
             "signal 'top.clk' not found under scope 'top.top'\nExact signal name matches:\n  clk",

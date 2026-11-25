@@ -90,7 +90,7 @@ fn property_signal_typo_keeps_expression_diagnostic_and_suggests_path() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with(
-            "info: opening waveform\nfatal: expr:",
+            "info: opening waveform\ninfo: finding similar signal names\nfatal: expr:",
         ))
         .stderr(predicate::str::contains("unknown signal 'vlaid'"))
         .stderr(predicate::str::contains(

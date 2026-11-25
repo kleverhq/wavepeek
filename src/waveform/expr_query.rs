@@ -31,7 +31,7 @@ pub(crate) struct ExpressionQuery {
 
 impl ExpressionQuery {
     pub(crate) fn new(
-        host: &WaveformExprHost,
+        host: &WaveformExprHost<'_>,
         drivers: &[SignalHandle],
         operands: &[SignalHandle],
     ) -> Result<Self, WavepeekError> {
@@ -269,7 +269,11 @@ mod tests {
     use crate::waveform::Waveform;
     use crate::waveform::expr_host::WaveformExprHost;
 
-    fn fixture() -> (NamedTempFile, Rc<RefCell<Waveform>>, WaveformExprHost) {
+    fn fixture() -> (
+        NamedTempFile,
+        Rc<RefCell<Waveform<'static>>>,
+        WaveformExprHost<'static>,
+    ) {
         let file = NamedTempFile::with_suffix(".vcd").unwrap();
         std::fs::write(
             file.path(),

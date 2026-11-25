@@ -155,8 +155,8 @@ pub(crate) struct ExtractRunArgs {
     pub(crate) include_relative_paths: bool,
 }
 
-struct ExtractEmitContext<'a> {
-    waveform: &'a SharedWaveform,
+struct ExtractEmitContext<'a, 'report> {
+    waveform: &'a SharedWaveform<'report>,
     sources: &'a [BoundExtractSource],
     event_groups: &'a [EventGroup],
     query: &'a ExpressionQuery,
@@ -265,7 +265,7 @@ pub fn run_jsonl<W: std::io::Write>(
     writer.suppress_data(args.summary);
     let outcome = {
         let mut sink = JsonlExtractSink { writer };
-        run_with_sink(args, &mut sink, &mut |_| {})?
+        run_with_sink(args, &mut sink, &|_| {})?
     };
 
     for diagnostic in &outcome.diagnostics {
@@ -327,7 +327,7 @@ pub(crate) fn run_plan_with_sink<S: ExtractRowSink + ?Sized>(
 pub(crate) fn run_plan_with_waveform_sink<S: ExtractRowSink + ?Sized>(
     args: ExtractRunArgs,
     plan: ExtractPlan,
-    waveform: SharedWaveform,
+    waveform: SharedWaveform<'_>,
     debug: DebugTrace,
     sink: &mut S,
     report: ReportProgress<'_>,
@@ -339,7 +339,7 @@ pub(crate) fn run_plan_with_waveform_sink<S: ExtractRowSink + ?Sized>(
 fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
     args: ExtractRunArgs,
     plan: ExtractPlan,
-    waveform: SharedWaveform,
+    waveform: SharedWaveform<'_>,
     debug: DebugTrace,
     max_entries: Option<usize>,
     sink: &mut S,
@@ -602,8 +602,8 @@ fn normalize_payload(payload: Vec<String>) -> Result<Vec<String>, WavepeekError>
 }
 
 fn bind_extract_sources(
-    waveform: &SharedWaveform,
-    host: &WaveformExprHost,
+    waveform: &SharedWaveform<'_>,
+    host: &WaveformExprHost<'_>,
     scope: Option<&str>,
     paths: &OutputPaths,
     summary_only: bool,
@@ -648,8 +648,8 @@ fn bind_extract_sources(
 }
 
 fn resolve_payload_signals(
-    waveform: &SharedWaveform,
-    host: &WaveformExprHost,
+    waveform: &SharedWaveform<'_>,
+    host: &WaveformExprHost<'_>,
     scope: Option<&str>,
     paths: &OutputPaths,
     summary_only: bool,
@@ -713,7 +713,7 @@ fn duration_ns(duration: Duration) -> u64 {
 }
 
 fn emit_rows<S: ExtractRowSink + ?Sized>(
-    context: ExtractEmitContext<'_>,
+    context: ExtractEmitContext<'_, '_>,
     sink: &mut S,
 ) -> Result<ExtractRunStats, WavepeekError> {
     let mut candidate_count = 0usize;
@@ -970,7 +970,7 @@ mod tests {
                 jsonl: true,
             },
             &mut sink,
-            &mut |_| {},
+            &|_| {},
         )
         .unwrap_err();
         assert_eq!(sink.0, 1);

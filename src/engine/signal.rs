@@ -59,7 +59,7 @@ pub fn run(args: SignalArgs, report: ReportProgress<'_>) -> Result<CommandResult
     let debug = DebugTrace::for_command(CommandName::Signal);
     debug.event("backend.open.start", || serde_json::json!({}));
     report(OPENING_WAVEFORM);
-    let waveform = Waveform::open(waves.as_path())?;
+    let waveform = Waveform::open_with_progress(waves.as_path(), report)?;
     debug.event("backend.open.done", || {
         serde_json::json!({
             "backend": waveform.backend_name(),

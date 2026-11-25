@@ -18,6 +18,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use crate::ReportProgress;
 use crate::error::WavepeekError;
 use crate::expr::SampledValue;
 
@@ -29,9 +30,17 @@ pub(crate) use types::{
     SampledSignal, SampledSignalState, ScopeEntry, SignalEntry, SignalListing, WaveformMetadata,
 };
 
-#[derive(Debug)]
-pub struct Waveform {
+pub struct Waveform<'report> {
     backend: ondas_backend::OndasBackend,
+    report: ReportProgress<'report>,
+}
+
+impl std::fmt::Debug for Waveform<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Waveform")
+            .field("backend", &self.backend)
+            .finish_non_exhaustive()
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -106,14 +115,24 @@ fn invocation_waveform(path: &Path) -> Option<Arc<[u8]>> {
     })
 }
 
-impl Waveform {
+#[cfg(test)]
+impl Waveform<'static> {
     pub fn open(path: &Path) -> Result<Self, WavepeekError> {
+        Self::open_with_progress(path, &|_| {})
+    }
+}
+
+impl<'report> Waveform<'report> {
+    pub fn open_with_progress(
+        path: &Path,
+        report: ReportProgress<'report>,
+    ) -> Result<Self, WavepeekError> {
         let result = if let Some(bytes) = invocation_waveform(path) {
             ondas_backend::OndasBackend::open_bytes(path, bytes)
         } else {
             ondas_backend::OndasBackend::open(path)
         };
-        result.map(|backend| Self { backend })
+        result.map(|backend| Self { backend, report })
     }
 
     pub(crate) fn backend_name(&self) -> &'static str {
@@ -130,7 +149,7 @@ impl Waveform {
 
     pub(crate) fn read_metadata(path: &Path) -> Result<WaveformMetadata, WavepeekError> {
         if invocation_waveform(path).is_some() {
-            return Self::open(path)?.metadata();
+            return Self::open_with_progress(path, &|_| {})?.metadata();
         }
         ondas_backend::OndasBackend::read_metadata(path)
     }
@@ -307,6 +326,7 @@ impl Waveform {
         let ondas_backend::SignalResolutionError::NotFound(path) = &failure else {
             return failure.into_error();
         };
+        (self.report)("finding similar signal names");
         let Ok(listing) = self.signal_candidates(scope, recursive) else {
             return failure.into_error();
         };

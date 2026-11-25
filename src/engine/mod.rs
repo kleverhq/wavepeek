@@ -19,6 +19,7 @@ mod value_format;
 
 use serde::Serialize;
 
+use crate::ReportProgress;
 use crate::cli;
 use crate::diagnostic::Diagnostic;
 use crate::error::WavepeekError;
@@ -192,8 +193,6 @@ pub struct CommandResult {
     pub diagnostics: Vec<Diagnostic>,
 }
 
-pub(super) type ReportProgress<'a> = &'a mut dyn FnMut(&str);
-
 const OPENING_WAVEFORM: &str = "opening waveform";
 const DECODING_PROTOCOL_EVENTS: &str = "decoding protocol events";
 
@@ -229,7 +228,7 @@ pub fn run_jsonl<W: std::io::Write>(
         Command::ExtractAxiStream(args) => axistream::run_jsonl(args, writer),
         Command::ExtractGeneric(args) => extract::run_jsonl(args, writer),
         Command::Info(_) | Command::Scope(_) | Command::Signal(_) | Command::Value(_) => {
-            let result = run(command, &mut |_| {})?;
+            let result = run(command, &|_| {})?;
             output::write_jsonl_result(result, writer)
         }
         Command::Skill(_) => Err(WavepeekError::Args(

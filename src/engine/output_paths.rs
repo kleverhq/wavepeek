@@ -29,7 +29,7 @@ impl OutputPaths {
 
     pub(super) fn context_scope(
         &self,
-        waveform: &Waveform,
+        waveform: &Waveform<'_>,
         machine: bool,
     ) -> Result<Option<String>, WavepeekError> {
         if !machine {

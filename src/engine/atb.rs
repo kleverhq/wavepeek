@@ -243,10 +243,10 @@ struct AtbConfig {
 }
 
 #[derive(Debug)]
-struct BuiltAtbPlan {
+struct BuiltAtbPlan<'report> {
     context: AtbContext,
     plan: ExtractPlan,
-    waveform: SharedWaveform,
+    waveform: SharedWaveform<'report>,
     debug: DebugTrace,
     payload_standards: HashMap<String, Vec<String>>,
     diagnostics: Vec<Diagnostic>,
@@ -316,7 +316,7 @@ pub fn run_jsonl<W: std::io::Write>(
     writer.suppress_data(args.summary);
     let outcome = {
         let mut sink = JsonlAtbSink { writer };
-        run_with_sink(args, &mut sink, &mut |_| {})?
+        run_with_sink(args, &mut sink, &|_| {})?
     };
 
     for diagnostic in &outcome.diagnostics {
@@ -374,10 +374,10 @@ fn run_with_sink<S: AtbEventSink + ?Sized>(
     })
 }
 
-fn build_atb_plan(
+fn build_atb_plan<'report>(
     args: &AtbArgs,
-    report: ReportProgress<'_>,
-) -> Result<BuiltAtbPlan, WavepeekError> {
+    report: ReportProgress<'report>,
+) -> Result<BuiltAtbPlan<'report>, WavepeekError> {
     let config = config_from_args(args)?;
     let include_regexes = compile_include_regexes(&config.includes)?;
     let debug = DebugTrace::for_command(CommandName::ExtractAtb);
@@ -596,7 +596,7 @@ fn compile_include_regexes(includes: &[String]) -> Result<Vec<Regex>, WavepeekEr
 }
 
 fn explicit_mappings(
-    waveform: &SharedWaveform,
+    waveform: &SharedWaveform<'_>,
     scope: Option<&str>,
     profile: AtbProfile,
     maps: &[(String, String)],

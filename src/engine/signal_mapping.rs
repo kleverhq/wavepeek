@@ -30,7 +30,7 @@ pub(super) struct SignalCandidate {
 }
 
 pub(super) fn collect_include_candidates(
-    waveform: &SharedWaveform,
+    waveform: &SharedWaveform<'_>,
     scope: Option<&str>,
     includes: &[Regex],
     report: ReportProgress<'_>,
@@ -71,7 +71,7 @@ pub(super) fn collect_include_candidates(
 }
 
 pub(super) fn resolve_explicit_mapping(
-    waveform: &SharedWaveform,
+    waveform: &SharedWaveform<'_>,
     input: &str,
     scope: Option<&str>,
     standard: &str,

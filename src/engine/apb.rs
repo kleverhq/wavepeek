@@ -326,10 +326,10 @@ struct ApbConfig {
 }
 
 #[derive(Debug)]
-struct BuiltApbPlan {
+struct BuiltApbPlan<'report> {
     context: ApbContext,
     plan: ExtractPlan,
-    waveform: SharedWaveform,
+    waveform: SharedWaveform<'report>,
     debug: DebugTrace,
     payload_standards: HashMap<String, Vec<String>>,
     diagnostics: Vec<Diagnostic>,
@@ -425,7 +425,7 @@ pub fn run_jsonl<W: std::io::Write>(
     writer.suppress_data(args.summary);
     let outcome = {
         let mut sink = JsonlApbSink { writer };
-        run_with_sink(args, &mut sink, &mut |_| {})?
+        run_with_sink(args, &mut sink, &|_| {})?
     };
 
     for diagnostic in &outcome.diagnostics {
@@ -483,10 +483,10 @@ fn run_with_sink<S: ApbEventSink + ?Sized>(
     })
 }
 
-fn build_apb_plan(
+fn build_apb_plan<'report>(
     args: &ApbArgs,
-    report: ReportProgress<'_>,
-) -> Result<BuiltApbPlan, WavepeekError> {
+    report: ReportProgress<'report>,
+) -> Result<BuiltApbPlan<'report>, WavepeekError> {
     let config = config_from_args(args)?;
     let include_regexes = compile_include_regexes(&config.includes)?;
     let debug = DebugTrace::for_command(CommandName::ExtractApb);
@@ -754,7 +754,7 @@ fn compile_include_regexes(includes: &[String]) -> Result<Vec<Regex>, WavepeekEr
 }
 
 fn explicit_mappings(
-    waveform: &SharedWaveform,
+    waveform: &SharedWaveform<'_>,
     scope: Option<&str>,
     profile: ApbProfile,
     maps: &[(String, String)],

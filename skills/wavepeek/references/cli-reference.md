@@ -148,7 +148,7 @@ Output options:
       --path-style <PATH_STYLE>
           Path syntax for output. Both styles are accepted as input
 
-          [default: logical]
+          [default: sv]
           [possible values: logical, sv]
 
       --json
@@ -214,7 +214,7 @@ Output options:
       --path-style <PATH_STYLE>
           Path syntax for output. Both styles are accepted as input
 
-          [default: logical]
+          [default: sv]
           [possible values: logical, sv]
 
       --json
@@ -295,7 +295,7 @@ Output options:
       --path-style <PATH_STYLE>
           Path syntax for output. Both styles are accepted as input
 
-          [default: logical]
+          [default: sv]
           [possible values: logical, sv]
 
       --json
@@ -396,7 +396,7 @@ Output options:
       --path-style <PATH_STYLE>
           Path syntax for output. Both styles are accepted as input
 
-          [default: logical]
+          [default: sv]
           [possible values: logical, sv]
 
       --json
@@ -622,7 +622,7 @@ Output options:
       --path-style <PATH_STYLE>
           Path syntax for output. Both styles are accepted as input
 
-          [default: logical]
+          [default: sv]
           [possible values: logical, sv]
 
       --json
@@ -720,7 +720,7 @@ Output options:
       --path-style <PATH_STYLE>
           Path syntax for output. Both styles are accepted as input
 
-          [default: logical]
+          [default: sv]
           [possible values: logical, sv]
 
       --json
@@ -814,7 +814,7 @@ Output options:
       --path-style <PATH_STYLE>
           Path syntax for output. Both styles are accepted as input
 
-          [default: logical]
+          [default: sv]
           [possible values: logical, sv]
 
       --json
@@ -906,7 +906,7 @@ Output options:
       --path-style <PATH_STYLE>
           Path syntax for output. Both styles are accepted as input
 
-          [default: logical]
+          [default: sv]
           [possible values: logical, sv]
 
       --json
@@ -1002,7 +1002,7 @@ Output options:
       --path-style <PATH_STYLE>
           Path syntax for output. Both styles are accepted as input
 
-          [default: logical]
+          [default: sv]
           [possible values: logical, sv]
 
       --json
@@ -1094,7 +1094,7 @@ Output options:
       --path-style <PATH_STYLE>
           Path syntax for output. Both styles are accepted as input
 
-          [default: logical]
+          [default: sv]
           [possible values: logical, sv]
 
       --json

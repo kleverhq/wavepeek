@@ -24,7 +24,7 @@ A successful `--json` command emits `type`, `command`, optional `context`, optio
 {"type":"result","command":"value","context":{"scope":"top"},"data":[{"time":"5ns","signals":[{"path":"top.clk","relative_path":"clk","value":"1'h1"}]}],"diagnostics":[]}
 ```
 
-A `signal` row contains the leaf `name`, canonical `path`, path relative to the exact selected scope in `relative_path`, normalized `kind`, and optional `width`. Immediate children use their basename as `relative_path`; descendants retain the child scope path:
+A `signal` row contains the leaf `name`, full `path`, path relative to the exact selected scope in `relative_path`, normalized `kind`, and optional `width`. Immediate children use their basename as `relative_path`; descendants retain the child scope path:
 
 ```json
 {"type":"result","command":"signal","context":{"scope":"top"},"data":[{"name":"valid","path":"top.cpu.valid","relative_path":"cpu.valid","kind":"wire","width":1}],"summary":{"complete":true,"returned":1,"limit":50,"total":1},"diagnostics":[]}
@@ -36,7 +36,7 @@ Protocol extractors put command-wide metadata in `context` and rows directly in 
 {"type":"result","command":"extract apb","context":{"name":"apb","profile":"apb4","issue":"E","pready_mode":"mapped","include_wait":false,"mappings":{"pclk":{"path":"top.uart_apb_p_clk_i"},"penable":{"path":"top.uart_apb_penable_o"},"pready":{"path":"top.uart_apb_pready_i"},"psel":{"path":"top.uart_apb_psel_o"},"pwrite":{"path":"top.uart_apb_pwrite_o"}}},"data":[{"time":"5ns","sample_time":"4ns","profile":"apb4","event":"setup","direction":"write","payload":{"pwrite":"1'h1"}}],"summary":{"complete":true,"returned":1,"limit":50,"total":1},"diagnostics":[]}
 ```
 
-Machine-readable paths and leaf names use the selected `--path-style`. This includes paths in protocol `context.mappings` and the selected scope in `context.scope`. SV escape terminators remain part of the decoded JSON string. For a flat `[msb:lsb]` projection in `value`, `change`, or `extract generic`, `path` contains the base path and the range. See [path resolution](paths.md).
+Machine-readable paths and leaf names use the selected `--path-style`, which defaults to `sv` in both JSON and JSONL. This includes paths in protocol `context.mappings` and the selected scope in `context.scope`. Keep the terminating ASCII space of an SV escape when reusing a decoded JSON string as a selector. For a flat `[msb:lsb]` projection in `value`, `change`, or `extract generic`, `path` contains the base path and the range. See [path resolution](paths.md).
 
 Scoped `signal`, `value`, `change`, and `extract generic` results include `context.scope` even when `data` is empty. Their rows also include `relative_path`, which omits the scope prefix. Immediate children use a basename and descendants retain their child scope components. Without `--scope`, `value`, `change`, and `extract generic` omit both `context` and `relative_path` in JSON. Their JSONL `begin` records also omit `context`.
 

@@ -1,6 +1,8 @@
 # Path and scope resolution
 
-WavePeek formats paths from exact Ondas hierarchy components. A path is a sequence of components separated by dots. The default `logical` style writes names matching `[A-Za-z_][A-Za-z0-9_$]*` bare and uses JSON string syntax for other names.
+WavePeek formats paths from exact Ondas hierarchy components separated by dots. The default `sv` style preserves explicit SystemVerilog escapes supplied by the waveform reader and escapes names outside the bare-name pattern when representable. An ASCII space terminates each escaped name, even at the end of a path.
+
+Use `--path-style logical` for consumers that depend on the previous spelling or for names that SV cannot represent. Logical style writes names matching `[A-Za-z_][A-Za-z0-9_$]*` bare and uses JSON string syntax for other names.
 
 ```text
 top.cpu.valid
@@ -11,16 +13,16 @@ top."literal[7:0]"
 
 The middle two paths select different declarations. An index follows the name, as in `top.u_reg[0].q`. Brackets inside a quoted or escaped name are literal characters, as in `top."u_reg[0]".q`. Listing paths can be reused in selections. Scope depth counts components, regardless of punctuation inside a name.
 
-Use `--path-style sv` after `scope`, `signal`, `value`, `change`, or an `extract` subcommand to print paths with SystemVerilog escapes. The formatter preserves explicit escapes supplied by the waveform reader and escapes names outside the bare-name pattern. An ASCII space terminates each escaped name, even at the end of a path. Both styles are accepted as input. Filters, includes, and path suggestions use the canonical logical spelling, including its quotes.
+Both styles are accepted as input. Filters, includes, and path suggestions use the canonical logical spelling, including its quotes.
 
-An unrepresentable result path under `--path-style sv` returns `WPK-F0001` with the message `--path-style sv: path component cannot be represented in Verilog` followed by the component name.
+An unrepresentable result path in SV style returns `WPK-F0001` with the message `--path-style sv: path component cannot be represented in Verilog` followed by the component name. For example, use `--path-style logical` to list a name such as `zété`.
 
 Use shell single quotes to preserve quotes, backslashes, and spaces. Commas separate `--signals` and CLI `--payload` entries outside quoted or escaped components. Order and duplicates are preserved.
 
 ```sh
 wavepeek value --waves dump.vcd --at 10ns \
   --signals 'top."literal[7:0]",top.literal'
-wavepeek value --path-style sv --waves dump.vcd --at 0ns \
+wavepeek value --waves dump.vcd --at 0ns \
   --signals 'top."u_reg[0]".q'
 # @0ns top.\u_reg[0] .q=1'h1
 ```

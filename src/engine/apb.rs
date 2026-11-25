@@ -16,7 +16,9 @@ use crate::engine::extract::{
 use crate::engine::signal_mapping::{
     MappedSignal, SignalCandidate, collect_include_candidates, resolve_explicit_mapping,
 };
-use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions, ResultSummary};
+use crate::engine::{
+    CommandData, CommandName, CommandResult, HumanRenderOptions, ReportProgress, ResultSummary,
+};
 use crate::error::WavepeekError;
 
 const DEFAULT_PROFILE: &str = "apb4";
@@ -386,12 +388,12 @@ impl PreadyMode {
     }
 }
 
-pub fn run(args: ApbArgs) -> Result<CommandResult, WavepeekError> {
+pub fn run(args: ApbArgs, report: ReportProgress<'_>) -> Result<CommandResult, WavepeekError> {
     let output_mode = crate::output_mode::OutputMode::from_json_flags(args.json, args.jsonl);
     let signals_abs = args.abs;
     let summary_only = args.summary;
     let mut sink = CollectingApbSink::default();
-    let outcome = run_with_sink(args, &mut sink)?;
+    let outcome = run_with_sink(args, &mut sink, report)?;
 
     Ok(CommandResult {
         command: CommandName::ExtractApb,
@@ -423,7 +425,7 @@ pub fn run_jsonl<W: std::io::Write>(
     writer.suppress_data(args.summary);
     let outcome = {
         let mut sink = JsonlApbSink { writer };
-        run_with_sink(args, &mut sink)?
+        run_with_sink(args, &mut sink, &mut |_| {})?
     };
 
     for diagnostic in &outcome.diagnostics {
@@ -435,6 +437,7 @@ pub fn run_jsonl<W: std::io::Write>(
 fn run_with_sink<S: ApbEventSink + ?Sized>(
     args: ApbArgs,
     sink: &mut S,
+    report: ReportProgress<'_>,
 ) -> Result<ApbOutcome, WavepeekError> {
     let BuiltApbPlan {
         context,
@@ -443,7 +446,7 @@ fn run_with_sink<S: ApbEventSink + ?Sized>(
         debug,
         payload_standards,
         diagnostics: build_diagnostics,
-    } = build_apb_plan(&args)?;
+    } = build_apb_plan(&args, report)?;
     let absolute_paths = args.abs || args.json || args.jsonl;
     let mut generic_sink = GenericToApbSink {
         context: &context,
@@ -468,6 +471,7 @@ fn run_with_sink<S: ApbEventSink + ?Sized>(
         waveform,
         debug,
         &mut generic_sink,
+        report,
     )?;
 
     let mut diagnostics = build_diagnostics;
@@ -479,12 +483,15 @@ fn run_with_sink<S: ApbEventSink + ?Sized>(
     })
 }
 
-fn build_apb_plan(args: &ApbArgs) -> Result<BuiltApbPlan, WavepeekError> {
+fn build_apb_plan(
+    args: &ApbArgs,
+    report: ReportProgress<'_>,
+) -> Result<BuiltApbPlan, WavepeekError> {
     let config = config_from_args(args)?;
     let include_regexes = compile_include_regexes(&config.includes)?;
     let debug = DebugTrace::for_command(CommandName::ExtractApb);
     debug.event("backend.open.start", || serde_json::json!({}));
-    let waveform = open_shared_waveform(args.waves.as_path())?;
+    let waveform = open_shared_waveform(args.waves.as_path(), report)?;
     {
         let waveform_ref = waveform.borrow();
         debug.event("backend.open.done", || {
@@ -496,7 +503,7 @@ fn build_apb_plan(args: &ApbArgs) -> Result<BuiltApbPlan, WavepeekError> {
     }
 
     let candidates =
-        collect_include_candidates(&waveform, args.scope.as_deref(), &include_regexes)?;
+        collect_include_candidates(&waveform, args.scope.as_deref(), &include_regexes, report)?;
     let explicit = explicit_mappings(
         &waveform,
         args.scope.as_deref(),

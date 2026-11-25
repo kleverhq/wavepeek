@@ -166,7 +166,9 @@ fn info_directory_fsdb_suffix_keeps_regular_file_error() {
         .failure()
         .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: file: cannot "))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: file: cannot ",
+        ))
         .stderr(predicate::str::contains("FSDB input requires").not());
 }
 
@@ -202,7 +204,7 @@ fn info_valid_vcd_with_fsdb_suffix_still_succeeds() {
         .stdout(predicate::str::contains("time_unit: 1ns"))
         .stdout(predicate::str::contains("time_start: 0ns"))
         .stdout(predicate::str::contains("time_end: 10ns"))
-        .stderr(predicate::str::is_empty());
+        .stderr("info: opening waveform\n");
 }
 
 #[test]

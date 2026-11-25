@@ -17,7 +17,7 @@ fn scope_human_output_is_default_for_vcd() {
         .success()
         .stdout(predicate::str::contains("0 top kind=module"))
         .stdout(predicate::str::contains("1 top.cpu kind=module"))
-        .stderr(predicate::str::is_empty());
+        .stderr("info: opening waveform\ninfo: listing scopes\n");
 }
 
 #[test]
@@ -183,7 +183,10 @@ fn scope_unlimited_max_disables_limit_without_diagnostics() {
         3
     );
     assert_eq!(value["summary"]["limit"], Value::Null);
-    assert!(human_output.stderr.is_empty());
+    assert_eq!(
+        human_output.stderr,
+        b"info: opening waveform\ninfo: listing scopes\n"
+    );
 }
 
 #[test]
@@ -275,7 +278,10 @@ fn scope_dual_unlimited_limits_have_no_diagnostics() {
     let value = parse_scope_json(&json_output.stdout);
     assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(value["summary"]["limit"], Value::Null);
-    assert!(human_output.stderr.is_empty());
+    assert_eq!(
+        human_output.stderr,
+        b"info: opening waveform\ninfo: listing scopes\n"
+    );
 }
 
 #[test]
@@ -321,7 +327,11 @@ fn scope_unlimited_depth_keeps_truncation_warning_only() {
         String::from_utf8_lossy(&human_output.stderr)
             .lines()
             .collect::<Vec<_>>(),
-        vec!["warning[WPK-W0002]: truncated output to 1 entries (use --max to increase limit)"]
+        [
+            "info: opening waveform",
+            "info: listing scopes",
+            "warning[WPK-W0002]: truncated output to 1 entries (use --max to increase limit)"
+        ]
     );
 }
 
@@ -379,7 +389,10 @@ fn scope_empty_filter_uses_normal_human_output_and_empty_machine_diagnostics() {
         String::from_utf8_lossy(&human_output.stdout).trim(),
         "no scopes found"
     );
-    assert!(human_output.stderr.is_empty());
+    assert_eq!(
+        human_output.stderr,
+        b"info: opening waveform\ninfo: listing scopes\n"
+    );
     let value = parse_scope_json(&json_output.stdout);
     assert_eq!(value["data"], json!([]));
     assert_eq!(value["diagnostics"], json!([]));
@@ -463,7 +476,7 @@ fn scope_tree_mode_renders_visual_hierarchy() {
         .stdout(predicate::str::contains("top kind=module"))
         .stdout(predicate::str::contains("├── cpu kind=module"))
         .stdout(predicate::str::contains("└── mem kind=module"))
-        .stderr(predicate::str::is_empty());
+        .stderr("info: opening waveform\ninfo: listing scopes\n");
 }
 
 #[test]
@@ -485,7 +498,7 @@ fn scope_filtered_tree_includes_ancestors_to_root() {
         .assert()
         .success()
         .stdout(predicate::eq("top kind=module\n└── cpu kind=module\n"))
-        .stderr(predicate::str::is_empty());
+        .stderr("info: opening waveform\ninfo: listing scopes\n");
 }
 
 #[test]
@@ -577,7 +590,7 @@ fn scope_tree_mode_is_deterministic_for_mixed_scope_kinds() {
         .assert()
         .success()
         .stdout(predicate::eq(expected))
-        .stderr(predicate::str::is_empty());
+        .stderr("info: opening waveform\ninfo: listing scopes\n");
 }
 
 #[test]

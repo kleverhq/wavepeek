@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use ondas::{HierarchyPath, SignalSelector};
 use regex::Regex;
 
+use super::ReportProgress;
 use crate::engine::expr_runtime::SharedWaveform;
 use crate::error::WavepeekError;
 
@@ -32,11 +33,13 @@ pub(super) fn collect_include_candidates(
     waveform: &SharedWaveform,
     scope: Option<&str>,
     includes: &[Regex],
+    report: ReportProgress<'_>,
 ) -> Result<Vec<SignalCandidate>, WavepeekError> {
     if includes.is_empty() {
         return Ok(Vec::new());
     }
 
+    report("finding protocol signals");
     let waveform = waveform.borrow();
     let matches = |text: &str| includes.iter().any(|include| include.is_match(text));
     let entries = if let Some(scope) = scope {

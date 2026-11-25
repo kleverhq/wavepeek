@@ -8,7 +8,7 @@ use crate::engine::time::{
     validate_time_token_to_raw,
 };
 use crate::engine::value_format::format_verilog_literal;
-use crate::engine::{CommandData, CommandName, CommandResult};
+use crate::engine::{CommandData, CommandName, CommandResult, OPENING_WAVEFORM, ReportProgress};
 use crate::error::WavepeekError;
 use crate::waveform::{ResolvedSignal, Waveform, WaveformMetadata};
 
@@ -30,9 +30,10 @@ pub struct ValueSnapshot {
 
 pub type ValueData = Vec<ValueSnapshot>;
 
-pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
+pub fn run(args: ValueArgs, report: ReportProgress<'_>) -> Result<CommandResult, WavepeekError> {
     let debug = DebugTrace::for_command(CommandName::Value);
     debug.event("backend.open.start", || serde_json::json!({}));
+    report(OPENING_WAVEFORM);
     let mut waveform = Waveform::open(args.waves.as_path())?;
     debug.event("backend.open.done", || {
         serde_json::json!({
@@ -68,6 +69,7 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
 
     let mut snapshots = Vec::with_capacity(query_times_raw.len());
 
+    report("sampling values");
     let sampled_rows = waveform.sample_resolved_at_times(&requested_signals, &query_times_raw)?;
     for (query_time_raw, sampled) in query_times_raw.into_iter().zip(sampled_rows) {
         let signals = sampled
@@ -149,7 +151,7 @@ fn resolve_requested_signals(
     args: &ValueArgs,
 ) -> Result<Vec<ResolvedSignal>, WavepeekError> {
     if let Some(scope) = scope {
-        waveform.signals_in_scope(scope)?;
+        waveform.validate_scope(scope)?;
     }
 
     let mut resolved = Vec::with_capacity(args.signals.len());
@@ -205,12 +207,17 @@ mod tests {
 
     use super::{
         WaveformMetadata, map_value_time_validation_error, parse_at_tokens,
-        resolve_requested_signals, run,
+        resolve_requested_signals,
     };
     use crate::cli::value::ValueArgs;
     use crate::engine::CommandData;
     use crate::engine::time::{TimeValidationError, parse_dump_time_context};
+    use crate::error::WavepeekError;
     use crate::waveform::Waveform;
+
+    fn run(args: ValueArgs) -> Result<super::CommandResult, WavepeekError> {
+        super::run(args, &mut |_| {})
+    }
 
     const TEST_VCD: &str = concat!(
         "$date\n  today\n$end\n",

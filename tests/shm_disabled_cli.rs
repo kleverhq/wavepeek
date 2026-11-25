@@ -67,5 +67,5 @@ fn missing_paths_keep_io_errors_and_content_detection_precedes_suffix() {
         .output()
         .unwrap();
     assert!(output.status.success());
-    assert!(output.stderr.is_empty());
+    assert_eq!(output.stderr, b"info: opening waveform\n");
 }

@@ -73,8 +73,29 @@ fn assert_json_jsonl_parity(args: &[String]) {
     );
 }
 
+fn assert_human_progress(args: &[&str], expected: &[&str]) {
+    let output = wavepeek_cmd().args(args).output().expect("wavepeek runs");
+    let stderr = String::from_utf8(output.stderr).expect("UTF-8 stderr");
+    assert!(output.status.success(), "{args:?}: {stderr}");
+    assert!(!output.stdout.is_empty(), "{args:?}");
+    assert!(
+        !String::from_utf8_lossy(&output.stdout).contains("info: "),
+        "{args:?}"
+    );
+    let lines = stderr.lines().take(expected.len()).collect::<Vec<_>>();
+    assert_eq!(lines, expected, "{args:?}");
+    assert_eq!(
+        stderr
+            .lines()
+            .filter(|line| line.starts_with("info: "))
+            .count(),
+        expected.len(),
+        "{args:?}",
+    );
+}
+
 #[test]
-fn every_command_has_matching_json_and_jsonl_payloads() {
+fn every_waveform_command_observes_output_mode() {
     let fixture = |name: &str| fixture_path(name).to_string_lossy().into_owned();
     let m2 = fixture("m2_core.vcd");
     let cases = vec![
@@ -180,6 +201,18 @@ fn every_command_has_matching_json_and_jsonl_payloads() {
         ],
     ];
     for args in cases {
+        let opening = "info: opening waveform";
+        let phases: &[_] = match args[0] {
+            "info" => &[opening],
+            "scope" => &[opening, "info: listing scopes"],
+            "signal" => &[opening, "info: listing signals"],
+            "value" => &[opening, "info: sampling values"],
+            "change" => &[opening, "info: scanning for changes"],
+            "property" => &[opening, "info: evaluating property"],
+            "extract" => &[opening, "info: extracting events"],
+            command => panic!("unexpected command {command}"),
+        };
+        assert_human_progress(&args, phases);
         assert_json_jsonl_parity(&args.into_iter().map(String::from).collect::<Vec<_>>());
     }
 
@@ -253,6 +286,53 @@ fn every_command_has_matching_json_and_jsonl_payloads() {
         ],
     ];
     for args in protocol_cases {
+        assert_human_progress(
+            &args,
+            &[
+                "info: opening waveform",
+                "info: finding protocol signals",
+                "info: decoding protocol events",
+            ],
+        );
+        if matches!(args[1], "ahb" | "apb") {
+            let output = wavepeek_cmd()
+                .args(&args)
+                .args(["--max", "0"])
+                .output()
+                .unwrap();
+            assert_eq!(output.status.code(), Some(1));
+            assert!(output.stdout.is_empty());
+            let stderr = String::from_utf8(output.stderr).unwrap();
+            let fatal = if args[1] == "apb" {
+                stderr
+                    .strip_prefix("info: opening waveform\ninfo: finding protocol signals\n")
+                    .unwrap()
+            } else {
+                &stderr
+            };
+            assert!(
+                fatal.starts_with("fatal: args: --max must be greater than 0"),
+                "{stderr}"
+            );
+        }
         assert_json_jsonl_parity(&args.into_iter().map(String::from).collect::<Vec<_>>());
     }
+
+    assert_human_progress(
+        &[
+            "extract",
+            "axistream",
+            "--waves",
+            &axistream,
+            "--scope",
+            "top",
+            "--map",
+            "aclk=clk",
+            "--map",
+            "tvalid=s_axis_t_valid_o",
+            "--map",
+            "tready=s_axis_tready_i",
+        ],
+        &["info: opening waveform", "info: decoding protocol events"],
+    );
 }

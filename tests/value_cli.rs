@@ -37,7 +37,7 @@ fn value_human_output_with_scope_is_default() {
         .stdout(predicate::eq(
             "@10ns valid=1'h1 core.execute=1'h1 valid=1'h1 core.execute=1'h1\n",
         ))
-        .stderr(predicate::str::is_empty());
+        .stderr("info: opening waveform\ninfo: sampling values\n");
 }
 
 #[test]
@@ -64,7 +64,7 @@ fn value_human_output_with_abs_shows_canonical_paths() {
         .stdout(predicate::eq(
             "@10ns top.cpu.valid=1'h1 top.cpu.core.execute=1'h1 top.cpu.valid=1'h1 top.cpu.core.execute=1'h1\n",
         ))
-        .stderr(predicate::str::is_empty());
+        .stderr("info: opening waveform\ninfo: sampling values\n");
 }
 
 #[test]
@@ -149,7 +149,7 @@ fn value_human_output_accepts_comma_separated_times() {
         .stdout(predicate::eq(
             "@5ns clk=1'h1 data=8'h00\n@10ns clk=1'h1 data=8'h0f\n",
         ))
-        .stderr(predicate::str::is_empty());
+        .stderr("info: opening waveform\ninfo: sampling values\n");
 }
 
 #[test]
@@ -234,7 +234,9 @@ fn value_rejects_empty_time_list_entry() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: args:",
+        ))
         .stderr(predicate::str::contains(
             "time list in --at must not contain empty entries",
         ))
@@ -339,7 +341,9 @@ fn value_invalid_time_token_is_args_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: args:",
+        ))
         .stderr(predicate::str::contains("invalid time token '100'"))
         .stderr(predicate::str::contains("See 'wavepeek value --help'."));
 }
@@ -366,7 +370,9 @@ fn value_decimal_time_token_is_rejected_as_args_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: args:",
+        ))
         .stderr(predicate::str::contains("invalid time token '1.5ns'"))
         .stderr(predicate::str::contains("See 'wavepeek value --help'."));
 }
@@ -393,7 +399,9 @@ fn value_out_of_range_time_is_args_error_with_bounds() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: args:",
+        ))
         .stderr(predicate::str::contains(
             "time '11ns' is outside dump bounds [0ns, 10ns]",
         ))
@@ -422,7 +430,9 @@ fn value_scope_not_found_is_scope_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: scope:"));
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: scope:",
+        ));
 }
 
 #[test]
@@ -661,7 +671,9 @@ fn value_mixed_mode_names_fail_without_scope() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: signal:"));
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: signal:",
+        ));
 }
 
 #[test]
@@ -745,7 +757,9 @@ fn value_scope_rejects_canonical_path_outside_scope() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: signal:"));
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: signal:",
+        ));
 }
 
 #[test]
@@ -917,7 +931,11 @@ fn value_debug_trace_writes_json_events_to_human_stderr() {
 
     assert!(output.status.success());
     assert_eq!(String::from_utf8_lossy(&output.stdout), "@10ns clk=1'h1\n");
-    let events = parse_debug_events(&output.stderr);
+    let stderr = std::str::from_utf8(&output.stderr).unwrap();
+    let (phases, debug): (Vec<_>, Vec<_>) =
+        stderr.lines().partition(|line| line.starts_with("info: "));
+    assert_eq!(phases, ["info: opening waveform", "info: sampling values"]);
+    let events = parse_debug_events(debug.join("\n").as_bytes());
     assert!(
         events
             .iter()

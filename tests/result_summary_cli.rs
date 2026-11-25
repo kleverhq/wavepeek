@@ -333,7 +333,10 @@ fn human_empty_summary_suppresses_empty_message() {
         String::from_utf8(output.stdout).expect("UTF-8 stdout"),
         "complete: true\nreturned: 0\nlimit: 50\ntotal: 0\n"
     );
-    assert!(output.stderr.is_empty());
+    assert_eq!(
+        output.stderr,
+        b"info: opening waveform\ninfo: listing scopes\n"
+    );
 }
 
 #[test]

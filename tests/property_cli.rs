@@ -89,7 +89,9 @@ fn property_signal_typo_keeps_expression_diagnostic_and_suggests_path() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: expr:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: expr:",
+        ))
         .stderr(predicate::str::contains("unknown signal 'vlaid'"))
         .stderr(predicate::str::contains(
             "signal 'vlaid' not found under scope 'top'\nSimilar signal names:\n  cpu.valid",
@@ -425,7 +427,9 @@ fn property_sample_mode_pre_edge_rejects_non_edge_triggers() {
             .failure()
             .code(1)
             .stdout(predicate::str::is_empty())
-            .stderr(predicate::str::starts_with("fatal: args:"))
+            .stderr(predicate::str::starts_with(
+                "info: opening waveform\nfatal: args:",
+            ))
             .stderr(predicate::str::contains(
                 "--sample-mode pre-edge requires --on with only edge event terms",
             ));
@@ -489,7 +493,10 @@ fn property_switch_capture_reports_transitions() {
     assert!(json_output.status.success());
     assert!(human_output.status.success());
     assert!(json_output.stderr.is_empty());
-    assert!(human_output.stderr.is_empty());
+    assert_eq!(
+        human_output.stderr,
+        b"info: opening waveform\ninfo: evaluating property\n"
+    );
 
     let json = parse_json(&json_output.stdout);
     assert_eq!(json["command"], "property");
@@ -726,7 +733,7 @@ fn property_max_one_truncates_in_human_and_json_modes() {
     );
     assert_eq!(
         String::from_utf8_lossy(&human_output.stderr).trim(),
-        "warning[WPK-W0002]: truncated output to 1 entries (use --max to increase limit)"
+        "info: opening waveform\ninfo: evaluating property\nwarning[WPK-W0002]: truncated output to 1 entries (use --max to increase limit)"
     );
 
     let value = parse_json(&json_output.stdout);
@@ -810,7 +817,10 @@ fn property_unlimited_max_disables_truncation_without_diagnostics() {
         60
     );
     assert_eq!(value["summary"]["limit"], Value::Null);
-    assert!(human_output.stderr.is_empty());
+    assert_eq!(
+        human_output.stderr,
+        b"info: opening waveform\ninfo: evaluating property\n"
+    );
 }
 
 #[test]
@@ -889,7 +899,10 @@ fn property_empty_result_uses_normal_human_output_and_empty_machine_diagnostics(
         String::from_utf8_lossy(&human_output.stdout).trim(),
         "no property matches found in selected time range"
     );
-    assert!(human_output.stderr.is_empty());
+    assert_eq!(
+        human_output.stderr,
+        b"info: opening waveform\ninfo: evaluating property\n"
+    );
     let json = parse_json(&json_output.stdout);
     assert_eq!(json["data"], json!([]));
     assert_eq!(json["diagnostics"], json!([]));
@@ -916,7 +929,9 @@ fn property_invalid_eval_reports_expr_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: expr:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: expr:",
+        ))
         .stderr(predicate::str::contains("EXPR-PARSE-LOGICAL-EXPECTED"));
 }
 
@@ -1067,7 +1082,9 @@ fn property_explicit_wildcard_signal_free_eval_reports_tracking_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: args:",
+        ))
         .stderr(predicate::str::contains(
             "wildcard trigger cannot infer tracked signals from --eval",
         ));

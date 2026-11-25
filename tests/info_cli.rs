@@ -20,7 +20,7 @@ fn info_human_output_is_default_for_vcd_fixture() {
         .stdout(predicate::str::contains("time_precision").not())
         .stdout(predicate::str::contains("time_start: 0ns"))
         .stdout(predicate::str::contains("time_end: 10ns"))
-        .stderr(predicate::str::is_empty());
+        .stderr("info: opening waveform\n");
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn info_opens_fst_with_verilator_pack_array_attributes() {
         .stdout(predicate::eq(
             "time_unit: 1ps\ntime_start: 0ps\ntime_end: 1ps\n",
         ))
-        .stderr(predicate::str::is_empty());
+        .stderr("info: opening waveform\n");
 }
 
 #[test]
@@ -140,8 +140,10 @@ fn info_missing_file_is_file_error_with_exit_code_two() {
         .code(2)
         .stdout(predicate::str::is_empty())
         .stderr(
-            predicate::str::starts_with("fatal: file: cannot read metadata from")
-                .and(predicate::str::contains("I/O error")),
+            predicate::str::starts_with(
+                "info: opening waveform\nfatal: file: cannot read metadata from",
+            )
+            .and(predicate::str::contains("I/O error")),
         );
 }
 
@@ -162,7 +164,9 @@ fn info_invalid_file_is_parse_error_with_exit_code_two() {
         .code(2)
         .stdout(predicate::str::is_empty())
         .stderr(
-            predicate::str::starts_with("fatal: file: cannot read metadata from")
-                .and(predicate::str::contains("unknown waveform format")),
+            predicate::str::starts_with(
+                "info: opening waveform\nfatal: file: cannot read metadata from",
+            )
+            .and(predicate::str::contains("unknown waveform format")),
         );
 }

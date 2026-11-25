@@ -3,7 +3,9 @@ use crate::cli::scope::ScopeArgs;
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::output_paths::OutputPaths;
-use crate::engine::{CommandData, CommandName, CommandResult, ResultSummary};
+use crate::engine::{
+    CommandData, CommandName, CommandResult, OPENING_WAVEFORM, ReportProgress, ResultSummary,
+};
 use crate::error::WavepeekError;
 use crate::waveform::Waveform;
 use regex::Regex;
@@ -16,7 +18,7 @@ pub struct ScopeEntry {
     pub kind: String,
 }
 
-pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
+pub fn run(args: ScopeArgs, report: ReportProgress<'_>) -> Result<CommandResult, WavepeekError> {
     let ScopeArgs {
         waves,
         max,
@@ -46,6 +48,7 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
 
     let debug = DebugTrace::for_command(CommandName::Scope);
     debug.event("backend.open.start", || serde_json::json!({}));
+    report(OPENING_WAVEFORM);
     let waveform = Waveform::open(waves.as_path())?;
     debug.event("backend.open.done", || {
         serde_json::json!({
@@ -53,6 +56,7 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
             "format": waveform.format_name(),
         })
     });
+    report("listing scopes");
     let scopes = waveform.scopes_depth_first(max_depth.numeric())?;
     let include_ancestors = tree && !json && !jsonl;
     let mut included = vec![false; scopes.len()];

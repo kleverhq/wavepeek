@@ -37,9 +37,12 @@ fn malformed_vcd_cause_survives_fsdb_suffix_and_output_mode() {
                     fatal["message"].as_str().unwrap().to_owned()
                 } else {
                     assert!(output.stdout.is_empty());
-                    let message = String::from_utf8(output.stderr).unwrap();
-                    assert!(message.starts_with("fatal: file: "));
-                    message
+                    let stderr = String::from_utf8(output.stderr).unwrap();
+                    assert!(
+                        stderr.starts_with("info: opening waveform\nfatal: file: "),
+                        "{stderr}"
+                    );
+                    stderr
                 };
                 assert!(message.contains("malformed Vcd"), "{message}");
                 assert!(message.contains(path.to_str().unwrap()));
@@ -130,15 +133,34 @@ fn lazy_fst_expression_reads_preserve_signal_failures_and_late_jsonl_framing() {
         ],
     ];
     for args in cases {
-        for mode in ["--json", "--jsonl"] {
+        for mode in [None, Some("--json"), Some("--jsonl")] {
             let output = wavepeek_cmd()
                 .args(*args)
                 .arg("--waves")
                 .arg(&fst)
-                .args(["--max", "1", mode])
+                .args(["--max", "1"])
+                .args(mode)
                 .output()
                 .unwrap();
             assert_eq!(output.status.code(), Some(1), "{args:?} {output:?}");
+            let Some(mode) = mode else {
+                assert!(output.stdout.is_empty());
+                let stderr = String::from_utf8(output.stderr).unwrap();
+                let phase = match args[0] {
+                    "change" => "scanning for changes",
+                    "property" => "evaluating property",
+                    "extract" => "extracting events",
+                    command => panic!("unexpected command {command}"),
+                };
+                let fatal = stderr
+                    .strip_prefix(&format!("info: opening waveform\ninfo: {phase}\n"))
+                    .unwrap_or_else(|| panic!("{args:?}: {stderr}"));
+                assert!(
+                    fatal.starts_with("fatal: ") && fatal.contains("non-ASCII string"),
+                    "{stderr}"
+                );
+                continue;
+            };
             assert!(output.stderr.is_empty(), "{output:?}");
             let records: Vec<Value> = std::str::from_utf8(&output.stdout)
                 .unwrap()

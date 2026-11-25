@@ -22,7 +22,10 @@ use crate::engine::signal_mapping::{
 };
 use crate::engine::time::{format_raw_timestamp, parse_dump_time_context};
 use crate::engine::value_format::format_verilog_literal;
-use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions, ResultSummary};
+use crate::engine::{
+    CommandData, CommandName, CommandResult, DECODING_PROTOCOL_EVENTS, HumanRenderOptions,
+    ReportProgress, ResultSummary,
+};
 use crate::error::WavepeekError;
 use crate::expr::{BoundEventExpr, EventEvalFrame, ExpressionHost, SampledValue, SignalHandle};
 use crate::waveform::expr_host::RuntimeExpressionHost;
@@ -769,12 +772,12 @@ impl Walker {
     }
 }
 
-pub fn run(args: AhbArgs) -> Result<CommandResult, WavepeekError> {
+pub fn run(args: AhbArgs, report: ReportProgress<'_>) -> Result<CommandResult, WavepeekError> {
     let output_mode = crate::output_mode::OutputMode::from_json_flags(args.json, args.jsonl);
     let signals_abs = args.abs;
     let summary_only = args.summary;
     let mut sink = CollectingAhbSink::default();
-    let outcome = run_with_sink(args, &mut sink)?;
+    let outcome = run_with_sink(args, &mut sink, report)?;
 
     Ok(CommandResult {
         command: CommandName::ExtractAhb,
@@ -808,7 +811,7 @@ pub fn run_jsonl<W: std::io::Write>(
     writer.suppress_data(args.summary);
     let outcome = {
         let mut sink = JsonlAhbSink { writer };
-        run_with_sink(args, &mut sink)?
+        run_with_sink(args, &mut sink, &mut |_| {})?
     };
     for diagnostic in &outcome.diagnostics {
         writer.diagnostic(diagnostic)?;
@@ -819,6 +822,7 @@ pub fn run_jsonl<W: std::io::Write>(
 fn run_with_sink<S: AhbEventSink + ?Sized>(
     args: AhbArgs,
     sink: &mut S,
+    report: ReportProgress<'_>,
 ) -> Result<AhbOutcome, WavepeekError> {
     let max = max_entries(&args.max)?;
     let mut diagnostics = Vec::new();
@@ -829,7 +833,7 @@ fn run_with_sink<S: AhbEventSink + ?Sized>(
         bound_clock,
         diagnostics: build_diagnostics,
         debug,
-    } = build_ahb(&args)?;
+    } = build_ahb(&args, report)?;
     diagnostics.extend(build_diagnostics);
 
     let metadata = waveform.borrow().metadata()?;
@@ -873,6 +877,7 @@ fn run_with_sink<S: AhbEventSink + ?Sized>(
     let mut started = false;
     let mut emitted = 0usize;
     let mut truncated = false;
+    report(DECODING_PROTOCOL_EVENTS);
     waveform.borrow_mut().query_expressions(
         &bound_clock.query,
         dump_start_raw..=to_raw,
@@ -945,12 +950,12 @@ fn run_with_sink<S: AhbEventSink + ?Sized>(
     })
 }
 
-fn build_ahb(args: &AhbArgs) -> Result<BuiltAhb, WavepeekError> {
+fn build_ahb(args: &AhbArgs, report: ReportProgress<'_>) -> Result<BuiltAhb, WavepeekError> {
     let config = config_from_args(args)?;
     let includes = compile_include_regexes(&config.includes)?;
     let debug = DebugTrace::for_command(CommandName::ExtractAhb);
     debug.event("backend.open.start", || serde_json::json!({}));
-    let waveform = open_shared_waveform(args.waves.as_path())?;
+    let waveform = open_shared_waveform(args.waves.as_path(), report)?;
     {
         let waveform_ref = waveform.borrow();
         debug.event("backend.open.done", || {
@@ -965,7 +970,8 @@ fn build_ahb(args: &AhbArgs) -> Result<BuiltAhb, WavepeekError> {
     {
         waveform.borrow().validate_scope(scope)?;
     }
-    let candidates = collect_include_candidates(&waveform, args.scope.as_deref(), &includes)?;
+    let candidates =
+        collect_include_candidates(&waveform, args.scope.as_deref(), &includes, report)?;
     let explicit = explicit_mappings(
         &waveform,
         args.scope.as_deref(),
@@ -1509,6 +1515,7 @@ mod tests {
                     jsonl: true,
                 },
                 &mut sink,
+                &mut |_| {},
             )
             .unwrap_err();
             assert_eq!(sink.starts, [initial]);

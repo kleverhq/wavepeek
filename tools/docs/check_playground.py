@@ -100,7 +100,8 @@ def check_reads(
         actual = run_browser(page, command)
         assert actual == run_native(native_bin, cwd, command), command
         status, stdout, stderr = actual
-        assert status == 0 and stdout.strip() and not stderr, (command, actual)
+        expected_stderr = "info: opening waveform\ninfo: sampling values\n" if index == 0 else ""
+        assert status == 0 and stdout.strip() and stderr == expected_stderr, (command, actual)
         if index in (1, 2):
             result = json.loads(stdout)
             assert result["type"] == "result" and result["data"], command
@@ -174,7 +175,7 @@ def check(site: pathlib.Path, native_bin: pathlib.Path) -> None:
             )
             page.locator("#source-status").filter(has_text="Ready").wait_for()
             status, stdout, stderr = run_browser(page, "info --waves local.vcd")
-            assert status == 0 and not stderr and "time_unit: 1ns" in stdout
+            assert status == 0 and stderr == "info: opening waveform\n" and "time_unit: 1ns" in stdout
             with tempfile.TemporaryDirectory() as directory:
                 cwd = pathlib.Path(directory)
                 (cwd / "local.vcd").write_bytes(VCD)

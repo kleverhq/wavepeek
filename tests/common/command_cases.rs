@@ -260,6 +260,9 @@ pub fn assert_negative_case(case: &NegativeCase) {
     );
     assert!(output.stdout.is_empty(), "case '{}' stdout", case.name);
     let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    let stderr = stderr
+        .strip_prefix("info: opening waveform\n")
+        .unwrap_or(&stderr);
     assert!(
         stderr.starts_with(case.stderr_prefix.as_str()),
         "case '{}' stderr prefix mismatch: {stderr}",

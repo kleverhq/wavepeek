@@ -19,7 +19,9 @@ use crate::engine::time::{
     parse_dump_time_context, validate_time_token_to_raw,
 };
 use crate::engine::value_format::format_verilog_literal;
-use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions, ResultSummary};
+use crate::engine::{
+    CommandData, CommandName, CommandResult, HumanRenderOptions, ReportProgress, ResultSummary,
+};
 use crate::error::WavepeekError;
 use crate::expr::{
     BoundEventExpr, EventEvalFrame, ExprTypeKind, ExpressionHost, SampledValue, SignalHandle,
@@ -106,11 +108,11 @@ impl<W: std::io::Write> ChangeSnapshotSink for JsonlChangeSink<'_, W> {
     }
 }
 
-pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
+pub fn run(args: ChangeArgs, report: ReportProgress<'_>) -> Result<CommandResult, WavepeekError> {
     let output_mode = crate::output_mode::OutputMode::from_json_flags(args.json, args.jsonl);
     let summary_only = args.summary;
     let mut sink = CollectingChangeSink::default();
-    let outcome = run_with_sink(args, &mut sink)?;
+    let outcome = run_with_sink(args, &mut sink, report)?;
 
     Ok(CommandResult {
         command: CommandName::Change,
@@ -131,7 +133,7 @@ pub fn run_jsonl<W: std::io::Write>(
     writer.suppress_data(args.summary);
     let outcome = {
         let mut sink = JsonlChangeSink { writer };
-        run_with_sink(args, &mut sink)?
+        run_with_sink(args, &mut sink, &mut |_| {})?
     };
 
     for diagnostic in &outcome.diagnostics {
@@ -143,6 +145,7 @@ pub fn run_jsonl<W: std::io::Write>(
 fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
     args: ChangeArgs,
     sink: &mut S,
+    report: ReportProgress<'_>,
 ) -> Result<ChangeCommandOutcome, WavepeekError> {
     let max_entries = match &args.max {
         LimitArg::Numeric(0) => {
@@ -158,7 +161,7 @@ fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
 
     let debug = DebugTrace::for_command(CommandName::Change);
     debug.event("backend.open.start", || serde_json::json!({}));
-    let waveform = open_shared_waveform(args.waves.as_path())?;
+    let waveform = open_shared_waveform(args.waves.as_path(), report)?;
     {
         let waveform_ref = waveform.borrow();
         debug.event("backend.open.done", || {
@@ -265,6 +268,7 @@ fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
     } else {
         Vec::new()
     };
+    report("scanning for changes");
     waveform.borrow_mut().query_expressions(
         &query,
         from_raw..=to_raw,
@@ -519,7 +523,7 @@ fn resolve_requested_signals(
     args: &ChangeArgs,
 ) -> Result<Vec<RequestedSignal>, WavepeekError> {
     if let Some(scope) = scope {
-        waveform.signals_in_scope(scope)?;
+        waveform.validate_scope(scope)?;
     }
 
     let mut resolved = Vec::with_capacity(args.signals.len());
@@ -777,6 +781,7 @@ mod tests {
                 jsonl: true,
             },
             &mut sink,
+            &mut |_| {},
         )
         .expect_err("sink error should stop the streaming run");
 
@@ -865,6 +870,10 @@ mod tests {
                 "{token} should contain {expected}"
             );
         }
+    }
+
+    fn run(args: ChangeArgs) -> Result<super::CommandResult, WavepeekError> {
+        super::run(args, &mut |_| {})
     }
 
     const TEST_VCD: &str = concat!(

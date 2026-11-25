@@ -390,7 +390,9 @@ fn change_default_pre_edge_rejects_non_edge_triggers() {
             .failure()
             .code(1)
             .stdout(predicate::str::is_empty())
-            .stderr(predicate::str::starts_with("fatal: args:"))
+            .stderr(predicate::str::starts_with(
+                "info: opening waveform\nfatal: args:",
+            ))
             .stderr(predicate::str::contains(
                 "--sample-mode pre-edge requires --on with only edge event terms",
             ));
@@ -503,7 +505,7 @@ fn change_flattens_repeated_and_comma_separated_signals_in_order() {
         .stdout(predicate::eq(
             "@10ns top.clk=1'h1 top.data=8'h0f top.clk=1'h1\n",
         ))
-        .stderr(predicate::str::is_empty());
+        .stderr("info: opening waveform\ninfo: scanning for changes\n");
 }
 
 #[test]
@@ -716,7 +718,10 @@ fn change_zero_delta_uses_normal_human_output_and_empty_machine_diagnostics() {
         String::from_utf8_lossy(&human_output.stdout).trim(),
         "no change rows found in selected time range"
     );
-    assert!(human_output.stderr.is_empty());
+    assert_eq!(
+        human_output.stderr,
+        b"info: opening waveform\ninfo: scanning for changes\n"
+    );
     let json = parse_json(&json_output.stdout);
     assert_eq!(json["data"], json!([]));
     assert_eq!(json["diagnostics"], json!([]));
@@ -784,7 +789,10 @@ fn change_unlimited_empty_result_has_no_diagnostics_in_json_and_human_modes() {
         String::from_utf8_lossy(&human_output.stdout).trim(),
         "no change rows found in selected time range"
     );
-    assert!(human_output.stderr.is_empty());
+    assert_eq!(
+        human_output.stderr,
+        b"info: opening waveform\ninfo: scanning for changes\n"
+    );
 }
 
 #[test]
@@ -1157,7 +1165,10 @@ fn change_iff_executes_end_to_end() {
     assert!(json_output.status.success());
     assert!(human_output.status.success());
     assert!(json_output.stderr.is_empty());
-    assert!(human_output.stderr.is_empty());
+    assert_eq!(
+        human_output.stderr,
+        b"info: opening waveform\ninfo: scanning for changes\n"
+    );
 
     let json = parse_json(&json_output.stdout);
     assert_eq!(json["diagnostics"], json!([]));
@@ -1203,7 +1214,9 @@ fn change_invalid_on_reports_expr_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: expr:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: expr:",
+        ))
         .stderr(predicate::str::contains("EXPR-PARSE-EVENT-UNMATCHED-OPEN"))
         .stderr(predicate::str::contains("source: posedge ("));
 }
@@ -1231,7 +1244,9 @@ fn change_unmatched_close_parenthesis_reports_expr_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: expr:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: expr:",
+        ))
         .stderr(predicate::str::contains("EXPR-PARSE-EVENT-UNMATCHED-CLOSE"))
         .stderr(predicate::str::contains("source: posedge clk)"));
 }
@@ -1259,7 +1274,9 @@ fn change_broken_union_reports_expr_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: expr:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: expr:",
+        ))
         .stderr(predicate::str::contains("EXPR-PARSE-EVENT-BROKEN-UNION"))
         .stderr(predicate::str::contains("source: posedge clk or , clk"));
 }
@@ -1287,7 +1304,9 @@ fn change_empty_iff_reports_expr_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: expr:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: expr:",
+        ))
         .stderr(predicate::str::contains("EXPR-PARSE-EVENT-EMPTY-IFF"))
         .stderr(predicate::str::contains("source: posedge clk iff"));
 }
@@ -1464,7 +1483,10 @@ fn change_empty_result_uses_normal_human_output_and_empty_machine_diagnostics() 
         String::from_utf8_lossy(&human_output.stdout).trim(),
         "no change rows found in selected time range"
     );
-    assert!(human_output.stderr.is_empty());
+    assert_eq!(
+        human_output.stderr,
+        b"info: opening waveform\ninfo: scanning for changes\n"
+    );
 
     let value = parse_json(&json_output.stdout);
     assert_eq!(value["data"], json!([]));
@@ -1526,7 +1548,7 @@ fn change_truncation_warning_matches_between_json_and_human_modes() {
     );
     assert_eq!(
         String::from_utf8_lossy(&human_output.stderr).trim(),
-        "warning[WPK-W0002]: truncated output to 1 entries (use --max to increase limit)"
+        "info: opening waveform\ninfo: scanning for changes\nwarning[WPK-W0002]: truncated output to 1 entries (use --max to increase limit)"
     );
 
     let value = parse_json(&json_output.stdout);
@@ -1783,7 +1805,10 @@ fn change_unlimited_max_disables_truncation_without_diagnostics() {
     );
     assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(value["summary"]["limit"], Value::Null);
-    assert!(human_output.stderr.is_empty());
+    assert_eq!(
+        human_output.stderr,
+        b"info: opening waveform\ninfo: scanning for changes\n"
+    );
     assert!(
         String::from_utf8_lossy(&human_output.stdout)
             .lines()
@@ -1902,7 +1927,9 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: args:",
+        ))
         .stderr(predicate::str::contains(
             "--from must be less than or equal to --to",
         ));
@@ -1925,7 +1952,9 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: args:",
+        ))
         .stderr(predicate::str::contains("requires units"));
 
     wavepeek_cmd()
@@ -1944,7 +1973,9 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: expr:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: expr:",
+        ))
         .stderr(predicate::str::contains("unknown signal 'nope'"));
 
     wavepeek_cmd()
@@ -1965,7 +1996,9 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: scope:"));
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: scope:",
+        ));
 
     wavepeek_cmd()
         .args([
@@ -1985,7 +2018,9 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: args:",
+        ))
         .stderr(predicate::str::contains(
             "cannot be represented exactly in dump precision",
         ));
@@ -2014,7 +2049,9 @@ fn change_decimal_time_token_is_rejected_as_args_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: args:",
+        ))
         .stderr(predicate::str::contains("invalid time token '1.5ns'"))
         .stderr(predicate::str::contains("See 'wavepeek change --help'."));
 }
@@ -2040,7 +2077,9 @@ fn change_empty_on_expression_reports_expr_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: expr:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: expr:",
+        ))
         .stderr(predicate::str::contains("EXPR-PARSE-EVENT-EMPTY"));
 }
 
@@ -2067,7 +2106,9 @@ fn change_out_of_range_from_time_is_args_error_with_bounds() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: args:",
+        ))
         .stderr(predicate::str::contains(
             "time '11ns' for --from is outside dump bounds [0ns, 10ns]",
         ))
@@ -2097,7 +2138,9 @@ fn change_misaligned_time_includes_help_hint() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: args:",
+        ))
         .stderr(predicate::str::contains(
             "cannot be represented exactly in dump precision",
         ))
@@ -2129,7 +2172,9 @@ fn change_invalid_when_signal_fails_even_without_in_range_timestamps() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: expr:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: expr:",
+        ))
         .stderr(predicate::str::contains("unknown signal 'top.nope'"));
 
     wavepeek_cmd()
@@ -2154,7 +2199,9 @@ fn change_invalid_when_signal_fails_even_without_in_range_timestamps() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: expr:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: expr:",
+        ))
         .stderr(predicate::str::contains("unknown signal 'vlaid'"))
         .stderr(predicate::str::contains(
             "signal 'vlaid' not found under scope 'top'\nSimilar signal names:\n  cpu.valid",

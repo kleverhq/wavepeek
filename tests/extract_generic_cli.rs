@@ -495,7 +495,7 @@ fn extract_generic_source_file_reports_malformed_literals() {
             .code(1)
             .stdout(predicate::str::is_empty())
             .stderr(
-                predicate::str::starts_with("fatal: expr:")
+                predicate::str::starts_with("info: opening waveform\nfatal: expr:")
                     .and(predicate::str::contains("EXPR-PARSE-LOGICAL-LITERAL"))
                     .and(predicate::str::contains(rendered_source))
                     .and(predicate::str::contains(caret)),
@@ -605,7 +605,10 @@ fn extract_generic_empty_result_uses_normal_human_output_and_empty_machine_diagn
         String::from_utf8_lossy(&human.stdout).trim(),
         "no extract rows found in selected time range"
     );
-    assert!(human.stderr.is_empty());
+    assert_eq!(
+        human.stderr,
+        b"info: opening waveform\ninfo: extracting events\n"
+    );
 }
 
 #[test]
@@ -784,7 +787,9 @@ fn extract_generic_rejects_bad_sources_and_paths_outside_scope() {
         ])
         .assert()
         .failure()
-        .stderr(predicate::str::starts_with("fatal: signal:"))
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\nfatal: signal:",
+        ))
         .stderr(predicate::str::contains(
             "signal 'top.clk' not found under scope 'top.top'\nExact signal name matches:\n  clk",
         ));

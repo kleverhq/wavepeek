@@ -17,7 +17,9 @@ use crate::engine::signal_mapping::candidate_matching_standards;
 use crate::engine::signal_mapping::{
     MappedSignal, SignalCandidate, collect_include_candidates, resolve_explicit_mapping,
 };
-use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions, ResultSummary};
+use crate::engine::{
+    CommandData, CommandName, CommandResult, HumanRenderOptions, ReportProgress, ResultSummary,
+};
 use crate::error::WavepeekError;
 
 const DEFAULT_PROFILE: &str = "axi4";
@@ -1216,12 +1218,12 @@ const ACE5_LITE_ACP_PROFILE: AxiProfileSpec = AxiProfileSpec {
     channels: ACE5_LITE_ACP_CHANNELS,
 };
 
-pub fn run(args: AxiArgs) -> Result<CommandResult, WavepeekError> {
+pub fn run(args: AxiArgs, report: ReportProgress<'_>) -> Result<CommandResult, WavepeekError> {
     let output_mode = crate::output_mode::OutputMode::from_json_flags(args.json, args.jsonl);
     let signals_abs = args.abs;
     let summary_only = args.summary;
     let mut sink = CollectingAxiSink::default();
-    let outcome = run_with_sink(args, &mut sink)?;
+    let outcome = run_with_sink(args, &mut sink, report)?;
 
     Ok(CommandResult {
         command: CommandName::ExtractAxi,
@@ -1251,7 +1253,7 @@ pub fn run_jsonl<W: std::io::Write>(
     writer.suppress_data(args.summary);
     let outcome = {
         let mut sink = JsonlAxiSink { writer };
-        run_with_sink(args, &mut sink)?
+        run_with_sink(args, &mut sink, &mut |_| {})?
     };
 
     for diagnostic in &outcome.diagnostics {
@@ -1263,6 +1265,7 @@ pub fn run_jsonl<W: std::io::Write>(
 fn run_with_sink<S: AxiTransferSink + ?Sized>(
     args: AxiArgs,
     sink: &mut S,
+    report: ReportProgress<'_>,
 ) -> Result<AxiOutcome, WavepeekError> {
     let BuiltAxiPlan {
         context,
@@ -1271,7 +1274,7 @@ fn run_with_sink<S: AxiTransferSink + ?Sized>(
         debug,
         payload_standards,
         diagnostics: build_diagnostics,
-    } = build_axi_plan(&args)?;
+    } = build_axi_plan(&args, report)?;
     let absolute_paths = args.abs || args.json || args.jsonl;
     let mut generic_sink = GenericToAxiSink {
         context: &context,
@@ -1296,6 +1299,7 @@ fn run_with_sink<S: AxiTransferSink + ?Sized>(
         waveform,
         debug,
         &mut generic_sink,
+        report,
     )?;
 
     let mut diagnostics = build_diagnostics;
@@ -1307,12 +1311,15 @@ fn run_with_sink<S: AxiTransferSink + ?Sized>(
     })
 }
 
-fn build_axi_plan(args: &AxiArgs) -> Result<BuiltAxiPlan, WavepeekError> {
+fn build_axi_plan(
+    args: &AxiArgs,
+    report: ReportProgress<'_>,
+) -> Result<BuiltAxiPlan, WavepeekError> {
     let config = config_from_args(args)?;
     let include_regexes = compile_include_regexes(&config.includes)?;
     let debug = DebugTrace::for_command(CommandName::ExtractAxi);
     debug.event("backend.open.start", || serde_json::json!({}));
-    let waveform = open_shared_waveform(args.waves.as_path())?;
+    let waveform = open_shared_waveform(args.waves.as_path(), report)?;
     {
         let waveform_ref = waveform.borrow();
         debug.event("backend.open.done", || {
@@ -1323,7 +1330,7 @@ fn build_axi_plan(args: &AxiArgs) -> Result<BuiltAxiPlan, WavepeekError> {
         });
     }
     let candidates =
-        collect_include_candidates(&waveform, args.scope.as_deref(), &include_regexes)?;
+        collect_include_candidates(&waveform, args.scope.as_deref(), &include_regexes, report)?;
     let explicit = explicit_mappings(
         &waveform,
         args.scope.as_deref(),

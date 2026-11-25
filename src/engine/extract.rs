@@ -22,7 +22,10 @@ use crate::engine::time::{
     validate_time_token_to_raw,
 };
 use crate::engine::value_format::format_verilog_literal;
-use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions, ResultSummary};
+use crate::engine::{
+    CommandData, CommandName, CommandResult, DECODING_PROTOCOL_EVENTS, HumanRenderOptions,
+    ReportProgress, ResultSummary,
+};
 use crate::error::WavepeekError;
 use crate::expr::{
     BoundEventExpr, BoundLogicalExpr, EventEvalFrame, ExpressionHost, SampledValue, SignalHandle,
@@ -230,12 +233,12 @@ struct SourceFileSource {
     payload: Vec<String>,
 }
 
-pub fn run(args: GenericArgs) -> Result<CommandResult, WavepeekError> {
+pub fn run(args: GenericArgs, report: ReportProgress<'_>) -> Result<CommandResult, WavepeekError> {
     let output_mode = crate::output_mode::OutputMode::from_json_flags(args.json, args.jsonl);
     let signals_abs = args.abs;
     let summary_only = args.summary;
     let mut sink = CollectingExtractSink::default();
-    let outcome = run_with_sink(args, &mut sink)?;
+    let outcome = run_with_sink(args, &mut sink, report)?;
 
     Ok(CommandResult {
         command: CommandName::ExtractGeneric,
@@ -262,7 +265,7 @@ pub fn run_jsonl<W: std::io::Write>(
     writer.suppress_data(args.summary);
     let outcome = {
         let mut sink = JsonlExtractSink { writer };
-        run_with_sink(args, &mut sink)?
+        run_with_sink(args, &mut sink, &mut |_| {})?
     };
 
     for diagnostic in &outcome.diagnostics {
@@ -274,6 +277,7 @@ pub fn run_jsonl<W: std::io::Write>(
 fn run_with_sink<S: ExtractRowSink + ?Sized>(
     args: GenericArgs,
     sink: &mut S,
+    report: ReportProgress<'_>,
 ) -> Result<ExtractCommandOutcome, WavepeekError> {
     let plan = build_plan(&args)?;
     run_plan_with_sink(
@@ -292,6 +296,7 @@ fn run_with_sink<S: ExtractRowSink + ?Sized>(
         },
         plan,
         sink,
+        report,
     )
 }
 
@@ -299,12 +304,13 @@ pub(crate) fn run_plan_with_sink<S: ExtractRowSink + ?Sized>(
     args: ExtractRunArgs,
     plan: ExtractPlan,
     sink: &mut S,
+    report: ReportProgress<'_>,
 ) -> Result<ExtractCommandOutcome, WavepeekError> {
     let max_entries = max_entries(&args.max)?;
 
     let debug = DebugTrace::for_command(args.command);
     debug.event("backend.open.start", || serde_json::json!({}));
-    let waveform = open_shared_waveform(args.waves.as_path())?;
+    let waveform = open_shared_waveform(args.waves.as_path(), report)?;
     {
         let waveform_ref = waveform.borrow();
         debug.event("backend.open.done", || {
@@ -315,7 +321,7 @@ pub(crate) fn run_plan_with_sink<S: ExtractRowSink + ?Sized>(
         });
     }
 
-    run_open_plan_with_sink(args, plan, waveform, debug, max_entries, sink)
+    run_open_plan_with_sink(args, plan, waveform, debug, max_entries, sink, report)
 }
 
 pub(crate) fn run_plan_with_waveform_sink<S: ExtractRowSink + ?Sized>(
@@ -324,9 +330,10 @@ pub(crate) fn run_plan_with_waveform_sink<S: ExtractRowSink + ?Sized>(
     waveform: SharedWaveform,
     debug: DebugTrace,
     sink: &mut S,
+    report: ReportProgress<'_>,
 ) -> Result<ExtractCommandOutcome, WavepeekError> {
     let max_entries = max_entries(&args.max)?;
-    run_open_plan_with_sink(args, plan, waveform, debug, max_entries, sink)
+    run_open_plan_with_sink(args, plan, waveform, debug, max_entries, sink, report)
 }
 
 fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
@@ -336,6 +343,7 @@ fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
     debug: DebugTrace,
     max_entries: Option<usize>,
     sink: &mut S,
+    report: ReportProgress<'_>,
 ) -> Result<ExtractCommandOutcome, WavepeekError> {
     let source_count = plan.source_count();
     let metadata = waveform.borrow().metadata()?;
@@ -426,6 +434,11 @@ fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
         max_entries,
         profile_timing: debug.is_enabled(),
     };
+    report(if args.command == CommandName::ExtractGeneric {
+        "extracting events"
+    } else {
+        DECODING_PROTOCOL_EVENTS
+    });
     let stats = emit_rows(emit_context, sink)?;
     debug.event("extract.emit.done", || {
         serde_json::json!({
@@ -598,7 +611,7 @@ fn bind_extract_sources(
     sources: Vec<ExtractSource>,
 ) -> Result<Vec<BoundExtractSource>, WavepeekError> {
     if let Some(scope) = scope {
-        waveform.borrow().signals_in_scope(scope)?;
+        waveform.borrow().validate_scope(scope)?;
     }
 
     let mut bound_sources = Vec::with_capacity(sources.len());
@@ -957,6 +970,7 @@ mod tests {
                 jsonl: true,
             },
             &mut sink,
+            &mut |_| {},
         )
         .unwrap_err();
         assert_eq!(sink.0, 1);

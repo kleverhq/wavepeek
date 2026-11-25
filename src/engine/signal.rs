@@ -3,7 +3,9 @@ use crate::cli::signal::SignalArgs;
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::output_paths::OutputPaths;
-use crate::engine::{CommandData, CommandName, CommandResult, ResultSummary};
+use crate::engine::{
+    CommandData, CommandName, CommandResult, OPENING_WAVEFORM, ReportProgress, ResultSummary,
+};
 use crate::error::WavepeekError;
 use crate::waveform::Waveform;
 use regex::Regex;
@@ -19,7 +21,7 @@ pub struct SignalEntry {
     pub width: Option<u32>,
 }
 
-pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
+pub fn run(args: SignalArgs, report: ReportProgress<'_>) -> Result<CommandResult, WavepeekError> {
     let SignalArgs {
         waves,
         scope,
@@ -56,6 +58,7 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
 
     let debug = DebugTrace::for_command(CommandName::Signal);
     debug.event("backend.open.start", || serde_json::json!({}));
+    report(OPENING_WAVEFORM);
     let waveform = Waveform::open(waves.as_path())?;
     debug.event("backend.open.done", || {
         serde_json::json!({
@@ -63,6 +66,7 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
             "format": waveform.format_name(),
         })
     });
+    report("listing signals");
     let listing = if recursive {
         waveform.signals_in_scope_recursive_report(scope.as_str(), effective_max_depth)?
     } else {

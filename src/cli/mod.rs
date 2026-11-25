@@ -794,7 +794,12 @@ fn dispatch(
         };
     }
 
-    let result = engine::run(engine_command)?;
+    let result = engine::run(engine_command, &mut |phase| {
+        if output_mode == OutputMode::Human {
+            // Keep waveform execution independent of progress I/O.
+            let _ = writeln!(stderr, "info: {phase}").and_then(|()| stderr.flush());
+        }
+    })?;
     output::write_result_to(result, stdout, stderr).map_err(Into::into)
 }
 
@@ -837,6 +842,8 @@ fn into_engine_command(command: Command) -> EngineCommand {
 
 #[cfg(test)]
 mod tests {
+    use std::cell::Cell;
+    use std::io::{self, Write};
     use std::path::PathBuf;
 
     use clap::{CommandFactory, Parser};
@@ -846,8 +853,91 @@ mod tests {
     use super::{
         Cli, EngineCommand, build_cli_command, build_cli_command_for, clap_error_detail,
         handle_parse_error, help_hint_for_rendered_clap_error, into_engine_command,
-        normalize_clap_error,
+        normalize_clap_error, run_from,
     };
+
+    #[test]
+    fn human_progress_flushes_each_phase_and_flushes_opening_before_access() {
+        struct Stderr<'a> {
+            wave: PathBuf,
+            stdout_started: &'a Cell<bool>,
+            pending: Vec<u8>,
+            flushed: Vec<Vec<u8>>,
+        }
+
+        impl Write for Stderr<'_> {
+            fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+                self.pending.write(bytes)
+            }
+
+            fn flush(&mut self) -> io::Result<()> {
+                if self.pending.is_empty() {
+                    return Ok(());
+                }
+                assert!(!self.stdout_started.get(), "progress flush precedes stdout");
+                if self.flushed.is_empty() {
+                    std::fs::write(
+                        &self.wave,
+                        include_bytes!("../../tests/fixtures/hand/change_property_events.vcd"),
+                    )?;
+                }
+                self.flushed.push(std::mem::take(&mut self.pending));
+                Ok(())
+            }
+        }
+
+        struct Stdout<'a> {
+            started: &'a Cell<bool>,
+            bytes: Vec<u8>,
+        }
+
+        impl Write for Stdout<'_> {
+            fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+                self.started.set(true);
+                self.bytes.write(bytes)
+            }
+
+            fn flush(&mut self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+
+        let directory = tempfile::tempdir().unwrap();
+        let stdout_started = Cell::new(false);
+        let mut stderr = Stderr {
+            wave: directory.path().join("created-on-flush.vcd"),
+            stdout_started: &stdout_started,
+            pending: Vec::new(),
+            flushed: Vec::new(),
+        };
+        let mut argv = [
+            "wavepeek",
+            "value",
+            "--signals",
+            "top.armed",
+            "--at",
+            "10ns",
+            "--waves",
+        ]
+        .map(std::ffi::OsString::from)
+        .to_vec();
+        argv.push(stderr.wave.clone().into_os_string());
+        let mut stdout = Stdout {
+            started: &stdout_started,
+            bytes: Vec::new(),
+        };
+        run_from(argv, &mut stdout, &mut stderr, true, false)
+            .map_err(|failure| failure.error)
+            .expect("phase flush publishes the dump");
+        assert!(String::from_utf8(stdout.bytes).unwrap().contains("1'h1"));
+        assert_eq!(
+            stderr.flushed,
+            [
+                b"info: opening waveform\n".as_slice(),
+                b"info: sampling values\n"
+            ]
+        );
+    }
 
     #[test]
     fn browser_generic_help_removes_complete_source_example() {

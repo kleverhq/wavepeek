@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::rc::Rc;
 
+use super::{OPENING_WAVEFORM, ReportProgress};
 use crate::error::WavepeekError;
 use crate::expr::sema::{
     BoundEventKind, BoundInsideItem, BoundLogicalKind, BoundLogicalNode, BoundSelection,
@@ -23,7 +24,11 @@ pub(crate) fn signal_operand(path: &str) -> String {
     format!("$signal({})", serde_json::Value::String(path.to_owned()))
 }
 
-pub(crate) fn open_shared_waveform(path: &Path) -> Result<SharedWaveform, WavepeekError> {
+pub(crate) fn open_shared_waveform(
+    path: &Path,
+    report: ReportProgress<'_>,
+) -> Result<SharedWaveform, WavepeekError> {
+    report(OPENING_WAVEFORM);
     Ok(Rc::new(RefCell::new(Waveform::open(path)?)))
 }
 
@@ -428,7 +433,8 @@ mod tests {
     #[test]
     fn expr_helpers_open_waveforms_and_map_diagnostics() {
         let fixture = write_fixture(TEST_VCD, "expr-runtime.vcd");
-        let shared = open_shared_waveform(fixture.path()).expect("waveform should open");
+        let shared =
+            open_shared_waveform(fixture.path(), &mut |_| {}).expect("waveform should open");
         assert_eq!(
             shared.borrow().metadata().expect("metadata").time_end,
             "5ns"
@@ -473,12 +479,13 @@ mod tests {
 
     #[test]
     fn helper_wrappers_exercise_open_failures_event_matching_and_nested_handle_walks() {
-        let error = open_shared_waveform(Path::new("/definitely/missing.vcd"))
+        let error = open_shared_waveform(Path::new("/definitely/missing.vcd"), &mut |_| {})
             .expect_err("missing waveform should fail");
         assert!(error.to_string().contains("No such file or directory"));
 
         let fixture = write_fixture(TEST_VCD, "expr-runtime.vcd");
-        let shared = open_shared_waveform(fixture.path()).expect("waveform should open");
+        let shared =
+            open_shared_waveform(fixture.path(), &mut |_| {}).expect("waveform should open");
         let (host, bound_event) = bind_waveform_event_expr(shared, Some("top"), "posedge clk")
             .expect("event binding should succeed");
         let frame = crate::expr::host::EventEvalFrame {
@@ -489,7 +496,7 @@ mod tests {
         assert!(event_expr_matches("posedge clk", &bound_event, &host, &frame).expect("match"));
 
         bind_waveform_event_expr(
-            open_shared_waveform(fixture.path()).expect("waveform should reopen"),
+            open_shared_waveform(fixture.path(), &mut |_| {}).expect("waveform should reopen"),
             Some("top"),
             "top.clk",
         )
@@ -734,7 +741,7 @@ mod tests {
         let wf_host = WaveformExprHost::open(fixture.path()).expect("host should open");
         assert!(
             bind_waveform_event_expr(
-                open_shared_waveform(fixture.path()).expect("waveform should reopen"),
+                open_shared_waveform(fixture.path(), &mut |_| {}).expect("waveform should reopen"),
                 Some("top"),
                 "posedge )",
             )

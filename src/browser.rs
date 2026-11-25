@@ -147,7 +147,7 @@ $enddefinitions $end
         let human = run(&["wavepeek", "info", "--waves", "demo.vcd"]);
         assert_eq!(human.status, 0);
         assert!(human.stdout.contains("time_unit: 1ns"));
-        assert!(human.stderr.is_empty());
+        assert_eq!(human.stderr, "info: opening waveform\n");
 
         let json = run(&["wavepeek", "info", "--waves", "demo.vcd", "--json"]);
         assert_eq!(json.status, 0);

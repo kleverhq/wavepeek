@@ -17,7 +17,9 @@ use crate::engine::time::{
     DumpTimeContext, TimeValidationError, format_raw_timestamp, parse_dump_time_context,
     validate_time_token_to_raw,
 };
-use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions, ResultSummary};
+use crate::engine::{
+    CommandData, CommandName, CommandResult, HumanRenderOptions, ReportProgress, ResultSummary,
+};
 use crate::error::WavepeekError;
 use crate::expr::EventEvalFrame;
 use crate::waveform::expr_query::{ExpressionQuery, ExpressionQueryTick};
@@ -89,11 +91,11 @@ impl<W: std::io::Write> PropertyRowSink for JsonlPropertySink<'_, W> {
     }
 }
 
-pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
+pub fn run(args: PropertyArgs, report: ReportProgress<'_>) -> Result<CommandResult, WavepeekError> {
     let output_mode = crate::output_mode::OutputMode::from_json_flags(args.json, args.jsonl);
     let summary_only = args.summary;
     let mut sink = CollectingPropertySink::default();
-    let outcome = run_with_sink(args, &mut sink)?;
+    let outcome = run_with_sink(args, &mut sink, report)?;
 
     Ok(CommandResult {
         command: CommandName::Property,
@@ -114,7 +116,7 @@ pub fn run_jsonl<W: std::io::Write>(
     writer.suppress_data(args.summary);
     let outcome = {
         let mut sink = JsonlPropertySink { writer };
-        run_with_sink(args, &mut sink)?
+        run_with_sink(args, &mut sink, &mut |_| {})?
     };
 
     for diagnostic in &outcome.diagnostics {
@@ -126,6 +128,7 @@ pub fn run_jsonl<W: std::io::Write>(
 fn run_with_sink<S: PropertyRowSink + ?Sized>(
     args: PropertyArgs,
     sink: &mut S,
+    report: ReportProgress<'_>,
 ) -> Result<PropertyCommandOutcome, WavepeekError> {
     let max_entries = match &args.max {
         LimitArg::Numeric(0) => {
@@ -141,7 +144,7 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
 
     let debug = DebugTrace::for_command(CommandName::Property);
     debug.event("backend.open.start", || serde_json::json!({}));
-    let waveform = open_shared_waveform(args.waves.as_path())?;
+    let waveform = open_shared_waveform(args.waves.as_path(), report)?;
     {
         let waveform_ref = waveform.borrow();
         debug.event("backend.open.done", || {
@@ -215,6 +218,7 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
     let mut emitted = 0usize;
     let mut truncated = false;
     let mut previous_state = None;
+    report("evaluating property");
     waveform.borrow_mut().query_expressions(
         &query,
         from_raw..=to_raw,
@@ -443,7 +447,7 @@ mod tests {
 
     use super::{
         DumpTimeContext, PropertyCaptureRow, PropertyResultKind, PropertyRowSink,
-        capture_allows_kind, parse_bound_time, run, run_with_sink,
+        capture_allows_kind, parse_bound_time, run_with_sink,
     };
     use crate::cli::limits::LimitArg;
     use crate::cli::property::{CaptureMode, PropertyArgs};
@@ -452,6 +456,10 @@ mod tests {
     use crate::engine::time::{ParsedTime, TimeUnit, as_zeptoseconds};
     use crate::error::WavepeekError;
     use crate::waveform::WaveformMetadata;
+
+    fn run(args: PropertyArgs) -> Result<super::CommandResult, WavepeekError> {
+        super::run(args, &mut |_| {})
+    }
 
     const TEST_VCD: &str = concat!(
         "$date\n  today\n$end\n",
@@ -696,6 +704,7 @@ mod tests {
                 jsonl: true,
             },
             &mut sink,
+            &mut |_| {},
         )
         .expect_err("sink error should stop the streaming run");
 

@@ -192,20 +192,25 @@ pub struct CommandResult {
     pub diagnostics: Vec<Diagnostic>,
 }
 
-pub fn run(command: Command) -> Result<CommandResult, WavepeekError> {
+pub(super) type ReportProgress<'a> = &'a mut dyn FnMut(&str);
+
+const OPENING_WAVEFORM: &str = "opening waveform";
+const DECODING_PROTOCOL_EVENTS: &str = "decoding protocol events";
+
+pub fn run(command: Command, report: ReportProgress<'_>) -> Result<CommandResult, WavepeekError> {
     match command {
-        Command::Info(args) => info::run(args),
-        Command::Scope(args) => scope::run(args),
-        Command::Signal(args) => signal::run(args),
-        Command::Value(args) => value::run(args),
-        Command::Change(args) => change::run(args),
-        Command::Property(args) => property::run(args),
-        Command::ExtractAhb(args) => ahb::run(args),
-        Command::ExtractApb(args) => apb::run(args),
-        Command::ExtractAtb(args) => atb::run(args),
-        Command::ExtractAxi(args) => axi::run(args),
-        Command::ExtractAxiStream(args) => axistream::run(args),
-        Command::ExtractGeneric(args) => extract::run(args),
+        Command::Info(args) => info::run(args, report),
+        Command::Scope(args) => scope::run(args, report),
+        Command::Signal(args) => signal::run(args, report),
+        Command::Value(args) => value::run(args, report),
+        Command::Change(args) => change::run(args, report),
+        Command::Property(args) => property::run(args, report),
+        Command::ExtractAhb(args) => ahb::run(args, report),
+        Command::ExtractApb(args) => apb::run(args, report),
+        Command::ExtractAtb(args) => atb::run(args, report),
+        Command::ExtractAxi(args) => axi::run(args, report),
+        Command::ExtractAxiStream(args) => axistream::run(args, report),
+        Command::ExtractGeneric(args) => extract::run(args, report),
         Command::Skill(args) => skill::run(args),
     }
 }
@@ -224,7 +229,7 @@ pub fn run_jsonl<W: std::io::Write>(
         Command::ExtractAxiStream(args) => axistream::run_jsonl(args, writer),
         Command::ExtractGeneric(args) => extract::run_jsonl(args, writer),
         Command::Info(_) | Command::Scope(_) | Command::Signal(_) | Command::Value(_) => {
-            let result = run(command)?;
+            let result = run(command, &mut |_| {})?;
             output::write_jsonl_result(result, writer)
         }
         Command::Skill(_) => Err(WavepeekError::Args(

@@ -1,6 +1,6 @@
 use crate::cli::info::InfoArgs;
 use crate::debug_trace::DebugTrace;
-use crate::engine::{CommandData, CommandName, CommandResult};
+use crate::engine::{CommandData, CommandName, CommandResult, OPENING_WAVEFORM, ReportProgress};
 use crate::error::WavepeekError;
 use crate::waveform::Waveform;
 use serde::Serialize;
@@ -12,9 +12,10 @@ pub struct InfoData {
     pub time_end: String,
 }
 
-pub fn run(args: InfoArgs) -> Result<CommandResult, WavepeekError> {
+pub fn run(args: InfoArgs, report: ReportProgress<'_>) -> Result<CommandResult, WavepeekError> {
     let debug = DebugTrace::for_command(CommandName::Info);
     debug.event("backend.open.start", || serde_json::json!({}));
+    report(OPENING_WAVEFORM);
     let metadata = Waveform::read_metadata(args.waves.as_path())?;
     debug.event("backend.open.done", || serde_json::json!({}));
     debug.event("metadata.load.done", || serde_json::json!({}));

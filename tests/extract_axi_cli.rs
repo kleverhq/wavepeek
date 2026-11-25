@@ -1002,7 +1002,10 @@ fn extract_ace_human_automaps_base_and_coherency_channels() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert!(output.stderr.is_empty());
+    assert_eq!(
+        output.stderr,
+        b"info: opening waveform\ninfo: finding protocol signals\ninfo: decoding protocol events\n"
+    );
     let stdout = String::from_utf8(output.stdout).expect("human output should be UTF-8");
     assert!(stdout.contains("profile: ace\nissue: H.c"));
     assert_eq!(
@@ -1041,7 +1044,10 @@ fn extract_ace_lite_cli_alias_automaps_address_additions_only() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert!(output.stderr.is_empty());
+    assert_eq!(
+        output.stderr,
+        b"info: opening waveform\ninfo: finding protocol signals\ninfo: decoding protocol events\n"
+    );
     let stdout = String::from_utf8(output.stdout).expect("human output should be UTF-8");
     assert!(stdout.contains("profile: ace-lite\nissue: H.c"));
     assert_eq!(human_transfer_channels(&stdout), ["aw", "ar"]);
@@ -1085,7 +1091,7 @@ fn extract_ace_lite_source_accepts_hyphen_and_underscore_aliases() {
             "profile {profile}: {}",
             String::from_utf8_lossy(&output.stderr)
         );
-        assert!(output.stderr.is_empty());
+        assert_eq!(output.stderr, b"info: opening waveform\ninfo: finding protocol signals\ninfo: decoding protocol events\n");
         let stdout = String::from_utf8(output.stdout).expect("human output should be UTF-8");
         assert!(stdout.contains("profile: ace-lite\nissue: H.c"));
         assert_eq!(human_transfer_channels(&stdout), ["aw", "ar"]);

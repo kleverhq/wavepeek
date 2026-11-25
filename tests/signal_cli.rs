@@ -60,7 +60,7 @@ fn signal_human_mode_uses_short_names_by_default() {
         .stdout(predicate::str::contains("cfg kind=parameter width=8"))
         .stdout(predicate::str::contains("clk kind=wire width=1"))
         .stdout(predicate::str::contains("top.cfg").not())
-        .stderr(predicate::str::is_empty());
+        .stderr("info: opening waveform\ninfo: listing signals\n");
 }
 
 #[test]
@@ -308,7 +308,10 @@ fn signal_unlimited_max_has_no_diagnostics_in_json_and_human_modes() {
         3
     );
     assert_eq!(value["summary"]["limit"], Value::Null);
-    assert!(human_output.stderr.is_empty());
+    assert_eq!(
+        human_output.stderr,
+        b"info: opening waveform\ninfo: listing signals\n"
+    );
 }
 
 #[test]
@@ -324,7 +327,9 @@ fn signal_scope_not_found_is_scope_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: scope:"));
+        .stderr(predicate::str::starts_with(
+            "info: opening waveform\ninfo: listing signals\nfatal: scope:",
+        ));
 }
 
 #[test]
@@ -400,7 +405,7 @@ fn signal_recursive_human_mode_uses_relative_paths_from_scope() {
         .stdout(predicate::str::contains("cpu.valid kind=wire width=1"))
         .stdout(predicate::str::contains("mem.ready kind=wire width=1"))
         .stdout(predicate::str::contains("top.cpu.valid").not())
-        .stderr(predicate::str::is_empty());
+        .stderr("info: opening waveform\ninfo: listing signals\n");
 }
 
 #[test]
@@ -829,7 +834,10 @@ fn signal_recursive_filter_matches_name_not_relative_path() {
         String::from_utf8_lossy(&human_output.stdout).trim(),
         "no signals found in selected scope"
     );
-    assert!(human_output.stderr.is_empty());
+    assert_eq!(
+        human_output.stderr,
+        b"info: opening waveform\ninfo: listing signals\n"
+    );
     let value: Value =
         serde_json::from_slice(&json_output.stdout).expect("signal output should be valid json");
 

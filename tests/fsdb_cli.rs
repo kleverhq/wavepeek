@@ -1551,7 +1551,7 @@ fn fsdb_feature_keeps_valid_vcd_with_fsdb_suffix_on_ondas_path() {
         .success()
         .stdout(predicate::str::contains("time_unit: 1ns"))
         .stdout(predicate::str::contains("time_end: 10ns"))
-        .stderr(predicate::str::is_empty());
+        .stderr("info: opening waveform\n");
 }
 
 fn run_json_success(args: &[&str]) -> Value {

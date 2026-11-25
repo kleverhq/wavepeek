@@ -1974,7 +1974,7 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with(
-            "info: opening waveform\nfatal: expr:",
+            "info: opening waveform\ninfo: finding similar signal names\nfatal: expr:",
         ))
         .stderr(predicate::str::contains("unknown signal 'nope'"));
 
@@ -2173,7 +2173,7 @@ fn change_invalid_when_signal_fails_even_without_in_range_timestamps() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with(
-            "info: opening waveform\nfatal: expr:",
+            "info: opening waveform\ninfo: finding similar signal names\nfatal: expr:",
         ))
         .stderr(predicate::str::contains("unknown signal 'top.nope'"));
 
@@ -2200,7 +2200,7 @@ fn change_invalid_when_signal_fails_even_without_in_range_timestamps() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with(
-            "info: opening waveform\nfatal: expr:",
+            "info: opening waveform\ninfo: finding similar signal names\nfatal: expr:",
         ))
         .stderr(predicate::str::contains("unknown signal 'vlaid'"))
         .stderr(predicate::str::contains(
@@ -2278,7 +2278,9 @@ $enddefinitions $end
             .failure()
             .code(1)
             .stdout(predicate::str::is_empty())
-            .stderr(predicate::str::starts_with(category))
+            .stderr(predicate::str::starts_with(format!(
+                "info: opening waveform\ninfo: finding similar signal names\n{category}"
+            )))
             .stderr(predicate::str::ends_with(expected));
     }
 
@@ -2293,7 +2295,7 @@ $enddefinitions $end
         .assert()
         .success()
         .stdout("@1ns u_sock_drawer_a.sock_wptr=1'h1\n")
-        .stderr(predicate::str::is_empty());
+        .stderr("info: opening waveform\ninfo: scanning for changes\n");
 }
 
 #[test]

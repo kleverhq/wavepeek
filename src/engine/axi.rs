@@ -204,10 +204,10 @@ struct AxiConfig {
 }
 
 #[derive(Debug)]
-struct BuiltAxiPlan {
+struct BuiltAxiPlan<'report> {
     context: AxiContext,
     plan: ExtractPlan,
-    waveform: SharedWaveform,
+    waveform: SharedWaveform<'report>,
     debug: DebugTrace,
     payload_standards: HashMap<String, Vec<String>>,
     diagnostics: Vec<Diagnostic>,
@@ -1253,7 +1253,7 @@ pub fn run_jsonl<W: std::io::Write>(
     writer.suppress_data(args.summary);
     let outcome = {
         let mut sink = JsonlAxiSink { writer };
-        run_with_sink(args, &mut sink, &mut |_| {})?
+        run_with_sink(args, &mut sink, &|_| {})?
     };
 
     for diagnostic in &outcome.diagnostics {
@@ -1311,10 +1311,10 @@ fn run_with_sink<S: AxiTransferSink + ?Sized>(
     })
 }
 
-fn build_axi_plan(
+fn build_axi_plan<'report>(
     args: &AxiArgs,
-    report: ReportProgress<'_>,
-) -> Result<BuiltAxiPlan, WavepeekError> {
+    report: ReportProgress<'report>,
+) -> Result<BuiltAxiPlan<'report>, WavepeekError> {
     let config = config_from_args(args)?;
     let include_regexes = compile_include_regexes(&config.includes)?;
     let debug = DebugTrace::for_command(CommandName::ExtractAxi);

@@ -17,8 +17,8 @@ pub(crate) trait RuntimeExpressionHost: ExpressionHost {
 }
 
 #[derive(Debug)]
-pub(crate) struct WaveformExprHost {
-    waveform: Rc<RefCell<Waveform>>,
+pub(crate) struct WaveformExprHost<'report> {
+    waveform: Rc<RefCell<Waveform<'report>>>,
     scope: Option<String>,
     handles_by_name: RefCell<HashMap<String, SignalHandle>>,
     signals_by_handle: RefCell<HashMap<SignalHandle, Rc<ExprResolvedSignal>>>,
@@ -26,24 +26,27 @@ pub(crate) struct WaveformExprHost {
     read_error: RefCell<Option<WavepeekError>>,
 }
 
-impl WaveformExprHost {
-    #[cfg(test)]
+#[cfg(test)]
+impl WaveformExprHost<'static> {
     pub(crate) fn open(path: &Path) -> Result<Self, WavepeekError> {
         let waveform = Rc::new(RefCell::new(Waveform::open(path)?));
         Ok(Self::from_shared(waveform))
     }
 
-    #[cfg(test)]
-    pub(crate) fn new(waveform: Waveform) -> Self {
+    pub(crate) fn new(waveform: Waveform<'static>) -> Self {
         Self::from_shared(Rc::new(RefCell::new(waveform)))
     }
 
-    #[cfg(test)]
-    pub(crate) fn from_shared(waveform: Rc<RefCell<Waveform>>) -> Self {
+    pub(crate) fn from_shared(waveform: Rc<RefCell<Waveform<'static>>>) -> Self {
         Self::from_shared_scoped(waveform, None)
     }
+}
 
-    pub(crate) fn from_shared_scoped(waveform: Rc<RefCell<Waveform>>, scope: Option<&str>) -> Self {
+impl<'report> WaveformExprHost<'report> {
+    pub(crate) fn from_shared_scoped(
+        waveform: Rc<RefCell<Waveform<'report>>>,
+        scope: Option<&str>,
+    ) -> Self {
         Self {
             waveform,
             scope: scope.map(str::to_string),
@@ -94,13 +97,13 @@ impl WaveformExprHost {
     }
 }
 
-impl RuntimeExpressionHost for WaveformExprHost {
+impl RuntimeExpressionHost for WaveformExprHost<'_> {
     fn take_waveform_error(&self) -> Option<WavepeekError> {
         self.read_error.take()
     }
 }
 
-impl ExpressionHost for WaveformExprHost {
+impl ExpressionHost for WaveformExprHost<'_> {
     fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
         if let Some(handle) = self.handles_by_name.borrow().get(name).copied() {
             return Ok(handle);

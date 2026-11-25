@@ -18,25 +18,27 @@ use crate::waveform::ExprResolvedSignal;
 use crate::waveform::Waveform;
 use crate::waveform::expr_host::{RuntimeExpressionHost, WaveformExprHost};
 
-pub(crate) type SharedWaveform = Rc<RefCell<Waveform>>;
+pub(crate) type SharedWaveform<'report> = Rc<RefCell<Waveform<'report>>>;
 
 pub(crate) fn signal_operand(path: &str) -> String {
     format!("$signal({})", serde_json::Value::String(path.to_owned()))
 }
 
-pub(crate) fn open_shared_waveform(
+pub(crate) fn open_shared_waveform<'report>(
     path: &Path,
-    report: ReportProgress<'_>,
-) -> Result<SharedWaveform, WavepeekError> {
+    report: ReportProgress<'report>,
+) -> Result<SharedWaveform<'report>, WavepeekError> {
     report(OPENING_WAVEFORM);
-    Ok(Rc::new(RefCell::new(Waveform::open(path)?)))
+    Ok(Rc::new(RefCell::new(Waveform::open_with_progress(
+        path, report,
+    )?)))
 }
 
-pub(crate) fn bind_waveform_event_expr(
-    waveform: SharedWaveform,
+pub(crate) fn bind_waveform_event_expr<'report>(
+    waveform: SharedWaveform<'report>,
     scope: Option<&str>,
     source: &str,
-) -> Result<(WaveformExprHost, BoundEventExpr), WavepeekError> {
+) -> Result<(WaveformExprHost<'report>, BoundEventExpr), WavepeekError> {
     let host = WaveformExprHost::from_shared_scoped(waveform, scope);
     let ast =
         parse_event_expr_ast(source).map_err(|diagnostic| expr_diagnostic(source, diagnostic))?;
@@ -46,7 +48,7 @@ pub(crate) fn bind_waveform_event_expr(
 }
 
 pub(crate) fn bind_waveform_logical_expr(
-    host: &WaveformExprHost,
+    host: &WaveformExprHost<'_>,
     source: &str,
 ) -> Result<BoundLogicalExpr, WavepeekError> {
     let ast =
@@ -170,7 +172,7 @@ pub(crate) fn event_expr_is_edge_only(expr: &BoundEventExpr) -> bool {
 
 #[cfg(test)]
 pub(crate) fn candidate_sources_for_handles(
-    host: &WaveformExprHost,
+    host: &WaveformExprHost<'_>,
     handles: &[SignalHandle],
 ) -> Result<Vec<ExprResolvedSignal>, WavepeekError> {
     let mut sources = Vec::with_capacity(handles.len());
@@ -433,8 +435,7 @@ mod tests {
     #[test]
     fn expr_helpers_open_waveforms_and_map_diagnostics() {
         let fixture = write_fixture(TEST_VCD, "expr-runtime.vcd");
-        let shared =
-            open_shared_waveform(fixture.path(), &mut |_| {}).expect("waveform should open");
+        let shared = open_shared_waveform(fixture.path(), &|_| {}).expect("waveform should open");
         assert_eq!(
             shared.borrow().metadata().expect("metadata").time_end,
             "5ns"
@@ -479,13 +480,12 @@ mod tests {
 
     #[test]
     fn helper_wrappers_exercise_open_failures_event_matching_and_nested_handle_walks() {
-        let error = open_shared_waveform(Path::new("/definitely/missing.vcd"), &mut |_| {})
+        let error = open_shared_waveform(Path::new("/definitely/missing.vcd"), &|_| {})
             .expect_err("missing waveform should fail");
         assert!(error.to_string().contains("No such file or directory"));
 
         let fixture = write_fixture(TEST_VCD, "expr-runtime.vcd");
-        let shared =
-            open_shared_waveform(fixture.path(), &mut |_| {}).expect("waveform should open");
+        let shared = open_shared_waveform(fixture.path(), &|_| {}).expect("waveform should open");
         let (host, bound_event) = bind_waveform_event_expr(shared, Some("top"), "posedge clk")
             .expect("event binding should succeed");
         let frame = crate::expr::host::EventEvalFrame {
@@ -496,7 +496,7 @@ mod tests {
         assert!(event_expr_matches("posedge clk", &bound_event, &host, &frame).expect("match"));
 
         bind_waveform_event_expr(
-            open_shared_waveform(fixture.path(), &mut |_| {}).expect("waveform should reopen"),
+            open_shared_waveform(fixture.path(), &|_| {}).expect("waveform should reopen"),
             Some("top"),
             "top.clk",
         )
@@ -741,7 +741,7 @@ mod tests {
         let wf_host = WaveformExprHost::open(fixture.path()).expect("host should open");
         assert!(
             bind_waveform_event_expr(
-                open_shared_waveform(fixture.path(), &mut |_| {}).expect("waveform should reopen"),
+                open_shared_waveform(fixture.path(), &|_| {}).expect("waveform should reopen"),
                 Some("top"),
                 "posedge )",
             )

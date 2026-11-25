@@ -14,6 +14,7 @@ pub mod signal;
 pub mod skill;
 pub mod value;
 
+use std::cell::RefCell;
 use std::ffi::{OsStr, OsString};
 use std::io::Write;
 
@@ -794,13 +795,15 @@ fn dispatch(
         };
     }
 
-    let result = engine::run(engine_command, &mut |phase| {
+    let stderr = RefCell::new(stderr);
+    let result = engine::run(engine_command, &|phase| {
         if output_mode == OutputMode::Human {
             // Keep waveform execution independent of progress I/O.
+            let mut stderr = stderr.borrow_mut();
             let _ = writeln!(stderr, "info: {phase}").and_then(|()| stderr.flush());
         }
     })?;
-    output::write_result_to(result, stdout, stderr).map_err(Into::into)
+    output::write_result_to(result, stdout, stderr.into_inner()).map_err(Into::into)
 }
 
 fn into_engine_command(command: Command) -> EngineCommand {

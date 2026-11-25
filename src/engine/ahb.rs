@@ -313,8 +313,8 @@ struct BoundClock {
     query: ExpressionQuery,
 }
 
-struct BuiltAhb {
-    waveform: SharedWaveform,
+struct BuiltAhb<'report> {
+    waveform: SharedWaveform<'report>,
     context: AhbContext,
     resolved_mappings: Vec<ResolvedMapping>,
     bound_clock: BoundClock,
@@ -811,7 +811,7 @@ pub fn run_jsonl<W: std::io::Write>(
     writer.suppress_data(args.summary);
     let outcome = {
         let mut sink = JsonlAhbSink { writer };
-        run_with_sink(args, &mut sink, &mut |_| {})?
+        run_with_sink(args, &mut sink, &|_| {})?
     };
     for diagnostic in &outcome.diagnostics {
         writer.diagnostic(diagnostic)?;
@@ -950,7 +950,10 @@ fn run_with_sink<S: AhbEventSink + ?Sized>(
     })
 }
 
-fn build_ahb(args: &AhbArgs, report: ReportProgress<'_>) -> Result<BuiltAhb, WavepeekError> {
+fn build_ahb<'report>(
+    args: &AhbArgs,
+    report: ReportProgress<'report>,
+) -> Result<BuiltAhb<'report>, WavepeekError> {
     let config = config_from_args(args)?;
     let includes = compile_include_regexes(&config.includes)?;
     let debug = DebugTrace::for_command(CommandName::ExtractAhb);
@@ -1297,7 +1300,7 @@ fn compile_include_regexes(includes: &[String]) -> Result<Vec<Regex>, WavepeekEr
 }
 
 fn explicit_mappings(
-    waveform: &SharedWaveform,
+    waveform: &SharedWaveform<'_>,
     scope: Option<&str>,
     profile: AhbProfile,
     maps: &[(String, String)],
@@ -1515,7 +1518,7 @@ mod tests {
                     jsonl: true,
                 },
                 &mut sink,
-                &mut |_| {},
+                &|_| {},
             )
             .unwrap_err();
             assert_eq!(sink.starts, [initial]);

@@ -34,7 +34,7 @@ pub fn run(args: ValueArgs, report: ReportProgress<'_>) -> Result<CommandResult,
     let debug = DebugTrace::for_command(CommandName::Value);
     debug.event("backend.open.start", || serde_json::json!({}));
     report(OPENING_WAVEFORM);
-    let mut waveform = Waveform::open(args.waves.as_path())?;
+    let mut waveform = Waveform::open_with_progress(args.waves.as_path(), report)?;
     debug.event("backend.open.done", || {
         serde_json::json!({
             "backend": waveform.backend_name(),
@@ -146,7 +146,7 @@ fn parse_at_tokens(
 }
 
 fn resolve_requested_signals(
-    waveform: &Waveform,
+    waveform: &Waveform<'_>,
     scope: Option<&str>,
     args: &ValueArgs,
 ) -> Result<Vec<ResolvedSignal>, WavepeekError> {
@@ -216,7 +216,7 @@ mod tests {
     use crate::waveform::Waveform;
 
     fn run(args: ValueArgs) -> Result<super::CommandResult, WavepeekError> {
-        super::run(args, &mut |_| {})
+        super::run(args, &|_| {})
     }
 
     const TEST_VCD: &str = concat!(

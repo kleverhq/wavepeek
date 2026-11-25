@@ -15,6 +15,8 @@ mod waveform;
 
 pub mod expr;
 
+pub(crate) type ReportProgress<'a> = &'a dyn Fn(&str);
+
 pub use crate::error::WavepeekError;
 
 pub fn run_cli() -> Result<(), WavepeekError> {

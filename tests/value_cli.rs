@@ -523,6 +523,9 @@ fn value_missing_path_suggests_copyable_names_in_current_naming_mode() {
             .failure()
             .code(1)
             .stdout(predicate::str::is_empty())
+            .stderr(predicate::str::starts_with(
+                "info: opening waveform\ninfo: finding similar signal names\nfatal: signal:",
+            ))
             .stderr(predicate::str::ends_with(
                 "signal 'wrong.valid' not found in dump\nExact signal name matches:\n  top.cpu.valid\n",
             ));
@@ -672,7 +675,7 @@ fn value_mixed_mode_names_fail_without_scope() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with(
-            "info: opening waveform\nfatal: signal:",
+            "info: opening waveform\ninfo: finding similar signal names\nfatal: signal:",
         ));
 }
 
@@ -758,7 +761,7 @@ fn value_scope_rejects_canonical_path_outside_scope() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with(
-            "info: opening waveform\nfatal: signal:",
+            "info: opening waveform\ninfo: finding similar signal names\nfatal: signal:",
         ));
 }
 

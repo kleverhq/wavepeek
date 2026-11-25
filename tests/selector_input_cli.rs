@@ -205,12 +205,14 @@ fn scoped_protocol_maps_format_resolved_escaped_leaves() {
             include,
             "--map",
             mapping,
+            "--path-style",
+            "logical",
         ];
         let result = run_json(waves.path(), &args);
         assert!(!result["data"].as_array().unwrap().is_empty());
         assert_eq!(
             result["context"]["mappings"]["pclk"]["path"],
-            r"top.\clock.name "
+            r#"top."clock.name""#
         );
         if let Some(previous) = previous_json {
             assert_eq!(result, previous);
@@ -223,7 +225,7 @@ fn scoped_protocol_maps_format_resolved_escaped_leaves() {
             .output()
             .unwrap();
         assert!(output.status.success());
-        assert!(String::from_utf8_lossy(&output.stdout).contains("pclk = \\clock.name \n"));
+        assert!(String::from_utf8_lossy(&output.stdout).contains("pclk = \"clock.name\""));
         if let Some((stdout, stderr)) = previous_human {
             assert_eq!((&output.stdout, &output.stderr), (&stdout, &stderr));
         }

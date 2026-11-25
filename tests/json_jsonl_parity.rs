@@ -294,27 +294,27 @@ fn every_waveform_command_observes_output_mode() {
                 "info: decoding protocol events",
             ],
         );
-        if matches!(args[1], "ahb" | "apb") {
-            let output = wavepeek_cmd()
-                .args(&args)
-                .args(["--max", "0"])
-                .output()
-                .unwrap();
-            assert_eq!(output.status.code(), Some(1));
-            assert!(output.stdout.is_empty());
-            let stderr = String::from_utf8(output.stderr).unwrap();
-            let fatal = if args[1] == "apb" {
-                stderr
-                    .strip_prefix("info: opening waveform\ninfo: finding protocol signals\n")
-                    .unwrap()
-            } else {
-                &stderr
-            };
-            assert!(
-                fatal.starts_with("fatal: args: --max must be greater than 0"),
-                "{stderr}"
-            );
-        }
+        let output = wavepeek_cmd()
+            .args(&args)
+            .args(["--max", "0"])
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1));
+        assert!(output.stdout.is_empty());
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        // AHB validates the limit before opening. The shared extract pipeline
+        // validates it after protocol signal mapping.
+        let progress = if args[1] == "ahb" {
+            ""
+        } else {
+            "info: opening waveform\ninfo: finding protocol signals\n"
+        };
+        assert!(
+            stderr.starts_with(&format!(
+                "{progress}fatal: args: --max must be greater than 0"
+            )),
+            "{args:?}: {stderr}"
+        );
         assert_json_jsonl_parity(&args.into_iter().map(String::from).collect::<Vec<_>>());
     }
 

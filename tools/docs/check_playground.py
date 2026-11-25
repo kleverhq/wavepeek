@@ -176,9 +176,21 @@ def check(site: pathlib.Path, native_bin: pathlib.Path) -> None:
             page.locator("#source-status").filter(has_text="Ready").wait_for()
             status, stdout, stderr = run_browser(page, "info --waves local.vcd")
             assert status == 0 and stderr == "info: opening waveform\n" and "time_unit: 1ns" in stdout
+            latest = page.locator("#transcript .playground__entry").first
+            stderr_block = latest.locator(".playground__stderr")
+            assert latest.locator(".playground__stderr--progress").is_visible()
+            progress_color = stderr_block.evaluate("(el) => getComputedStyle(el).color")
             with tempfile.TemporaryDirectory() as directory:
                 cwd = pathlib.Path(directory)
                 (cwd / "local.vcd").write_bytes(VCD)
+                command = "value --waves local.vcd --signals missing --at 0ns"
+                actual = run_browser(page, command)
+                assert actual == run_native(native_bin, cwd, command), command
+                status, stdout, stderr = actual
+                assert status == 1 and not stdout and stderr.startswith("info: opening waveform\nfatal: ")
+                assert stderr_block.is_visible()
+                assert latest.locator(".playground__stderr--progress").count() == 0
+                assert stderr_block.evaluate("(el) => getComputedStyle(el).color") != progress_color
                 check_reads(
                     page, native_bin, cwd, "local.vcd", "top.clk", "0ns", "5ns", "10ns"
                 )

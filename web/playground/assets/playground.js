@@ -320,6 +320,11 @@ function finishTranscriptEntry(entry, result, duration) {
   const stderr = entry.querySelector(".playground__stderr");
   stderr.textContent = result.stderr || "";
   stderr.hidden = !result.stderr;
+  stderr.classList.toggle(
+    "playground__stderr--progress",
+    result.status === 0 &&
+      stderr.textContent.trimEnd().split("\n").every((line) => line.startsWith("info: ")),
+  );
   elements.transcript.scrollTop = 0;
 }
 

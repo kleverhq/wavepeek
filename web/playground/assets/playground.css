@@ -446,6 +446,11 @@
   padding-left: 0.55rem;
 }
 
+.playground__entry .playground__stderr--progress {
+  border-color: var(--terminal-muted);
+  color: var(--terminal-muted);
+}
+
 .playground__empty {
   color: var(--terminal-muted);
   padding: 1rem 0;

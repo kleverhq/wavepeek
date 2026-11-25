@@ -285,7 +285,7 @@ fn scope_dual_unlimited_limits_have_no_diagnostics() {
 }
 
 #[test]
-fn scope_unlimited_depth_keeps_truncation_warning_only() {
+fn scope_unlimited_depth_warns_when_max_truncates() {
     let fixture = fixture_path("signal_recursive_depth.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 

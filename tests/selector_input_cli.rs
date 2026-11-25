@@ -78,9 +78,9 @@ fn value_preserves_raw_escaped_selectors_lists_and_emitted_roundtrips() {
         for (signal, value) in row["signals"].as_array().unwrap().iter().zip(expected) {
             assert_eq!(signal["value"], value);
         }
-        assert_eq!(row["signals"][0]["path"], r#"top."a.b".data[3:0]"#);
-        assert_eq!(row["signals"][1]["path"], r#"top."leaf.name""#);
-        assert_eq!(row["signals"][2]["path"], r#"top."comma,name""#);
+        assert_eq!(row["signals"][0]["path"], r"top.\a.b .data[3:0]");
+        assert_eq!(row["signals"][1]["path"], r"top.\leaf.name ");
+        assert_eq!(row["signals"][2]["path"], r"top.\comma,name ");
         assert_eq!(row["signals"][0], row["signals"][3]);
     }
     let quoted = run_json(
@@ -106,7 +106,7 @@ fn value_preserves_raw_escaped_selectors_lists_and_emitted_roundtrips() {
         ],
     );
     let emitted = forced["data"][0]["signals"][0]["path"].as_str().unwrap();
-    assert_eq!(emitted, r#"top."a\\b".data[3:0]"#);
+    assert_eq!(emitted, r"top.\a\b .data[3:0]");
     let repeated = run_json(
         waves.path(),
         &["value", "--signals", emitted, "--at", "0ns"],
@@ -159,7 +159,7 @@ fn change_and_generic_queries_keep_escaped_slices_and_single_payload_entries() {
         assert_eq!(extracted["data"][0]["payload"][0]["value"], "4'h5");
         assert_eq!(
             extracted["data"][0]["payload"][0]["path"],
-            r#"top."a.b".data[3:0]"#
+            r"top.\a.b .data[3:0]"
         );
     }
     let source = write_fixture(&json!({
@@ -179,9 +179,9 @@ fn change_and_generic_queries_keep_escaped_slices_and_single_payload_entries() {
     assert_eq!(
         result["data"][0]["payload"],
         json!([
-            {"path": "top.\"comma,name\"", "value": "8'hca"},
-            {"path": "top.\"leaf.name\"", "value": "8'hf0"},
-            {"path": "top.\"comma,name\"", "value": "8'hca"},
+            {"path": r"top.\comma,name ", "value": "8'hca"},
+            {"path": r"top.\leaf.name ", "value": "8'hf0"},
+            {"path": r"top.\comma,name ", "value": "8'hca"},
         ])
     );
 }
@@ -210,7 +210,7 @@ fn scoped_protocol_maps_format_resolved_escaped_leaves() {
         assert!(!result["data"].as_array().unwrap().is_empty());
         assert_eq!(
             result["context"]["mappings"]["pclk"]["path"],
-            r#"top."clock.name""#
+            r"top.\clock.name "
         );
         if let Some(previous) = previous_json {
             assert_eq!(result, previous);
@@ -223,7 +223,7 @@ fn scoped_protocol_maps_format_resolved_escaped_leaves() {
             .output()
             .unwrap();
         assert!(output.status.success());
-        assert!(String::from_utf8_lossy(&output.stdout).contains("pclk = \"clock.name\""));
+        assert!(String::from_utf8_lossy(&output.stdout).contains("pclk = \\clock.name \n"));
         if let Some((stdout, stderr)) = previous_human {
             assert_eq!((&output.stdout, &output.stderr), (&stdout, &stderr));
         }
@@ -356,7 +356,7 @@ fn path_style_preserves_comma_lists_and_indexed_projection_identity() {
 fn apb_styles_mappings_and_human_payload_without_changing_machine_rows() {
     let source = std::fs::read_to_string(fixture_path("extract_apb4.vcd")).unwrap();
     let waves = write_fixture(&source.replace("uart_apb_pwdata_o", r"\write.data"), ".vcd");
-    let mut args = vec![
+    let args = [
         "extract",
         "apb",
         "--scope",
@@ -369,8 +369,10 @@ fn apb_styles_mappings_and_human_payload_without_changing_machine_rows() {
         r#"pwdata="write.data""#,
         "--abs",
     ];
-    let logical = run_json(waves.path(), &args);
-    args.extend(["--path-style", "sv"]);
+    let logical = run_json(
+        waves.path(),
+        &[args.as_slice(), &["--path-style", "logical"]].concat(),
+    );
     let sv = run_json(waves.path(), &args);
     assert_eq!(
         logical["context"]["mappings"]["pwdata"]["path"],
@@ -389,7 +391,7 @@ fn apb_styles_mappings_and_human_payload_without_changing_machine_rows() {
             .any(|row| row["payload"]["pwdata"].is_string())
     );
     let stream = wavepeek_cmd()
-        .args(&args)
+        .args(args)
         .arg("--jsonl")
         .arg("--waves")
         .arg(waves.path())
@@ -809,12 +811,9 @@ fn axistream_path_style_preserves_automatic_real_predicate_mapping() {
         "--include",
         "^(aclk|tvalid|tready|tdata)$",
     ];
-    let logical = run_json(waves.path(), &args);
-    assert_eq!(
-        logical["context"]["mappings"]["tvalid"]["path"],
-        "top.tvalid"
-    );
-    assert_eq!(logical["data"][0]["payload"]["tdata"], "8'haa");
-    args.extend(["--path-style", "sv"]);
-    assert_eq!(run_json(waves.path(), &args), logical);
+    let sv = run_json(waves.path(), &args);
+    assert_eq!(sv["context"]["mappings"]["tvalid"]["path"], "top.tvalid");
+    assert_eq!(sv["data"][0]["payload"]["tdata"], "8'haa");
+    args.extend(["--path-style", "logical"]);
+    assert_eq!(run_json(waves.path(), &args), sv);
 }

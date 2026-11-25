@@ -102,14 +102,14 @@ fn listed_exact_paths_round_trip_through_values_scopes_and_expression_binding() 
         );
         assert_eq!(listing["diagnostics"], json!([]));
         let expected = [
-            (r#"top."a.b.c""#, "8'h11"),
+            (r"top.\a.b.c ", "8'h11"),
             ("top.alias", "8'ha5"),
             ("top.clk", "1'h0"),
-            (r#"top."comma,alone""#, "8'h36"),
-            (r#"top."comma,name[3:0]""#, "8'hc3"),
-            ("top.literal", "8'hf0"),
-            (r#"top."literal[7:0]""#, "8'ha5"),
-            (r#"top."a.b".c"#, "8'h22"),
+            (r"top.\comma,alone ", "8'h36"),
+            (r"top.\comma,name[3:0] ", "8'hc3"),
+            (r"top.\literal ", "8'hf0"),
+            (r"top.\literal[7:0] ", "8'ha5"),
+            (r"top.\a.b .c", "8'h22"),
         ];
         assert_eq!(listing["data"].as_array().unwrap().len(), expected.len());
         for (name, value) in expected {
@@ -151,7 +151,7 @@ fn listed_exact_paths_round_trip_through_values_scopes_and_expression_binding() 
             "value",
             &["--scope", r#"top."a.b""#, "--at", "0ns", "--signals", "c"],
         );
-        assert_eq!(scoped["data"][0]["signals"][0]["path"], r#"top."a.b".c"#);
+        assert_eq!(scoped["data"][0]["signals"][0]["path"], r"top.\a.b .c");
         assert_eq!(scoped["data"][0]["signals"][0]["relative_path"], "c");
         let scopes = run(path, "scope", &["--max-depth", "1", "--max", "unlimited"]);
         assert!(
@@ -159,10 +159,10 @@ fn listed_exact_paths_round_trip_through_values_scopes_and_expression_binding() 
                 .as_array()
                 .unwrap()
                 .iter()
-                .any(|scope| scope["path"] == r#"top."a.b""# && scope["depth"] == 1)
+                .any(|scope| scope["path"] == r"top.\a.b " && scope["depth"] == 1)
         );
         let root = run(path, "signal", &["--scope", "", "--max", "unlimited"]);
-        assert_eq!(root["data"][0]["path"], r#""root.name""#);
+        assert_eq!(root["data"][0]["path"], r"\root.name ");
         let root_value = run(
             path,
             "value",

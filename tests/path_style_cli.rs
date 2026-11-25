@@ -153,21 +153,42 @@ fn vcd_escaped_instance_paths_are_reusable() {
 }
 
 #[test]
-fn sv_output_uses_escape_metadata_from_the_dump() {
+fn default_sv_output_round_trips_escaped_names_in_each_mode() {
+    let waves = vcd("$var wire 1 ~ \\literal[0] $end\n", "0~\n");
+    let args = ["value", "--at", "0ns", "--signals", r#"top."literal[0]""#];
+    let human = run(waves.path(), &args);
+    let json: Value =
+        serde_json::from_str(&run(waves.path(), &[args.as_slice(), &["--json"]].concat())).unwrap();
+    let stream = run(waves.path(), &[args.as_slice(), &["--jsonl"]].concat());
+    let record: Value = serde_json::from_str(stream.lines().nth(1).unwrap()).unwrap();
+    assert_eq!(record["type"], "data");
+
+    for path in [
+        human
+            .strip_prefix("@0ns ")
+            .unwrap()
+            .strip_suffix("=1'h0\n")
+            .unwrap(),
+        json["data"][0]["signals"][0]["path"].as_str().unwrap(),
+        record["data"]["signals"][0]["path"].as_str().unwrap(),
+    ] {
+        assert_eq!(path, r"top.\literal[0] ");
+        assert_eq!(
+            run(waves.path(), &["value", "--at", "0ns", "--signals", path]),
+            human
+        );
+    }
+}
+
+#[test]
+fn default_sv_output_uses_escape_metadata_from_the_dump() {
     let waves = vcd(
         "$scope module \\plain $end\n$var wire 1 ~ \\q $end\n$upscope $end\n",
         "0~\n",
     );
     let json: Value = serde_json::from_str(&run(
         waves.path(),
-        &[
-            "signal",
-            "--scope",
-            "top.plain",
-            "--path-style",
-            "sv",
-            "--json",
-        ],
+        &["signal", "--scope", "top.plain", "--json"],
     ))
     .unwrap();
     assert_eq!(json["context"]["scope"], r"top.\plain ");
@@ -255,18 +276,22 @@ fn style_preserves_scope_filtering_and_lexical_order_before_limit() {
 }
 
 #[test]
-fn sv_formats_only_listed_rows_and_fails_before_jsonl_begin() {
+fn default_sv_formats_only_listed_rows_and_fails_before_jsonl_begin() {
     let waves = vcd(
         "$scope module zété $end\n$var reg 1 ~ q $end\n$upscope $end\n",
         "0~\n",
     );
-    for prefix in [
-        vec!["scope"],
-        vec!["signal", "--scope", "top", "--recursive"],
+    for (prefix, logical_path, filter) in [
+        (&["scope"][..], r#"top."zété""#, "^top$"),
+        (
+            &["signal", "--scope", "top", "--recursive"][..],
+            r#"top."zété".q"#,
+            "^other$",
+        ),
     ] {
         let logical: Value = serde_json::from_str(&run(
             waves.path(),
-            &[prefix.as_slice(), &["--json"]].concat(),
+            &[prefix, &["--path-style", "logical", "--json"]].concat(),
         ))
         .unwrap();
         assert!(
@@ -274,28 +299,19 @@ fn sv_formats_only_listed_rows_and_fails_before_jsonl_begin() {
                 .as_array()
                 .unwrap()
                 .iter()
-                .any(|row| row["path"].as_str().unwrap().contains("zété"))
+                .any(|row| row["path"] == logical_path)
         );
-        let options = ["--path-style", "sv", "--jsonl"];
-        let limited = run(
-            waves.path(),
-            &[prefix.as_slice(), &options, &["--max", "1"]].concat(),
-        );
+        let limited = run(waves.path(), &[prefix, &["--jsonl", "--max", "1"]].concat());
         assert!(limited.contains("\"type\":\"end\""));
-        let filter = if prefix[0] == "scope" {
-            "^top$"
-        } else {
-            "^other$"
-        };
         let filtered = run(
             waves.path(),
-            &[prefix.as_slice(), &options, &["--filter", filter]].concat(),
+            &[prefix, &["--jsonl", "--filter", filter]].concat(),
         );
         assert!(filtered.contains("\"type\":\"end\""));
 
         let output = wavepeek_cmd()
             .args(prefix)
-            .args(options)
+            .arg("--jsonl")
             .arg("--waves")
             .arg(waves.path())
             .output()
@@ -304,7 +320,13 @@ fn sv_formats_only_listed_rows_and_fails_before_jsonl_begin() {
         let fatal: Value = serde_json::from_slice(&output.stdout).unwrap();
         assert_eq!(fatal["type"], "fatal");
         assert_eq!(fatal["seq"], 0);
-        assert!(String::from_utf8_lossy(&output.stdout).contains("--path-style sv"));
+        assert_eq!(fatal["code"], "WPK-F0001");
+        assert!(
+            fatal["message"]
+                .as_str()
+                .unwrap()
+                .starts_with("--path-style sv: path component cannot be represented in Verilog")
+        );
     }
 }
 

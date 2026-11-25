@@ -3,8 +3,8 @@ use ondas::PathStyle;
 
 #[derive(Debug, Clone, Copy, Default, ValueEnum)]
 pub(crate) enum PathStyleArg {
-    #[default]
     Logical,
+    #[default]
     Sv,
 }
 

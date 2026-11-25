@@ -252,7 +252,13 @@ fn native_string_real_and_event_values_are_available() {
 
 #[test]
 fn human_and_jsonl_value_output_match_vcd() {
-    for mode in [None, Some("--jsonl")] {
+    for (mode, stderr) in [
+        (
+            None,
+            b"info: opening waveform\ninfo: sampling values\n".as_slice(),
+        ),
+        (Some("--jsonl"), b"".as_slice()),
+    ] {
         let mut outputs = Vec::new();
         for path in [fixture_path("m2_core.vcd"), shm_path("m2_core")] {
             let mut command = wavepeek_cmd();
@@ -271,7 +277,7 @@ fn human_and_jsonl_value_output_match_vcd() {
             }
             let output = command.output().unwrap();
             assert!(output.status.success());
-            assert!(output.stderr.is_empty());
+            assert_eq!(output.stderr, stderr);
             outputs.push(output.stdout);
         }
         assert_eq!(outputs[0], outputs[1]);

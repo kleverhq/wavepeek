@@ -321,11 +321,9 @@ fn default_sv_formats_only_listed_rows_and_fails_before_jsonl_begin() {
         assert_eq!(fatal["type"], "fatal");
         assert_eq!(fatal["seq"], 0);
         assert_eq!(fatal["code"], "WPK-F0001");
-        assert!(
-            fatal["message"]
-                .as_str()
-                .unwrap()
-                .starts_with("--path-style sv: path component cannot be represented in Verilog")
+        assert_eq!(
+            fatal["message"],
+            r#"--path-style sv: path component cannot be represented in Verilog: "zété""#
         );
     }
 }

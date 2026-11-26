@@ -2157,8 +2157,96 @@ fn change_invalid_when_signal_fails_even_without_in_range_timestamps() {
         .stderr(predicate::str::starts_with("fatal: expr:"))
         .stderr(predicate::str::contains("unknown signal 'vlaid'"))
         .stderr(predicate::str::contains(
-            "signal 'vlaid' not found under scope 'top'\nclosest query names:\n  cpu.valid",
+            "signal 'vlaid' not found under scope 'top'\nSimilar signal names:\n  cpu.valid",
         ));
+}
+
+#[test]
+fn change_groups_ranked_signal_suggestions_for_outputs_and_triggers() {
+    let fixture = write_fixture(
+        r#"$timescale 1ns $end
+$scope module u_laundry_room $end
+$var wire 1 ! clk $end
+$scope module u_sock_drawer_b $end
+$var wire 1 " sack_rptr $end
+$var wire 1 # sock_rptr $end
+$var wire 1 $ sock_wptr $end
+$upscope $end
+$scope module u_sock_drawer_a $end
+$var wire 1 % sack_rptr $end
+$var wire 1 & sock_rptr $end
+$var wire 1 ' sock_wptr $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+0"
+0#
+0$
+0%
+0&
+0'
+#1
+1!
+1$
+1'
+#2
+0!
+"#,
+        ".vcd",
+    );
+    let args = [
+        "change",
+        "--waves",
+        fixture.path().to_str().unwrap(),
+        "--from",
+        "0ns",
+        "--to",
+        "2ns",
+        "--scope",
+        "u_laundry_room",
+        "--sample-mode",
+        "native",
+    ];
+    let expected = concat!(
+        "signal 'sock_wptr' not found under scope 'u_laundry_room'\n",
+        "Exact signal name matches:\n",
+        "  u_sock_drawer_a.sock_wptr\n",
+        "  u_sock_drawer_b.sock_wptr\n",
+        "Similar signal names:\n",
+        "  u_sock_drawer_a.sock_rptr\n",
+        "  u_sock_drawer_b.sock_rptr\n",
+        "  u_sock_drawer_a.sack_rptr\n",
+    );
+
+    for (signals, on, category) in [
+        ("sock_wptr", "posedge clk", "fatal: signal:"),
+        ("clk", "posedge sock_wptr", "fatal: expr:"),
+    ] {
+        wavepeek_cmd()
+            .args(args)
+            .args(["--signals", signals, "--on", on])
+            .assert()
+            .failure()
+            .code(1)
+            .stdout(predicate::str::is_empty())
+            .stderr(predicate::str::starts_with(category))
+            .stderr(predicate::str::ends_with(expected));
+    }
+
+    wavepeek_cmd()
+        .args(args)
+        .args([
+            "--signals",
+            "u_sock_drawer_a.sock_wptr",
+            "--on",
+            "posedge u_sock_drawer_b.sock_wptr",
+        ])
+        .assert()
+        .success()
+        .stdout("@1ns u_sock_drawer_a.sock_wptr=1'h1\n")
+        .stderr(predicate::str::is_empty());
 }
 
 #[test]

@@ -92,7 +92,7 @@ fn property_signal_typo_keeps_expression_diagnostic_and_suggests_path() {
         .stderr(predicate::str::starts_with("fatal: expr:"))
         .stderr(predicate::str::contains("unknown signal 'vlaid'"))
         .stderr(predicate::str::contains(
-            "signal 'vlaid' not found under scope 'top'\nclosest query names:\n  cpu.valid",
+            "signal 'vlaid' not found under scope 'top'\nSimilar signal names:\n  cpu.valid",
         ));
 }
 

@@ -131,10 +131,10 @@ Examples:
     --filter '.*(clk|reset|state).*'
 
   wavepeek signal --waves dump.fst \
-    --scope '' --recursive --filter 'u_couch.*dust_bunnies$' --abs
+    --scope '' --recursive --filter 'u_couch.*dust_bunnies$'
 
   wavepeek signal --waves dump.vcd \
-    --scope top --recursive --filter '^top\."block\.dot"\."data\.bus"$'
+    --scope top --recursive --filter '^top\."block\.dot"\."data\.bus"$' --abs
 
 Notes:
 - In recursive searches, replace a name-only pattern such as `^clk$` with `(^|\.)clk$` to find ordinary `clk` names at any depth.

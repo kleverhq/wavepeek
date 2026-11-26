@@ -1,72 +1,20 @@
 # Release Runbook
 
-This runbook covers production releases for `wavepeek`. Use it with `changelog.md`, `quality.md`, and the release workflow in `.github/workflows/release.yml`.
+Release from green `main` with permission to push tags and create GitHub Releases. GitHub Pages must use Actions deployments. The publication workflow needs the repository's `CRATES_IO_TOKEN` for a new crate version.
 
-## Preconditions
+## Prepare and publish
 
-- `main` is green in pre-merge CI.
-- The local branch is up to date with `main`.
-- You have permission to push tags and create GitHub Releases.
-- `CRATES_IO_TOKEN` exists in repository secrets for downstream crates.io publication.
-- GitHub Pages is configured for GitHub Actions deployments.
-- The release tag is stable SemVer only: `vX.Y.Z`. Prerelease and build-metadata tags are rejected.
+1. Choose an unused stable SemVer tag `vX.Y.Z`. Set the matching version in `Cargo.toml`.
+2. Move shipped changes from `Unreleased` in `CHANGELOG.md` into a dated version section. Use Keep a Changelog headings. Keep an empty `Unreleased` section and update comparison links. GitHub Release notes come from the matching section. Keep published sections intact and record corrections in a later section. Add user-visible changes during normal development.
+3. Reconcile the GitHub Milestone with shipped scope. Close shipped issues and move unfinished work before closing the milestone.
+4. Run `./dev just ci` and commit `CHANGELOG.md`, `Cargo.toml`, and `Cargo.lock`. For a major or minor release, run `./dev just bench-gate vPREVIOUS HEAD` from the committed tree. For a patch, run it if performance can change. Record the reason in the release checklist if you skip the gate or explicitly disable FSDB capture.
+5. Push the release commit to `main` and push the tag for that commit. Wait for the Release, Publish Docs, and Publish Crate workflows to succeed for the same version.
+6. Verify the release notes and assets on GitHub. Verify the version on crates.io. Check Pages with `./dev just docs-site-check-deploy X.Y.Z`.
 
-## Checklist
+## Publication and repair
 
-1. Choose a new semver version `X.Y.Z` and confirm tag `vX.Y.Z` does not exist.
-2. Update `CHANGELOG.md` using Keep a Changelog:
-   - move finalized entries from `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`;
-   - keep a fresh `## [Unreleased]` section for future changes;
-   - update bottom links for `Unreleased` and the new version tag;
-   - treat released sections as immutable historical records.
-3. Reconcile GitHub Milestones with actual shipped scope. Milestones are planned scope; changelog is factual shipped scope. For the `X.Y.Z` milestone, close shipped issues, move unfinished issues to a future milestone or back to the backlog, then close the completed milestone.
-4. Update `Cargo.toml` version to `X.Y.Z`.
-5. Run the release-quality gate:
+The Release workflow dispatches docs and crate publication after the GitHub Release exists. The downstream workflows use trusted tooling from the default branch and source from the release tag. For manual repair, dispatch `.github/workflows/docs.yml` or `.github/workflows/publish-crate.yml` on the default branch with `version=X.Y.Z` and `source_ref=vX.Y.Z`.
 
-       ./dev just ci
+For docs, set `repair_existing_version=true` only to replace an existing version snapshot. Historical repairs keep `latest`, the root Playground, and root installer aliases on the current release. The `gh-pages` branch holds the versioned state. A Pages Actions deployment publishes that state. The crate workflow treats an already published version as a successful run.
 
-6. Commit release prep:
-
-       git add CHANGELOG.md Cargo.toml Cargo.lock
-       git commit -m "chore(release): prepare vX.Y.Z"
-
-7. Run the manual performance gate before pushing a major or minor release. Use the previous release tag as the baseline and the release-prep commit as the revised ref:
-
-       ./dev just bench-gate vPREVIOUS HEAD
-
-   For patch releases, either run the gate when the patch may affect performance, or record the skip rationale in the release issue or checklist for clearly non-performance changes such as documentation-only or release-metadata-only updates. The gate writes ignored artifacts under `tmp/bench-gate/`; preserve the summary path or archive externally if it is needed for release review.
-
-8. Push the commit and tag:
-
-       git push origin main
-       git tag vX.Y.Z
-       git push origin vX.Y.Z
-
-9. Wait for `.github/workflows/release.yml` to finish. It creates a draft GitHub Release, uploads `cargo-dist` archives, shell and PowerShell installers, checksum artifacts, and `dist-manifest.json`, publishes the release, creates GitHub Artifact Attestations, then dispatches downstream workflows.
-10. Wait for `.github/workflows/docs.yml` and `.github/workflows/publish-crate.yml` to finish for the same version.
-11. Check workflow logs for tag/version validation, `just ci`, `cargo package --locked`, `cargo-dist` matrix builds, release-body rendering from `CHANGELOG.md`, GitHub Release creation, docs staging, staged bundle upload, staged bundle verification, non-forced `gh-pages` push, Pages artifact upload, `actions/deploy-pages` deployment, deployed docs verification, and idempotent `cargo publish --locked` from the release tag checkout.
-12. If deployed docs endpoint verification needs to be repeated locally, run `./dev just docs-site-check-deploy X.Y.Z`. Run authenticated GitHub API checks separately on the host.
-13. Verify final state: the crate is published for `X.Y.Z`, the GitHub Release exists for `vX.Y.Z`, release notes match the changelog section, binary archives and checksums are attached, the Pages root reports the current Playground version, `/X.Y.Z/` and `/latest/` resolve to documentation, the bundled demo opens locally and in Surfer, and root installer aliases resolve.
-
-The release workflow renders notes through the helper group owned by `tools/release/`. The stable release interface remains the workflow and the changelog section, not a hand-run release-note command. Docs publication uses `tools/docs/publish_docs.py` from the trusted branch and copies installer assets from the created GitHub Release.
-
-The docs workflow keeps `gh-pages` as the cumulative versioned-documentation state branch, but the public Pages deployment is performed through GitHub Pages Actions (`actions/upload-pages-artifact` and `actions/deploy-pages`). The branch root contains one replaceable latest Playground; historical repairs leave it unchanged. A branch push alone does not deploy Pages.
-
-Normal releases do not need local downstream dispatch commands because `.github/workflows/release.yml` dispatches `.github/workflows/docs.yml` and `.github/workflows/publish-crate.yml` on the default branch after the GitHub Release is created. For manual docs repair, first-time bootstrap, or troubleshooting, dispatch the remote docs workflow explicitly from an up-to-date trusted branch:
-
-    gh workflow run docs.yml --repo kleverhq/wavepeek --ref main -f version=X.Y.Z -f source_ref=vX.Y.Z -f repair_existing_version=false
-
-Pass `true` as the repair argument only when intentionally replacing an existing Pages snapshot. If the requested version is older than the current `latest` version, or if a repaired version does not currently own the `latest` alias, the docs workflow stages that version without moving `latest` or root installer aliases backward. This command requires `gh` authentication and starts a remote GitHub Actions run; it is not a local dry-run check.
-
-For manual crates.io repair, dispatch `.github/workflows/publish-crate.yml` on the default branch with `version=X.Y.Z` and `source_ref=vX.Y.Z`. The workflow checks out trusted tooling from the default branch, checks out release source through `refs/tags/vX.Y.Z`, and exits successfully without requiring `CRATES_IO_TOKEN` if that crate version is already published.
-
-## Rollback
-
-If the tag was wrong before a GitHub Release was published, delete and recreate it after fixes:
-
-    git tag -d vX.Y.Z
-    git push origin :refs/tags/vX.Y.Z
-
-If an immutable GitHub Release was published, do not delete it to retry the same tag. A deleted immutable release leaves the tag name unavailable for new releases; publish a new patch version instead.
-
-If a bad crate version was published, publish a new patch version. crates.io versions are immutable and cannot be republished.
+Before publication, correct a wrong tag and rerun the release from the corrected commit. After an immutable GitHub Release or a crate version is published, issue a new patch version to correct it. Deleting an immutable release does not free its tag.

@@ -1,40 +1,15 @@
-# Testing Guide
+# Testing
 
-Tests should prove the public command and machine-output contracts, not just exercise code paths. The stable behavior references are `skills/wavepeek/references/commands.md`, `skills/wavepeek/references/machine-output.md`, and `skills/wavepeek/references/boolean-expressions.md`.
+Compare formats on equivalent inputs. Use snapshots only when rendered diagnostic text, notes, or source echo are part of the contract. Use structured assertions for other failures.
 
-## Test Levels
+Keep command fixtures small and tied to durable behavior. Reuse named expression host profiles from `tests/common/expr_runtime.rs`. Test event-entrypoint runtime failures in Rust until the manifest schema can represent the event evaluation frame.
 
-Rust unit tests live next to implementation code under `src/` and cover parsing, evaluation helpers, time handling, value formatting, and edge cases. Integration tests under `tests/` invoke the CLI and assert stdout, stderr, exit codes, diagnostics, JSON payloads, and deterministic ordering.
+## Waveform fixtures
 
-Auxiliary Python tests cover repository tooling, docs-site helpers, and benchmark harnesses. Run them with `./dev just test-aux`; individual suites may also be run with `./dev python3 -B -m unittest ...` while iterating.
+Prefer source-backed fixtures in `tests/fixtures/source/`. Register the outputs in `tests/fixtures/waveform_policy.json` and use `./dev just prepare-waveform-fixtures`. Keep hand dumps in `tests/fixtures/hand/` only when raw syntax or metadata is part of the case. Record the reason in the policy file. Keep derived native-format dumps ignored.
 
-`./dev just playground-test` builds Rust/WASM and current documentation as one local Pages preview, then uses headless Chromium for native/browser FST and VCD point/batch/query comparisons, documentation navigation, and one local VCD run that must not make off-origin requests.
+The public browser demo has a fixed checksum. Other large fixtures come from the pinned corpus in the container. Use native captures for types or names that conversion cannot preserve. See `environment.md`, `fsdb.md`, and `shm.md`.
 
-## Fixtures
+## Browser tests
 
-Ordinary reusable waveform fixtures are source-backed. Store their Verilog sources under `tests/fixtures/source/`, declare expected outputs in `tests/fixtures/waveform_policy.json`, and regenerate ignored dumps under `tests/fixtures/generated/` with `./dev just prepare-waveform-fixtures`. The generator uses Icarus Verilog for VCD output and `vcd2fst` for derived FST output.
-
-Checked-in dumps under `tests/fixtures/hand/` are reserved for cases where raw VCD syntax or metadata is the contract, such as event variables, real values, missing initial values, explicit scope kinds, or same-timestamp update ordering. Every checked-in `.vcd` or `.fst` in that directory must have a reason in `tests/fixtures/waveform_policy.json`. Do not commit generated `.fsdb` fixtures or SHM databases.
-
-The repository-tracked `web/playground/assets/scr1_axi.fst` is the current public demo and is covered by a fixed SHA-256 check. Other large representative FST inputs come from selected Ondas fixtures provisioned by the shared devcontainer image, not downloaded during tests. Fixture path resolution is documented in `environment.md` and enforced by `just test`, `just ci`, and `just bench-e2e-smoke`.
-
-Optional FSDB tests require Verdi. `./dev just test-fsdb` prepares only the generated FSDB fixtures derived from test VCD fixtures and runs `tests/fsdb_cli.rs` with `--features fsdb`; RTL benchmark FSDB artifacts are prepared by the benchmark recipes instead. `fsdb.md` owns the detailed SDK and fixture contract.
-
-Do not read `.fst` or `.fsdb` dumps as text. Treat binary waveform dumps as binary data and inspect them through `wavepeek`, fixture helpers, Verdi tools, or binary-safe metadata commands.
-
-## Snapshots and Manifests
-
-Use Insta snapshots only when rendered diagnostic text, notes, or source echo are part of the contract. Routine negative cases should prefer structured assertions for error layer, code, span, stdout, stderr, and exit status.
-
-Command fixture manifests live under `tests/fixtures/cli/`. Expression manifests live under `tests/fixtures/expr/` and are validated by the fixture-contract tests. Keep manifests small, explicit, and tied to durable command behavior.
-
-## Targeted Versus Full Runs
-
-During tight loops, run the narrowest useful test: a single Cargo test, a focused integration test file, or a helper unittest. Before handoff, run at least `./dev just check`; before merge or when changing behavior, run `./dev just ci`. If a gate cannot run because of environment constraints, record the exact command and failure instead of pretending the fog is a passing test suite.
-
-Optional SHM tests run through `./dev just test-shm` when a private profile supplies
-`XCELIUM_HOME`. Small VCD-derived databases live under ignored
-`tests/fixtures/shm/`; the suite covers command parity, native errors, and protocol
-extraction. A small Cadence-specific `.sv` source records native string, real, and
-event values through `xrun`. Default tests cover feature-disabled diagnostics without Cadence.
-See [shm.md](shm.md) for conversion and reader requirements.
+`./dev just playground-test` tests the browser and native CLI against the same inputs. The local Pages preview combines the Playground and the current documentation. It also checks that a local VCD query can run without off-origin requests.

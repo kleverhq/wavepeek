@@ -171,8 +171,9 @@ Other options:
 List signals in one waveform scope.
 
 Behavior:
-- Matches `--filter` against signal names and reports each signal's name, kind, and available metadata such as width.
-- Lists direct signals by default. `--recursive` also visits child scopes in stable depth-first order.
+- Lists direct signals by default and matches `--filter` against their names.
+- `--recursive` also visits child scopes in stable depth-first order. It matches `--filter` against the full logical path from the dump root, including the signal name.
+- `--scope` and `--max-depth` bound the traversal. `--max` limits the number of matches returned.
 - Reports normalized signal kinds for wires and other recorded objects.
 - Omits ambiguous signal paths instead of choosing a source declaration and produces a coded diagnostic.
 - Truncation produces a coded diagnostic. An empty text result prints a short message unless `--summary` is set.
@@ -183,9 +184,14 @@ Examples:
     --filter '.*(clk|reset|state).*'
 
   wavepeek signal --waves dump.fst \
-    --scope tb.dut --recursive --max-depth 2 --abs
+    --scope '' --recursive --filter 'u_couch.*dust_bunnies$' --abs
+
+  wavepeek signal --waves dump.vcd \
+    --scope top --recursive --filter '^top\."block\.dot"\."data\.bus"$'
 
 Notes:
+- In recursive searches, replace a name-only pattern such as `^clk$` with `(^|\.)clk$` to find ordinary `clk` names at any depth.
+- Include the logical quotes around escaped components and escape regex metacharacters. `--path-style` changes the output spelling.
 - Use `--abs` to print canonical paths that can be copied into later commands.
 - See explore-dump.md for signal discovery and paths.md for path rules.
 - See machine-output.md for JSON and JSONL records.
@@ -225,7 +231,7 @@ Output options:
 
 Selection options:
       --filter <FILTER>
-          Regex filter for signal name
+          Regex for signal name, or full logical path with --recursive
 
           [default: .*]
 

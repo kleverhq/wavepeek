@@ -47,20 +47,29 @@ reset_n kind=wire width=1
 state kind=reg width=4
 ```
 
-Add `--recursive` when the signal might be in a child scope. Keep the search shallow at first:
+For direct signals, `--filter` matches the signal name. With `--recursive`, it matches the full logical path from the dump root, even when the search starts in a nested scope. Use `--scope` and `--max-depth` to limit the search area. For example, search from the root for `dust_bunnies` under a scope whose name contains `u_couch`.
 
 ```text
 wavepeek signal --waves dump.fst \
-  --scope tb.dut \
-  --recursive --max-depth 2 \
-  --filter '.*(valid|ready|data).*' \
-  --abs --max 30
+  --scope '' --recursive --max-depth 5 \
+  --filter 'u_couch.*dust_bunnies$' --abs --max 30
 ```
 
-`--abs` prints canonical paths that can be copied into later commands. Without it, recursive output uses names relative to the selected scope.
+In recursive searches, replace a name-only pattern such as `^clk$` with `(^|\.)clk$` to find ordinary `clk` names at any depth.
+
+Use logical spelling in the regex. For the path `top."block.dot"."data.bus"`, include the double quotes and escape each literal dot in the pattern. Shell single quotes preserve the regex as written.
+
+```sh
+wavepeek signal --waves dump.vcd --scope top --recursive \
+  --filter '^top\."block\.dot"\."data\.bus"$' --abs
+```
+
+The default SV output prints `top.\block.dot .\data.bus `, with a space at the end of each escaped component. `--path-style logical` prints `top."block.dot"."data.bus"` for the same filter.
+
+Text output uses paths relative to the selected scope by default. Use `--abs` to print full paths that can be copied into later commands.
 
 ## What if the result is truncated?
 
-`scope` and `signal` limit their output by default. A truncation warning means the query found more matches than it printed. Narrow the filter or hierarchy depth before raising `--max`; this usually produces a more useful result than dumping the entire design.
+`scope` and `signal` limit their output by default. `--max` applies after filtering. A truncation warning means the query found more matches than it printed. Narrow the filter or hierarchy depth before raising `--max`.
 
 See [Paths, signals and scopes](paths.md) for name resolution and [Time units and windows](timeunits.md) for time-token rules.

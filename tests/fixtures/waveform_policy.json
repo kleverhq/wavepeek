@@ -29,6 +29,10 @@
       "reason": "Uses explicit VCD scope kinds for module, function, and task metadata."
     },
     {
+      "path": "tests/fixtures/hand/signal_path_filter.vcd",
+      "reason": "Places identical signal names in sibling and nested scopes to verify full-path filtering before output truncation."
+    },
+    {
       "path": "tests/fixtures/hand/value_delayed.vcd",
       "reason": "Declares a signal whose first value appears after time zero to cover missing-initial-value behavior."
     },

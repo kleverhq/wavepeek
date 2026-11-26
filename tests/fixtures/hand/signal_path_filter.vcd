@@ -1,0 +1,17 @@
+$timescale 1ns $end
+$scope module top $end
+$scope module a_other $end
+$var wire 1 ! dust_bunnies $end
+$upscope $end
+$scope module u_couch $end
+$var wire 1 " dust_bunnies $end
+$scope module u_cushion $end
+$var wire 1 # dust_bunnies $end
+$upscope $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+0"
+0#

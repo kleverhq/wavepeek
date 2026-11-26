@@ -748,102 +748,132 @@ fn signal_unlimited_and_bounded_mix_keeps_truncation_only() {
 }
 
 #[test]
-fn signal_recursive_filter_and_max_preserve_truncation_warning() {
-    let fixture = fixture_path("signal_recursive_depth.vcd");
-    let fixture = fixture.to_string_lossy().into_owned();
-
-    let mut command = wavepeek_cmd();
-    let assert = command
+fn signal_recursive_root_filter_selects_before_limiting_matches() {
+    let fixture = fixture_path("signal_path_filter.vcd");
+    let output = wavepeek_cmd()
+        .arg("signal")
+        .arg("--waves")
+        .arg(fixture)
         .args([
-            "signal",
-            "--waves",
-            fixture.as_str(),
             "--scope",
-            "top",
+            "",
             "--recursive",
             "--filter",
-            ".*",
+            "u_couch.*dust_bunnies$",
             "--max",
-            "2",
+            "1",
             "--json",
         ])
-        .assert()
-        .success();
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
 
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    let value: Value = serde_json::from_str(&stdout).expect("signal output should be valid json");
-
+    assert_eq!(value["data"].as_array().unwrap().len(), 1);
+    assert_eq!(value["data"][0]["path"], "top.u_couch.dust_bunnies");
     assert_eq!(
-        value["data"]
-            .as_array()
-            .expect("data should be array")
-            .len(),
-        2
+        value["summary"],
+        json!({"complete": false, "returned": 1, "limit": 1, "total": 2})
     );
-    assert_eq!(
-        value["diagnostics"]
-            .as_array()
-            .expect("diagnostics should be array")
-            .len(),
-        1
-    );
-    assert!(
-        value["diagnostics"][0]["message"]
-            .as_str()
-            .expect("diagnostic message should be string")
-            .contains("truncated output to 2 entries")
-    );
+    assert_eq!(value["diagnostics"][0]["code"], "WPK-W0002");
 }
 
 #[test]
-fn signal_recursive_filter_matches_name_not_relative_path() {
+fn signal_recursive_filter_uses_full_path_from_nested_scope() {
+    let fixture = fixture_path("signal_path_filter.vcd");
+    for (depth, total) in [("0", 1), ("1", 2)] {
+        let output = wavepeek_cmd()
+            .arg("signal")
+            .arg("--waves")
+            .arg(&fixture)
+            .args([
+                "--scope",
+                "top.u_couch",
+                "--recursive",
+                "--max-depth",
+                depth,
+                "--filter",
+                r"^top\..*dust_bunnies$",
+                "--json",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(value["context"]["scope"], "top.u_couch");
+        assert_eq!(value["summary"]["total"], total);
+        assert_eq!(value["summary"]["complete"], true);
+        assert_eq!(value["diagnostics"], json!([]));
+        assert_eq!(value["data"][0]["path"], "top.u_couch.dust_bunnies");
+        assert_eq!(value["data"][0]["relative_path"], "dust_bunnies");
+        if total == 2 {
+            assert_eq!(
+                value["data"][1]["path"],
+                "top.u_couch.u_cushion.dust_bunnies"
+            );
+        }
+    }
+}
+
+#[test]
+fn signal_exact_name_filter_depends_on_recursive_flag() {
     let fixture = fixture_path("m2_core.vcd");
-    let fixture = fixture.to_string_lossy().into_owned();
+    for (extra, count) in [
+        (&["--filter", "^clk$"][..], 1),
+        (
+            &["--recursive", "--max-depth", "0", "--filter", "^clk$"][..],
+            0,
+        ),
+        (
+            &["--recursive", "--max-depth", "0", "--filter", r"(^|\.)clk$"][..],
+            1,
+        ),
+    ] {
+        let output = wavepeek_cmd()
+            .arg("signal")
+            .arg("--waves")
+            .arg(&fixture)
+            .args(["--scope", "top", "--json"])
+            .args(extra)
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(value["data"].as_array().unwrap().len(), count);
+        if count == 1 {
+            assert_eq!(value["data"][0]["path"], "top.clk");
+        }
+    }
+}
 
-    let json_output = wavepeek_cmd()
-        .args([
-            "signal",
-            "--waves",
-            fixture.as_str(),
-            "--scope",
-            "top",
-            "--recursive",
-            "--filter",
-            "^cpu\\..*",
-            "--json",
-        ])
-        .output()
-        .expect("json signal run should execute");
-    let human_output = wavepeek_cmd()
-        .args([
-            "signal",
-            "--waves",
-            fixture.as_str(),
-            "--scope",
-            "top",
-            "--recursive",
-            "--filter",
-            "^cpu\\..*",
-        ])
-        .output()
-        .expect("human signal run should execute");
-
-    assert!(json_output.status.success());
-    assert!(human_output.status.success());
-    assert_eq!(
-        String::from_utf8_lossy(&human_output.stdout).trim(),
-        "no signals found in selected scope"
-    );
-    assert_eq!(
-        human_output.stderr,
-        b"info: opening waveform\ninfo: listing signals\n"
-    );
-    let value: Value =
-        serde_json::from_slice(&json_output.stdout).expect("signal output should be valid json");
-
-    assert_eq!(value["context"]["scope"], "top");
-    assert_eq!(value["data"], Value::Array(vec![]));
-    assert_eq!(value["diagnostics"], json!([]));
+#[test]
+fn signal_recursive_filter_uses_logical_spelling_in_both_path_styles() {
+    let fixture = fixture_path("rich_names.vcd");
+    for (style, path) in [
+        ("logical", r#"top."block.dot"."data.bus""#),
+        ("sv", r"top.\block.dot .\data.bus "),
+    ] {
+        let output = wavepeek_cmd()
+            .arg("signal")
+            .arg("--waves")
+            .arg(&fixture)
+            .args([
+                "--scope",
+                "top",
+                "--recursive",
+                "--filter",
+                r#"^top\."block\.dot"\."data\.bus"$"#,
+                "--path-style",
+                style,
+                "--json",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(value["data"].as_array().unwrap().len(), 1);
+        assert_eq!(value["data"][0]["path"], path);
+    }
 }
 
 #[test]

@@ -445,8 +445,9 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "ondas"
-version = "3.0.1"
-source = "git+https://github.com/kleverhq/ondas.git?rev=c3c4f55d4bb4b5de16d046d78b7eb0142d644466#c3c4f55d4bb4b5de16d046d78b7eb0142d644466"
+version = "3.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95795dde8bfd65d2a2529eada8cd903cd795926570753ffb47ad79f8a0cb1291"
 dependencies = [
  "blake3",
  "cc",

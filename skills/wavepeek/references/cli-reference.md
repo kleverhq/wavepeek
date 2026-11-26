@@ -191,7 +191,7 @@ Examples:
 
 Notes:
 - In recursive searches, replace a name-only pattern such as `^clk$` with `(^|\.)clk$` to find ordinary `clk` names at any depth.
-- Include the logical quotes around escaped components and escape regex metacharacters. `--path-style` changes the output spelling.
+- Use logical path spelling in the regex. Keep any quotes in that spelling and escape regex metacharacters. `--path-style` changes the output spelling.
 - Use `--abs` to print canonical paths that can be copied into later commands.
 - See explore-dump.md for signal discovery and paths.md for path rules.
 - See machine-output.md for JSON and JSONL records.

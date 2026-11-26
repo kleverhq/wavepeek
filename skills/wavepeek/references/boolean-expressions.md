@@ -357,9 +357,10 @@ invalid.
 
 ### 1.5.3 Selection Operators
 
-A path with a terminal decimal index such as `top.mem[-1]` refers to the
+A path with one terminal decimal index such as `top.mem[-1]` refers to the
 indexed declaration when that exact name exists. Otherwise the brackets form a
 bit-select. Use `$signal("top.mem")[-1]` to select a bit from `top.mem` explicitly.
+Use `$signal("top.matrix[1][2]")` to reference an element with multiple indices.
 
 Selection supports bit-select `expr[idx]`, non-indexed part-select
 `expr[msb:lsb]`, and indexed part-select `expr[base +: width]` /

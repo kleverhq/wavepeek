@@ -840,7 +840,7 @@ fn extract_apb_mapping_validation_is_deterministic() {
         .assert()
         .failure()
         .stderr(predicate::str::contains(
-            "closest query names:\n  top.uart_apb_p_addr_o",
+            "Exact signal name matches:\n  top.uart_apb_p_addr_o",
         ));
 
     let mut duplicate = base_apb4_args();

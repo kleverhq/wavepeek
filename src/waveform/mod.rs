@@ -337,23 +337,32 @@ impl Waveform {
             candidates.sort_unstable();
             candidates.truncate(MAX_SIGNAL_SUGGESTIONS);
         }
-        let suggestions = candidates
-            .into_iter()
-            .map(|(_, path)| path)
-            .collect::<Vec<_>>();
-
-        let location = match scope {
+        let mut message = match scope {
             Some(scope) => format!("signal '{query_name}' not found under scope '{scope}'"),
             None => format!("signal '{query_name}' not found in dump"),
         };
-        let detail = if suggestions.is_empty() {
-            format!(
-                "no dumped signal with basename '{basename}'; the RTL declaration may be optimized, aliased, or not dumped"
-            )
-        } else {
-            format!("closest query names:\n  {}", suggestions.join("\n  "))
-        };
-        WavepeekError::SignalNotFound(format!("{location}\n{detail}"))
+        if candidates.is_empty() {
+            return WavepeekError::SignalNotFound(format!(
+                "{message}\nno dumped signal with basename '{basename}'; the RTL declaration may be optimized, aliased, or not dumped"
+            ));
+        }
+
+        let exact_count = candidates.partition_point(|(distance, _)| *distance == 0);
+        let (exact, similar) = candidates.split_at(exact_count);
+        for (heading, group) in [
+            ("\nExact signal name matches:", exact),
+            ("\nSimilar signal names:", similar),
+        ] {
+            if group.is_empty() {
+                continue;
+            }
+            message.push_str(heading);
+            for (_, path) in group {
+                message.push_str("\n  ");
+                message.push_str(path);
+            }
+        }
+        WavepeekError::SignalNotFound(message)
     }
 
     fn signal_candidate_is_resolvable(&self, path: &String, kind: SignalLookupKind) -> bool {

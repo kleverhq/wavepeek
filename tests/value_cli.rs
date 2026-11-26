@@ -495,8 +495,8 @@ fn value_missing_path_suggests_copyable_names_in_current_naming_mode() {
             .failure()
             .code(1)
             .stdout(predicate::str::is_empty())
-            .stderr(predicate::str::contains(
-                "signal 'valid' not found under scope 'top'\nclosest query names:\n  cpu.valid",
+            .stderr(predicate::str::ends_with(
+                "signal 'valid' not found under scope 'top'\nExact signal name matches:\n  cpu.valid\n",
             ));
 
         wavepeek_cmd()
@@ -513,8 +513,8 @@ fn value_missing_path_suggests_copyable_names_in_current_naming_mode() {
             .failure()
             .code(1)
             .stdout(predicate::str::is_empty())
-            .stderr(predicate::str::contains(
-                "signal 'wrong.valid' not found in dump\nclosest query names:\n  top.cpu.valid",
+            .stderr(predicate::str::ends_with(
+                "signal 'wrong.valid' not found in dump\nExact signal name matches:\n  top.cpu.valid\n",
             ));
     }
 }
@@ -540,8 +540,8 @@ fn value_signal_typo_suggests_close_basename() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::contains(
-            "closest query names:\n  cpu.valid",
+        .stderr(predicate::str::ends_with(
+            "signal 'vlaid' not found under scope 'top'\nSimilar signal names:\n  cpu.valid\n",
         ));
 
     let event_fixture = fixture_path("change_property_events.vcd");
@@ -562,7 +562,7 @@ fn value_signal_typo_suggests_close_basename() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::contains("closest query names:\n  tick"));
+        .stderr(predicate::str::contains("Similar signal names:\n  tick"));
 }
 
 #[test]
@@ -601,7 +601,7 @@ fn value_signal_suggestions_are_sorted_and_bounded() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::contains(
-            "closest query names:\n  alpha.valid\n  bravo.valid\n  charlie.valid\n  delta.valid\n  echo.valid",
+            "Exact signal name matches:\n  alpha.valid\n  bravo.valid\n  charlie.valid\n  delta.valid\n  echo.valid",
         ))
         .stderr(predicate::str::contains("foxtrot.valid").not());
 }
@@ -1240,12 +1240,16 @@ fn missing_projection_suggests_the_attempted_base_without_reinterpreting_literal
             let message = result["message"].as_str().unwrap();
             if is_projection {
                 assert!(
-                    message.contains(&format!("closest query names:\n  {suggestion}")),
+                    message.contains(&format!("Similar signal names:\n  {suggestion}")),
                     "{message}"
                 );
             } else {
                 assert!(message.contains("basename 'dtaa[7:0]'"), "{message}");
-                assert!(!message.contains("closest query names"), "{message}");
+                assert!(
+                    !message.contains("Exact signal name matches:")
+                        && !message.contains("Similar signal names:"),
+                    "{message}"
+                );
             }
         }
         let expression = format!(
@@ -1277,7 +1281,7 @@ fn missing_projection_suggests_the_attempted_base_without_reinterpreting_literal
             result["message"]
                 .as_str()
                 .unwrap()
-                .contains(&format!("closest query names:\n  {suggestion}"))
+                .contains(&format!("Similar signal names:\n  {suggestion}"))
         );
     }
 }
@@ -1313,7 +1317,7 @@ fn missing_quoted_literal_suggests_copyable_literal_names() {
         assert_eq!(result["code"], "WPK-F0004");
         let message = result["message"].as_str().unwrap();
         assert!(
-            message.contains(&format!("closest query names:\n  {suggestion}")),
+            message.contains(&format!("Similar signal names:\n  {suggestion}")),
             "{message}"
         );
     }

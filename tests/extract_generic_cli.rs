@@ -786,7 +786,7 @@ fn extract_generic_rejects_bad_sources_and_paths_outside_scope() {
         .failure()
         .stderr(predicate::str::starts_with("fatal: signal:"))
         .stderr(predicate::str::contains(
-            "signal 'top.clk' not found under scope 'top.top'\nclosest query names:\n  clk",
+            "signal 'top.clk' not found under scope 'top.top'\nExact signal name matches:\n  clk",
         ));
 }
 
@@ -817,7 +817,11 @@ fn extract_generic_does_not_suggest_unusable_payload_signals() {
         .stderr(predicate::str::contains(
             "no dumped signal with basename 'tem'",
         ))
-        .stderr(predicate::str::contains("closest query names:").not());
+        .stderr(
+            predicate::str::contains("Exact signal name matches:")
+                .or(predicate::str::contains("Similar signal names:"))
+                .not(),
+        );
 }
 
 #[test]

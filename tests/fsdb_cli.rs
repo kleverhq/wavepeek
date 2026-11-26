@@ -707,7 +707,7 @@ fn fsdb_missing_path_uses_backend_neutral_signal_suggestions() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::contains(
-            "signal 'valid' not found under scope 'top'\nclosest query names:\n  cpu.valid",
+            "signal 'valid' not found under scope 'top'\nExact signal name matches:\n  cpu.valid",
         ));
 }
 
@@ -735,7 +735,7 @@ fn fsdb_missing_path_suggests_supported_events() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::contains("closest query names:\n  tick"));
+        .stderr(predicate::str::contains("Similar signal names:\n  tick"));
 }
 
 #[test]
@@ -858,7 +858,11 @@ fn fsdb_value_rejects_non_bit_vector_signal() {
         .stderr(predicate::str::contains(
             "no dumped signal with basename 'tem'",
         ))
-        .stderr(predicate::str::contains("closest query names:").not());
+        .stderr(
+            predicate::str::contains("Exact signal name matches:")
+                .or(predicate::str::contains("Similar signal names:"))
+                .not(),
+        );
 }
 
 #[test]

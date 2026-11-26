@@ -247,31 +247,70 @@ fn signal_limit_uses_logical_leaf_order_in_both_styles() {
 
 #[test]
 fn style_preserves_scope_filtering_and_lexical_order_before_limit() {
+    for (second, first) in [("u[2]", "u[10]"), ("u[1][2]", "u[1][10]")] {
+        let waves = vcd(
+            &format!(
+                "$scope module {second} $end\n$var reg 1 ~ q $end\n$upscope $end\n\
+                 $scope module {first} $end\n$var reg 1 % q $end\n$upscope $end\n"
+            ),
+            "0~\n0%\n",
+        );
+        for style in ["logical", "sv"] {
+            let args = ["--path-style", style, "--max", "1", "--json"];
+            let scope = run(
+                waves.path(),
+                &[&["scope", "--filter", r"^top\.u\["][..], &args].concat(),
+            );
+            let scope: Value = serde_json::from_str(&scope).unwrap();
+            assert_eq!(scope["summary"]["total"], 2);
+            assert_eq!(scope["data"][0]["path"], format!("top.{first}"));
+            let signal = run(
+                waves.path(),
+                &[
+                    &["signal", "--scope", "top", "--recursive", "--filter", "^q$"][..],
+                    &args,
+                ]
+                .concat(),
+            );
+            let signal: Value = serde_json::from_str(&signal).unwrap();
+            assert_eq!(signal["summary"]["total"], 3);
+            assert_eq!(signal["data"][0]["path"], format!("top.{first}.q"));
+        }
+    }
+}
+
+#[test]
+fn multidimensional_and_literal_signal_paths_round_trip() {
     let waves = vcd(
-        "$scope module u[2] $end\n$var reg 1 ~ q $end\n$upscope $end\n\
-         $scope module u[10] $end\n$var reg 1 % q $end\n$upscope $end\n",
-        "0~\n0%\n",
+        "$var wire 8 ~ bus[-1][2] [7:0] $end\n\
+         $var wire 8 % \\bus[-1][2] [7:0] $end\n",
+        "b01100000 ~\nb10100101 %\n",
     );
-    for style in ["logical", "sv"] {
-        let args = ["--path-style", style, "--max", "1", "--json"];
-        let scope = run(
+    for (style, literal) in [
+        ("logical", r#"top."bus[-1][2]""#),
+        ("sv", r"top.\bus[-1][2] "),
+    ] {
+        let listing: Value = serde_json::from_str(&run(
             waves.path(),
-            &[&["scope", "--filter", r"^top\.u\["][..], &args].concat(),
-        );
-        let scope: Value = serde_json::from_str(&scope).unwrap();
-        assert_eq!(scope["summary"]["total"], 2);
-        assert_eq!(scope["data"][0]["path"], "top.u[10]");
-        let signal = run(
-            waves.path(),
-            &[
-                &["signal", "--scope", "top", "--recursive", "--filter", "^q$"][..],
-                &args,
-            ]
-            .concat(),
-        );
-        let signal: Value = serde_json::from_str(&signal).unwrap();
-        assert_eq!(signal["summary"]["total"], 3);
-        assert_eq!(signal["data"][0]["path"], "top.u[10].q");
+            &["signal", "--scope", "top", "--path-style", style, "--json"],
+        ))
+        .unwrap();
+        let rows = listing["data"].as_array().unwrap();
+        assert_eq!(rows.len(), 2);
+        for (row, expected_path, expected_value) in [
+            (&rows[0], literal, "4'ha"),
+            (&rows[1], "top.bus[-1][2]", "4'h6"),
+        ] {
+            let path = row["path"].as_str().unwrap();
+            assert_eq!(path, expected_path);
+            let projection = format!("{path}[7:4]");
+            let value: Value = serde_json::from_str(&run(
+                waves.path(),
+                &["value", "--at", "0ns", "--signals", &projection, "--json"],
+            ))
+            .unwrap();
+            assert_eq!(value["data"][0]["signals"][0]["value"], expected_value);
+        }
     }
 }
 

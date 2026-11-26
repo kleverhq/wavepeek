@@ -11,7 +11,7 @@ top."a.b.c"
 top."literal[7:0]"
 ```
 
-The middle two paths select different declarations. An index follows the name, as in `top.u_reg[0].q`. Brackets inside a quoted or escaped name are literal characters, as in `top."u_reg[0]".q`. Listing paths can be reused in selections. Scope depth counts components, regardless of punctuation inside a name.
+The middle two paths select different declarations. One or more indices can follow a name in the same component, as in `top.u_reg[0].q` and `top.matrix[1][2]`. Brackets inside a quoted or escaped name are literal characters. For example, `top."matrix[1][2]"` selects the literal name. Listing paths can be reused in selections. Scope depth counts components, regardless of punctuation inside a name.
 
 Both styles are accepted as input. Filters, includes, and path suggestions use the canonical logical spelling, including its quotes.
 
@@ -55,11 +55,11 @@ SystemVerilog escaped identifiers require terminating whitespace. `top.\a.b .c` 
 
 ## Bit projections and composite signals
 
-`value --signals`, `change --signals`, and `extract` payload selectors accept one trailing static decimal `[msb:lsb]` projection. A range outside quotes or an escaped name selects bits from the base declaration. Use `top.data[3:0]` for a projection and `top."data[3:0]"` for the literal name. `[n]` selects an array element. Use `[n:n]` for one projected bit. An indexed declaration such as `mem[0]` can be the base. Bit zero is the rightmost normalized sampled bit.
+`value --signals`, `change --signals`, and `extract` payload selectors accept one trailing static decimal `[msb:lsb]` projection. A range outside quotes or an escaped name selects bits from the base declaration. Use `top.data[3:0]` for a projection and `top."data[3:0]"` for the literal name. `[n]` selects an array element. Use `[n:n]` for one projected bit. An indexed declaration such as `mem[0]` or `matrix[1][2]` can be the base. Bit zero is the rightmost normalized sampled bit.
 
 ```sh
 wavepeek value --waves dump.vcd --at 10ns \
-  --signals 'top.data[7:4],top.mem[0][3:0]'
+  --signals 'top.data[7:4],top.matrix[1][2][3:0]'
 ```
 
 Names such as `memory[0]` do not create scopes or prove array structure. A trailing projection can select bits of such a declaration, for example `top.mem[0][7:0]`. WavePeek delegates selector resolution and scope qualification to Ondas.

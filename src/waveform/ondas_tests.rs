@@ -1435,7 +1435,7 @@ fn unpacked_array_names_preserve_public_scope_components() {
     for (path, expected) in [
         ("top.memory[0]", "00000001"),
         ("top.memory[1]", "00000010"),
-        (r#"top."matrix[2][3]""#, "00000011"),
+        ("top.matrix[2][3]", "00000011"),
     ] {
         let signal = waveform.resolve_expr_signal(path).unwrap();
         assert_eq!(
@@ -1452,7 +1452,7 @@ fn unpacked_array_names_preserve_public_scope_components() {
             .iter()
             .map(|entry| entry.name.as_str())
             .collect::<Vec<_>>(),
-        [r#""matrix[2][3]""#, "memory[0]", "memory[1]"]
+        ["matrix[2][3]", "memory[0]", "memory[1]"]
     );
 }
 

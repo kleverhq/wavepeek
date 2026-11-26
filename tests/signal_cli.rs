@@ -818,6 +818,13 @@ fn signal_recursive_filter_uses_full_path_from_nested_scope() {
 #[test]
 fn signal_exact_name_filter_depends_on_recursive_flag() {
     let fixture = fixture_path("m2_core.vcd");
+    let args = [
+        "signal",
+        "--waves",
+        fixture.to_str().unwrap(),
+        "--scope",
+        "top",
+    ];
     for (extra, count) in [
         (&["--filter", "^clk$"][..], 1),
         (
@@ -830,10 +837,8 @@ fn signal_exact_name_filter_depends_on_recursive_flag() {
         ),
     ] {
         let output = wavepeek_cmd()
-            .arg("signal")
-            .arg("--waves")
-            .arg(&fixture)
-            .args(["--scope", "top", "--json"])
+            .args(args)
+            .arg("--json")
             .args(extra)
             .output()
             .unwrap();
@@ -844,6 +849,14 @@ fn signal_exact_name_filter_depends_on_recursive_flag() {
             assert_eq!(value["data"][0]["path"], "top.clk");
         }
     }
+
+    wavepeek_cmd()
+        .args(args)
+        .args(["--recursive", "--max-depth", "0", "--filter", "^clk$"])
+        .assert()
+        .success()
+        .stdout("no signals found in selected scope\n")
+        .stderr("info: opening waveform\ninfo: listing signals\n");
 }
 
 #[test]

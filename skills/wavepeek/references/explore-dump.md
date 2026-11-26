@@ -52,7 +52,7 @@ For direct signals, `--filter` matches the signal name. With `--recursive`, it m
 ```text
 wavepeek signal --waves dump.fst \
   --scope '' --recursive --max-depth 5 \
-  --filter 'u_couch.*dust_bunnies$' --abs --max 30
+  --filter 'u_couch.*dust_bunnies$' --max 30
 ```
 
 In recursive searches, replace a name-only pattern such as `^clk$` with `(^|\.)clk$` to find ordinary `clk` names at any depth.
@@ -65,6 +65,8 @@ wavepeek signal --waves dump.vcd --scope top --recursive \
 ```
 
 The default SV output prints `top.\block.dot .\data.bus `, with a space at the end of each escaped component. `--path-style logical` prints `top."block.dot"."data.bus"` for the same filter.
+
+For an indexed path such as `top.memory[0]`, use `--filter '^top\.memory\[0\]$'` to match the brackets literally.
 
 Text output uses paths relative to the selected scope by default. Use `--abs` to print full paths that can be copied into later commands.
 

@@ -84,7 +84,13 @@ pub fn run(args: SignalArgs, report: ReportProgress<'_>) -> Result<CommandResult
     let mut entries = listing
         .entries
         .into_iter()
-        .filter(|entry| filter.is_match(entry.name.as_str()))
+        .filter(|entry| {
+            if recursive {
+                filter.is_match(&entry.path.to_string())
+            } else {
+                filter.is_match(&entry.name)
+            }
+        })
         .collect::<Vec<_>>();
     debug.event(
         "signal.filter.done",

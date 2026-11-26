@@ -48,7 +48,7 @@ time_start: 0ns
 time_end: 250000ns
 ```
 
-Use `--recursive`, a small `--max-depth`, and `--abs` with `signal` only when the signal may be below the selected scope and canonical paths are needed.
+Use `signal --recursive` with a small `--max-depth` to search below the selected scope. In this mode `--filter` matches the full logical path. Add `--abs` to print full paths in text output.
 
 ### Sample known signals
 

@@ -17,7 +17,7 @@ pub struct SignalArgs {
     /// Maximum number of entries (`unlimited` disables truncation, value must be > 0)
     #[arg(long, default_value = "50", help_heading = "Output options")]
     pub max: LimitArg,
-    /// Regex filter for signal name
+    /// Regex for signal name, or full logical path with --recursive
     #[arg(long, default_value = ".*", help_heading = "Selection options")]
     pub filter: String,
     /// Recursively include nested child scopes

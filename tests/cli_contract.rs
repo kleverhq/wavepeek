@@ -643,8 +643,11 @@ fn signal_help_uses_aligned_summary_behavior_and_simple_option_docs() {
     }
 
     assert!(!short_help.contains("Behavior:"));
-    assert!(long_help.contains("Matches `--filter` against signal names"));
+    assert!(short_help.contains("Regex for signal name, or full logical path with --recursive"));
+    assert!(long_help.contains("matches `--filter` against their names"));
     assert!(long_help.contains("`--recursive` also visits child scopes"));
+    assert!(long_help.contains("full logical path from the dump root"));
+    assert!(long_help.contains(r"(^|\.)clk$"));
     assert!(long_help.contains("requires --recursive"));
     assert!(long_help.contains("Examples:"));
     assert!(long_help.contains("paths.md"));
@@ -739,7 +742,7 @@ fn shipped_commands_help_is_self_descriptive() {
             "signal",
             &[
                 "List signals in one waveform scope.",
-                "Matches `--filter` against signal names",
+                "full logical path from the dump root",
                 "normalized signal kinds",
             ],
         ),

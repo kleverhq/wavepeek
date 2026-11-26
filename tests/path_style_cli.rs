@@ -267,7 +267,14 @@ fn style_preserves_scope_filtering_and_lexical_order_before_limit() {
             let signal = run(
                 waves.path(),
                 &[
-                    &["signal", "--scope", "top", "--recursive", "--filter", "^q$"][..],
+                    &[
+                        "signal",
+                        "--scope",
+                        "top",
+                        "--recursive",
+                        "--filter",
+                        r"(^|\.)q$",
+                    ][..],
                     &args,
                 ]
                 .concat(),

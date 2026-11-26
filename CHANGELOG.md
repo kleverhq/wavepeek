@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `--path-style logical|sv` for scope, signal, value, change, and extract output.
 
 ### Changed
-- Use SystemVerilog path spelling by default in human, JSON, and JSONL output. Use `--path-style logical` for the previous spelling or names that SV cannot represent.
+- Use SystemVerilog path spelling by default in human, JSON, and JSONL output. Use `--path-style logical` for logical spelling or names that SV cannot represent.
 - Run `change`, `property`, and extraction through Ondas activity queries, preserving sampling, protocol state, row filtering, and result limits.
 - Read all requested `value` signals through one Ondas point query for a single time or one batch for multiple times, preserving order and duplicates.
 - Evaluate FSDB real and ASCII string values in existing expressions; bit-oriented outputs remain integral.
@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove internal candidate timelines, range-history caches, duplicate selector parsing, and the parallel hierarchy and numeric signal identity layers.
 
 ### Fixed
+- Print multidimensional array elements with bare indices and resolve them separately from names with literal brackets.
 - Preserve escaped SHM instance names so that literal brackets and array indices resolve independently (#147).
 - Keep ambiguous indexed declarations terminal during expression binding instead of selecting a bit of another signal.
 - Reject string-valued `property --eval` and extraction `--when` predicates; string comparisons remain supported.

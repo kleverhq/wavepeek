@@ -2,7 +2,7 @@
 
 WavePeek formats paths from exact Ondas hierarchy components separated by dots. The default `sv` style preserves explicit SystemVerilog escapes supplied by the waveform reader and escapes names outside the bare-name pattern when representable. An ASCII space terminates each escaped name, even at the end of a path.
 
-Use `--path-style logical` for consumers that depend on the previous spelling or for names that SV cannot represent. Logical style writes names matching `[A-Za-z_][A-Za-z0-9_$]*` bare and uses JSON string syntax for other names.
+Use `--path-style logical` when a consumer expects logical spelling or for names that SV cannot represent. Logical style writes names matching `[A-Za-z_][A-Za-z0-9_$]*` bare and uses JSON string syntax for other names.
 
 ```text
 top.cpu.valid

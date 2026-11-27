@@ -175,11 +175,16 @@ fn assert_no_tracked_proprietary_fixtures(root: &Path) {
     let tracked = tracked_files(root).unwrap_or_default();
     let native_dumps = tracked
         .iter()
-        .filter(|path| path.ends_with(".fsdb") || path.contains(".fsdb.") || path.contains(".shm/"))
+        .filter(|path| {
+            path.ends_with(".fsdb")
+                || path.contains(".fsdb.")
+                || path.contains(".shm/")
+                || path.ends_with(".wlf")
+        })
         .collect::<Vec<_>>();
     assert!(
         native_dumps.is_empty(),
-        "FSDB and SHM fixtures must not be tracked: {native_dumps:?}"
+        "Proprietary waveform fixtures must not be tracked: {native_dumps:?}"
     );
 }
 

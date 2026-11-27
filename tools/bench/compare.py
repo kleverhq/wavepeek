@@ -518,8 +518,8 @@ def compare_captures(
     if release_profile:
         required.add("e2e-vcd")
     if release_profile == "private":
-        required.update(("e2e-fsdb", "e2e-shm"))
-    names = ("e2e-fst", "e2e-vcd", "e2e-fsdb", "e2e-shm")
+        required.update(("e2e-fsdb", "e2e-shm", "e2e-wlf"))
+    names = ("e2e-fst", "e2e-vcd", "e2e-fsdb", "e2e-shm", "e2e-wlf")
     for name in names:
         golden = suite_dir(golden_dir, name)
         revised = suite_dir(revised_dir, name)
@@ -588,7 +588,7 @@ def compare_captures(
     cross_checks = (
         (f"cross-{label}-fst-{fmt}", capture_dir, fmt)
         for label, capture_dir in (("golden", golden_dir), ("revised", revised_dir))
-        for fmt in ("vcd", "fsdb", "shm")
+        for fmt in ("vcd", "fsdb", "shm", "wlf")
     )
     for name, capture_dir, fmt in cross_checks:
         fst = suite_dir(capture_dir, "e2e-fst")

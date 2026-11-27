@@ -16,7 +16,7 @@ class GenerateCatalogTest(unittest.TestCase):
     def test_catalogs_keep_every_scenario_with_the_expected_fixture_paths(self) -> None:
         source = generate_catalog.DEFAULT_SOURCE
         base = json.loads(source.read_text(encoding="utf-8"))["tests"]
-        for target in ("vcd", "fsdb", "shm"):
+        for target in ("vcd", "fsdb", "shm", "wlf"):
             with self.subTest(target=target):
                 actual = json.loads(generate_catalog.generate_catalog(source, target))["tests"]
                 self.assertEqual(len(actual), len(base))

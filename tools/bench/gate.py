@@ -13,16 +13,19 @@ from capture import (
     assess_fsdb,
     build_release,
     build_release_fsdb,
+    build_release_reader,
     build_release_shm,
     finalize_capture,
     init_capture_session,
     prepare_fsdb,
     prepare_shm,
+    prepare_wlf,
     resolve_gate_fsdb_plan,
     run_e2e_fsdb_many,
     run_e2e_fst_many,
     run_e2e_shm_many,
     run_e2e_vcd_many,
+    run_e2e_wlf_many,
     prepare_vcd,
     source_supports_feature,
 )
@@ -197,6 +200,7 @@ def run_gate(args: argparse.Namespace, manifest: dict[str, Any], out_dir: pathli
     preflight_dir = out_dir / "logs"
     new_fsdb = profile == "private" and first_baseline(baseline_checkout, revised_checkout, "fsdb")
     new_shm = profile == "private" and first_baseline(baseline_checkout, revised_checkout, "shm")
+    new_wlf = profile == "private" and first_baseline(baseline_checkout, revised_checkout, "wlf")
     baseline_fsdb = (
         FsdbPlan(capture=False, status="unsupported")
         if new_fsdb
@@ -244,7 +248,7 @@ def run_gate(args: argparse.Namespace, manifest: dict[str, Any], out_dir: pathli
         binary_label="revised",
         strict=bool(profile),
     )
-    for feature, introduced in (("fsdb", new_fsdb), ("shm", new_shm)):
+    for feature, introduced in (("fsdb", new_fsdb), ("shm", new_shm), ("wlf", new_wlf)):
         if introduced:
             baseline.suites[f"e2e-{feature}"] = {
                 "status": "first-baseline",
@@ -263,10 +267,14 @@ def run_gate(args: argparse.Namespace, manifest: dict[str, Any], out_dir: pathli
         build_release_fsdb(revised)
         prepare_fsdb(revised)
     shm_sessions = [revised] if new_shm else [baseline, revised]
+    wlf_sessions = [revised] if new_wlf else [baseline, revised]
     if profile == "private":
         for session in shm_sessions:
             build_release_shm(session)
         prepare_shm(revised)
+        for session in wlf_sessions:
+            build_release_reader(session, "wlf")
+        prepare_wlf(revised)
 
     run_e2e_fst_many(
         [baseline, revised],
@@ -290,6 +298,11 @@ def run_gate(args: argparse.Namespace, manifest: dict[str, Any], out_dir: pathli
             shm_sessions,
             run_dir=out_dir / "e2e-shm",
             log_path=out_dir / "logs" / "bench-e2e-shm.log",
+        )
+        run_e2e_wlf_many(
+            wlf_sessions,
+            run_dir=out_dir / "e2e-wlf",
+            log_path=out_dir / "logs" / "bench-e2e-wlf.log",
         )
 
     finalize_capture(baseline)
@@ -321,7 +334,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--vcd", choices=("always", "never"), default="never")
     parser.add_argument(
         "--release-profile", choices=("public", "private"),
-        help="require VCD and FST, plus FSDB and SHM in the private profile",
+        help="require VCD and FST, plus FSDB, SHM, and WLF in the private profile",
     )
     parser.add_argument(
         "--max-negative-delta-pct",

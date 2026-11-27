@@ -43,6 +43,9 @@ pub(super) fn read_error(path: &Path, operation: &str, error: Error) -> Wavepeek
         Error::NoBackend {
             format: Format::Shm,
         } => "; SHM input requires Linux x86_64, --features shm, and a compatible XCELIUM_HOME",
+        Error::NoBackend {
+            format: Format::Wlf,
+        } => "; WLF input requires Linux x86_64 GNU, --features wlf, and a compatible QUESTA_HOME",
         _ => "",
     };
     category(format!(

@@ -237,7 +237,10 @@ def command_to_manifest(result: CommandResult, base: pathlib.Path) -> dict[str, 
 
 
 def tool_version(args: Sequence[str], *, cwd: pathlib.Path) -> str | None:
-    result = run_output(args, cwd=cwd, check=False)
+    try:
+        result = run_output(args, cwd=cwd, check=False)
+    except FileNotFoundError:
+        return None
     if result.returncode != 0:
         return None
     return (result.stdout or result.stderr).strip()

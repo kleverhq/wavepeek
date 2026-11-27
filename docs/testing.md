@@ -16,9 +16,9 @@ The WDB CLI tests record `m2_core.v` and `extract_apb3.v` with XSim and compare 
 
 ## Waveform fixtures
 
-Prefer source-backed fixtures in `tests/fixtures/source/`. Register the outputs in `tests/fixtures/waveform_policy.json` and use `./dev just prepare-waveform-fixtures`. Keep hand dumps in `tests/fixtures/hand/` only when raw syntax or metadata is part of the case. Record the reason in the policy file. Keep derived native-format dumps ignored.
+Prefer source-backed fixtures in `tests/fixtures/source/`. Register the outputs in `tests/fixtures/waveform_policy.json`. Run `./dev just prepare-waveform-fixtures` for fixtures from Verilog. Keep hand dumps in `tests/fixtures/hand/` only when raw syntax or metadata is part of the case. Record the reason in the policy file. Keep derived native-format dumps ignored.
 
-The GHW CLI tests use `ghw_core.vhd`. GHDL writes a native GHW and a reference VCD from the same simulation at 1fs. The tests compare shared signals on both inputs and check a VHDL record field on GHW.
+The GHW CLI tests use `ghw_core.vhd`. Run `./dev just prepare-ghw-fixtures` to prepare its inputs. GHDL writes a native GHW and a reference VCD from the same simulation at 1fs. The tests compare shared signals on both inputs and check a VHDL record field on GHW.
 
 The public browser demo has a fixed checksum. Other large fixtures come from the pinned corpus in the container. Use native captures for types or names that conversion cannot preserve. See `environment.md`, `fsdb.md`, `shm.md`, `wlf.md`, and `vwdb.md`.
 

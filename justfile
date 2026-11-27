@@ -127,7 +127,7 @@ prepare-shm-fixtures filter="": require-xcelium check-ondas-fixtures prepare-wav
     {{ python }} tools/shm/prepare_shm_fixtures.py --bench-only --filter '{{ filter }}'
 
 # Run SHM regression tests with the selected native reader
-test-shm: prepare-shm-test-fixtures
+test-shm: prepare-shm-test-fixtures prepare-ghw-fixtures
     CARGO_TARGET_DIR=target/shm bash tools/shm/with_shm_env.sh cargo test --features shm
 
 # Run selected SHM benchmark scenarios
@@ -235,9 +235,13 @@ check-ondas-fixtures: require-container
         done; \
     done
 
-# Regenerate source-backed waveform fixtures under tests/fixtures/generated
+# Regenerate VCD and FST fixtures under tests/fixtures/generated
 prepare-waveform-fixtures: require-container
     {{ python }} tools/waveform/prepare_fixtures.py
+
+# Regenerate GHW and its reference VCD for the GHW CLI tests
+prepare-ghw-fixtures: require-container
+    {{ python }} tools/waveform/prepare_fixtures.py --ghw
 
 # Lint GitHub Actions workflows
 check-actions: require-container
@@ -320,7 +324,7 @@ check-build: require-container
     cargo check
 
 # Run tests with cargo
-test: require-container check-ondas-fixtures prepare-waveform-fixtures
+test: require-container check-ondas-fixtures prepare-waveform-fixtures prepare-ghw-fixtures
     cargo test -q
     just run-if-verdi test-fsdb
     just run-if-xcelium test-shm
@@ -329,7 +333,7 @@ test: require-container check-ondas-fixtures prepare-waveform-fixtures
     just run-if-vivado test-wdb
 
 [private]
-coverage-src-data: require-container check-ondas-fixtures prepare-waveform-fixtures
+coverage-src-data: require-container check-ondas-fixtures prepare-waveform-fixtures prepare-ghw-fixtures
     @mkdir -p tmp/coverage
     cargo llvm-cov --workspace --summary-only --json --ignore-filename-regex '(/tests/|/target/|/\.cargo/registry/|/rustc/)' > tmp/coverage/coverage-src-summary.json
 

@@ -167,7 +167,7 @@ fn assert_generated_output(root: &Path, output: &str) {
     );
     assert!(
         root.join(output).is_file(),
-        "generated fixture is missing: {output}; run `just prepare-waveform-fixtures`"
+        "generated fixture is missing: {output}; run `just prepare-waveform-fixtures prepare-ghw-fixtures`"
     );
 }
 

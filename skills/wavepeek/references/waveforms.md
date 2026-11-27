@@ -31,9 +31,9 @@ FST tends to use much less memory than large VCD input and is well suited for sc
 
 ## GHW
 
-Use uncompressed GHDL Waveform (GHW) files recorded at 1fs. The file stores timestamps as ticks without a unit. WavePeek reads each GHW tick as one femtosecond, so `info` reports `time_unit: 1fs`. Check the simulator resolution before opening a dump.
+Use uncompressed GHDL Waveform (GHW) files recorded at 1fs. WavePeek reads each stored tick as one femtosecond, so `info` reports `time_unit: 1fs`. Check the simulator resolution before opening a dump. For example, a dump recorded at 1ps uses ticks 1000 times larger than WavePeek assumes, so its timestamps and time queries are incorrect.
 
-Query readable record fields and array elements through their paths in `scope` and `signal` output. The reader validates the full GHW body to establish the time bounds, including for `info`.
+Query readable record fields by the paths in `signal` output. The reader validates the full GHW body to establish the time bounds, including for `info`.
 
 ## FSDB
 

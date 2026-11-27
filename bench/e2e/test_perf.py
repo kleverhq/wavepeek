@@ -2305,14 +2305,15 @@ class JustfileBenchmarkRecipeTest(unittest.TestCase):
     def test_quality_and_release_recipes_select_required_checks(self) -> None:
         recipes = self.JUSTFILE_PATH.read_text(encoding="utf-8").splitlines()
         ci = next(line for line in recipes if line.startswith("ci:"))
-        native = next(line for line in recipes if line.startswith("ci-native:"))
         self.assertIn("bench-e2e-smoke", ci.split())
+        self.assertIn("just ci-native", self._recipe_body("ci"))
         for format_name in ("vcd", "fst"):
             self.assertIn(f"bench/e2e/smoke.py {format_name} ", self._recipe_body("bench-e2e-smoke"))
-        for format_name in ("fsdb", "shm"):
+        for format_name, sdk in (("fsdb", "verdi"), ("shm", "xcelium")):
+            suite = next(line for line in recipes if line.startswith(f"ci-{format_name}:"))
             recipe = f"bench-e2e-{format_name}-smoke"
-            self.assertIn(recipe, native.split())
-            self.assertIn(recipe, self._recipe_body("ci"))
+            self.assertIn(f"just run-if-{sdk} ci-{format_name}", self._recipe_body("ci-native"))
+            self.assertIn(recipe, suite.split())
             self.assertIn(f"bench/e2e/smoke.py {format_name} ", self._recipe_body(recipe))
         self.assertIn('--release-profile "{{ profile }}"', self._recipe_body("bench-release-gate"))
 

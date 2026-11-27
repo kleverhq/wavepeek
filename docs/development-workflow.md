@@ -12,7 +12,9 @@ For fork work, keep `origin` on the fork and name the upstream repository explic
 
 ## Native checks before opening a PR
 
-Before opening a PR, run `./dev just ci-native` in the private profile for changes that affect all readers. For a change confined to one native reader, use its focused suite below. These recipes require the applicable reader, run lint and CLI regressions, and launch the binary outside Cargo.
+Before opening a PR, verify every affected native reader. Run `./dev just ci-native` in the private profile to check each available reader. Check the log for skipped readers and run the focused suite on a profile where the affected reader is available. Each focused suite requires its reader, runs lint and CLI regressions, and launches the binary outside Cargo.
+
+For a new optional native reader, add a separate availability check and suite to `ci-native`.
 
 ```sh
 ./dev just lint-fsdb test-fsdb bench-e2e-fsdb-smoke

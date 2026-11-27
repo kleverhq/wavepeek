@@ -201,9 +201,12 @@ format-check: require-container
     cargo fmt -- --check
     just format-justfile-check
 
-# Lint with clippy
-lint: require-container
+[private]
+lint-default: require-container
     cargo clippy --all-targets -- -D warnings
+
+# Lint with clippy
+lint: lint-default
     just run-if-verdi lint-fsdb
     just run-if-xcelium lint-shm
 
@@ -487,16 +490,20 @@ check: format-check lint check-actions check-bench-e2e-fsdb-catalog check-bench-
     @just run-if-xcelium check-shm-build
 
 # CI quality gate
-ci: format-check lint check-actions check-bench-e2e-vcd-catalog test-aux coverage-src-check check-build docs-site-check playground-test bench-e2e-smoke
+ci: format-check lint-default check-actions check-bench-e2e-vcd-catalog test-aux coverage-src-check check-build docs-site-check playground-test bench-e2e-smoke
     cargo test --doc
-    @just run-if-verdi test-fsdb
-    @just run-if-verdi bench-e2e-fsdb-smoke
-    @just run-if-xcelium check-shm-build
-    @just run-if-xcelium test-shm
-    @just run-if-xcelium bench-e2e-shm-smoke
+    @just ci-native
 
-# Require native lint, loader checks, CLI tests, and smoke
-ci-native: require-verdi require-xcelium lint-fsdb lint-shm test-fsdb check-shm-build test-shm bench-e2e-fsdb-smoke bench-e2e-shm-smoke
+[private]
+ci-fsdb: lint-fsdb test-fsdb bench-e2e-fsdb-smoke
+
+[private]
+ci-shm: lint-shm check-shm-build test-shm bench-e2e-shm-smoke
+
+# Run native lint, loader checks, CLI tests, and smoke for available readers
+ci-native: require-container
+    @just run-if-verdi ci-fsdb
+    @just run-if-xcelium ci-shm
 
 # Fix everything
 fix: format lint-fix

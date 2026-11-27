@@ -1,7 +1,7 @@
 # Waveform formats
 
 This page describes the supported waveform dump formats. CLI builds support
-VCD/FST by default and optional FSDB/SHM/WLF/VWDB. The browser accepts VCD/FST only.
+VCD/FST by default and optional FSDB/SHM/WLF/WDB/VWDB. The browser accepts VCD/FST only.
 Additional Ondas library readers do not imply WavePeek product support.
 Signal kind aliases describe declarations; expression semantics use value
 encoding and metadata, not the input format or its reader name.
@@ -73,6 +73,14 @@ Pass the directory with `vwdb_info.json` and its design components. Earlier reco
 A combined recording can contain a separate SHM directory. Some SystemC recordings store their digital histories there. To query those histories, enable `shm` and pass that directory to `--waves`. It has its own time grid.
 
 WavePeek uses the recorded widths, values, and enum labels supplied by Ondas. Dynamic strings can be absent from the recorded hierarchy. A recording gap makes persistent values unavailable until they are recorded again.
+
+## WDB
+
+WDB is the Vivado waveform database file format. Use a native build with `--features wdb` and the compatible runtime from [Quickstart](quickstart.md#install-with-wdb).
+
+The hierarchy can include compiler-generated scopes and declarations without recorded values. Use `scope` and `signal` to get paths from the recording. WDB enum labels can be used in expressions when the recording supplies the enum table.
+
+Selecting a dynamic SystemVerilog string or a named event returns an unsupported-signal error. Changing unsigned 129-bit enums can return a stale value. See the [Ondas WDB reader limits](https://github.com/kleverhq/ondas/blob/v3.0.2/docs/wdb-reader.md#declaration-support-does-not-establish-recording-support).
 
 ## Performance expectations
 

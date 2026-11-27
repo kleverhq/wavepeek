@@ -26,7 +26,7 @@ use crate::error::WavepeekError;
 use crate::output::{self, JsonlWriter};
 use crate::output_mode::OutputMode;
 
-const WAVES_HELP: &str = "Path to a waveform file (VCD, FST, FSDB, WLF) or database directory (SHM, VWDB) (for example, dump.fst)";
+const WAVES_HELP: &str = "Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB) (for example, dump.fst)";
 const BROWSER_WAVES_HELP: &str = "Path to the active VCD or FST file (for example, demo.vcd)";
 
 #[derive(Debug, Parser)]
@@ -42,6 +42,7 @@ Behavior:
 - Every build supports VCD and FST. FSDB requires Linux x86_64, Cargo feature `fsdb`, and the Synopsys Verdi FSDB Reader SDK.
 - SHM directories require Linux x86_64, Cargo feature `shm`, and a compatible Xcelium reader selected by XCELIUM_HOME.
 - WLF files require Linux x86_64 GNU, Cargo feature `wlf`, and a compatible Questa reader selected by QUESTA_HOME.
+- WDB files require Linux x86_64 GNU and Cargo feature `wdb`. Set XILINX_VIVADO to a compatible Vivado installation at build time.
 - VWDB directories require Linux x86_64 GNU, Cargo feature `vwdb`, and a compatible Xcelium reader selected by XCELIUM_HOME.
 - Waveform commands write text by default. Use `--json` for one JSON value or `--jsonl` for a stream of JSON records.
 - Time values use an integer and an explicit unit, for example `250ps`, `10ns`, or `2us`. Supported units are `zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, and `s`.
@@ -327,6 +328,11 @@ const OPTIONAL_FEATURES: &[OptionalFeatureHelp] = &[
         disabled_hint: "WLF requires Linux x86_64 GNU, Cargo flag `--features wlf`, and a compatible QUESTA_HOME",
     },
     OptionalFeatureHelp {
+        name: "WDB",
+        enabled: cfg!(feature = "wdb"),
+        disabled_hint: "WDB requires Linux x86_64 GNU, Cargo flag `--features wdb`, and XILINX_VIVADO set to a compatible Vivado installation",
+    },
+    OptionalFeatureHelp {
         name: "VWDB",
         enabled: cfg!(feature = "vwdb"),
         disabled_hint: "VWDB requires Linux x86_64 GNU, Cargo flag `--features vwdb`, and XCELIUM_HOME set to a compatible installation when building",
@@ -338,10 +344,10 @@ const BROWSER_LONG_ABOUT: &str = r#"wavepeek queries saved RTL waveform dumps.
 Browser behavior:
 - Waveform commands read the active demo or local VCD or FST file.
 - Parsing and queries run locally in the browser worker.
-- FSDB, SHM, WLF, VWDB, `skill`, and extraction `--source <FILE>` options are not available.
+- The `skill` command and extraction `--source <FILE>` are unavailable.
 - Output and time rules match the native `wavepeek` CLI."#;
 const BROWSER_HELP_TEMPLATE: &str = "{about-with-newline}\nUsage: {usage}\n\nWaveform commands:\n  info      Show metadata for one waveform dump.\n  scope     List scopes in a waveform hierarchy.\n  signal    List signals in one waveform scope.\n  value     Read selected signal values at one or more times.\n  change    Read signal values at selected events over a time range.\n  property  Evaluate a Boolean expression at selected events.\n  extract   Extract event rows from waveform signals.\n\nHelper commands:\n  help      Show detailed help for a command path.\n\nOptions:\n{options}{after-help}";
-const BROWSER_NEXT_STEPS: &str = "Browser limits: FSDB/SHM/WLF/VWDB input, skill, and extraction --source files are unavailable.";
+const BROWSER_NEXT_STEPS: &str = "Browser limits: input accepts VCD and FST. Skill and extraction --source files are unavailable.";
 
 fn root_after_long_help() -> String {
     let mut help = String::from("Optional features:\n");

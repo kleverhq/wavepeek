@@ -94,6 +94,17 @@ wavepeek info --waves ida.db/ida.vwdb
 
 Pass the directory that contains `vwdb_info.json` and the design components. See [Waveform formats](waveforms.md#vwdb) for recording selection. Combine features with a comma-separated list such as `--features shm,vwdb`. `wavepeek --help` reports the enabled features.
 
+## Install with WDB
+
+WDB support requires Linux x86_64 GNU, a C++17 compiler, binutils, and a compatible Vivado reader. Set `XILINX_VIVADO` to the Vivado installation before building. Use the same installation at runtime:
+
+```bash
+cargo install wavepeek --features wdb
+export RDI_DATADIR="$XILINX_VIVADO/data"
+export LD_LIBRARY_PATH="$XILINX_VIVADO/lib/lnx64.o${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+wavepeek info --waves recording.wdb
+```
+
 ## Setup skill
 
 The `wavepeek` skill is bundled into the binary. Besides `SKILL.md`, it includes reference documentation, examples and helper scripts.

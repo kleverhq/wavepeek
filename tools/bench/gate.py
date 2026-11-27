@@ -15,7 +15,6 @@ from capture import (
     build_release_fsdb,
     build_release_reader,
     build_release_shm,
-    build_release_vwdb,
     finalize_capture,
     init_capture_session,
     prepare_fsdb,
@@ -281,7 +280,7 @@ def run_gate(args: argparse.Namespace, manifest: dict[str, Any], out_dir: pathli
             build_release_reader(session, "wlf")
         prepare_wlf(revised)
         for session in vwdb_sessions:
-            build_release_vwdb(session)
+            build_release_reader(session, "vwdb")
         vwdb_recording = prepare_vwdb(revised)
 
     if profile == "private":

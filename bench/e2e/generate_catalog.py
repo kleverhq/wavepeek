@@ -76,16 +76,18 @@ def adapt_vwdb_test(test: dict, recording: str) -> dict:
             # SCR1's source clock period is 10ns. The historical FST records
             # that period as 10ps, so one FST tick maps to one VWDB nanosecond.
             for position, arg in enumerate(command[1:], 1):
-                if command[position - 1] in ("--from", "--to", "--at") and arg.endswith("ps"):
+                if command[position - 1] in ("--from", "--to", "--at"):
+                    if not arg.endswith("ps"):
+                        fail(f"error: vwdb catalog: expected SCR1 time in ps for {test['name']}: {arg}")
                     command[position] = f"{arg[:-2]}ns"
             if test["name"].startswith("change_scr1_signals_100"):
                 signals = command.index("--signals") + 1
                 # Replace two undumped memory parameters with recorded inputs.
-                command[signals] = (
-                    command[signals]
-                    .replace(".i_memory_tb.N_IF", ".i_top.i_imem_axi.arvalid")
-                    .replace(".i_memory_tb.SIZE", ".i_top.i_imem_axi.araddr")
-                )
+                for parameter, signal in (("N_IF", "arvalid"), ("SIZE", "araddr")):
+                    old = f".i_memory_tb.{parameter}"
+                    if old not in command[signals]:
+                        fail(f"error: vwdb catalog: expected SCR1 parameter {parameter} for {test['name']}")
+                    command[signals] = command[signals].replace(old, f".i_top.i_imem_axi.{signal}")
         if "-chipyard-" in fixture:
             command = [arg.replace("TOP.TestDriver", "TestDriver") for arg in command]
     command[index] = waves

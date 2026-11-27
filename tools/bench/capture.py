@@ -284,10 +284,6 @@ def build_release_reader(
     )
 
 
-def build_release_shm(session: CaptureSession) -> None:
-    build_release_reader(session, "shm", ("bash", str(session.tooling_root / "tools/shm/with_shm_env.sh")))
-
-
 def prepare_wlf(session: CaptureSession) -> None:
     session.commands.append(
         run_command(
@@ -299,6 +295,10 @@ def prepare_wlf(session: CaptureSession) -> None:
     )
 
 
+def build_release_shm(session: CaptureSession) -> None:
+    build_release_reader(session, "shm", ("bash", str(session.tooling_root / "tools/shm/with_shm_env.sh")))
+
+
 def prepare_shm(session: CaptureSession) -> None:
     session.commands.append(
         run_command(
@@ -306,18 +306,6 @@ def prepare_shm(session: CaptureSession) -> None:
             ["just", "prepare-shm-fixtures"],
             cwd=session.tooling_root,
             log_path=session.logs_dir / "shm-prepare-fixtures.log",
-        )
-    )
-
-
-def build_release_vwdb(session: CaptureSession) -> None:
-    session.commands.append(
-        run_command(
-            "build-release-vwdb",
-            ["cargo", "build", "--release", "--locked", "--features", "vwdb"],
-            cwd=session.binary_checkout,
-            log_path=session.logs_dir / "build-release-vwdb.log",
-            env={"CARGO_TARGET_DIR": "target/vwdb"},
         )
     )
 

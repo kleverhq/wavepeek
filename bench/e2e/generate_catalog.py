@@ -46,6 +46,7 @@ def fail(message: str) -> None:
 
 def adapt_vwdb_test(test: dict, recording: str) -> dict:
     command = test["command"].copy()
+    meta = {key: value for key, value in test["meta"].items() if key != "size"}
     index = command.index("--waves") + 1
     source = pathlib.PurePosixPath(command[index])
     if source.as_posix() == "tests/fixtures/generated/extract_global_include.fst":
@@ -59,6 +60,7 @@ def adapt_vwdb_test(test: dict, recording: str) -> dict:
             for signal in range(count)
         )
         command[command.index("--at") + 1] = "50ns"
+        meta["input"] = "OPB S"
     else:
         fixture = VWDB_RTL_FIXTURES.get(source.parent.name)
         if fixture is None:
@@ -80,6 +82,10 @@ def adapt_vwdb_test(test: dict, recording: str) -> dict:
                     if not arg.endswith("ps"):
                         fail(f"error: vwdb catalog: expected SCR1 time in ps for {test['name']}: {arg}")
                     command[position] = f"{arg[:-2]}ns"
+            if "window_size" in meta:
+                start = int(command[command.index("--from") + 1][:-2])
+                end = int(command[command.index("--to") + 1][:-2])
+                meta["window_size"] = f"{end - start}ns"
             if test["name"].startswith("change_scr1_signals_100"):
                 signals = command.index("--signals") + 1
                 # Replace two undumped memory parameters with recorded inputs.
@@ -91,7 +97,12 @@ def adapt_vwdb_test(test: dict, recording: str) -> dict:
         if "-chipyard-" in fixture:
             command = [arg.replace("TOP.TestDriver", "TestDriver") for arg in command]
     command[index] = waves
-    meta = {key: value for key, value in test["meta"].items() if key != "size"}
+    for field, option in (
+        ("window_from", "--from"), ("window_to", "--to"), ("scope", "--scope"),
+        ("trigger", "--on"), ("eval", "--eval"),
+    ):
+        if field in meta and option in command:
+            meta[field] = command[command.index(option) + 1]
     return {**test, "command": command, "meta": {**meta, "waves": waves}}
 
 

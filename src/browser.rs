@@ -1,5 +1,5 @@
 use std::ffi::OsString;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use serde::Serialize;
@@ -86,7 +86,10 @@ pub(crate) fn invoke(argv: Vec<String>, filename: String, bytes: &[u8]) -> Brows
 }
 
 fn native_format(filename: &str) -> Option<&'static str> {
-    let filename = filename.to_ascii_lowercase();
+    let filename = Path::new(filename)
+        .file_name()?
+        .to_str()?
+        .to_ascii_lowercase();
     if filename.ends_with(".fsdb") || filename.ends_with(".fsdb.gz") {
         Some("FSDB")
     } else if filename.ends_with(".shm") {
@@ -211,6 +214,11 @@ $enddefinitions $end
                 "demo.vcd",
                 "VWDB is not supported",
             ),
+            (
+                vec!["wavepeek", "info", "--waves=path/other.vwdb/"],
+                "demo.vcd",
+                "VWDB is not supported",
+            ),
         ] {
             let result = invoke(
                 args.into_iter().map(str::to_string).collect(),
@@ -230,9 +238,20 @@ $enddefinitions $end
         assert!(!root.stdout.contains("Extract the packaged agent skill"));
         assert!(root.stdout.contains("FSDB/SHM/WLF/VWDB input, skill"));
 
+        let info = run(&["wavepeek", "info", "--help"]);
+        assert_eq!(info.status, 0);
+        assert!(info.stdout.contains("Path to the active VCD or FST file"));
+        assert!(!info.stdout.contains("VWDB"));
+
         for command in ["ahb", "apb", "atb", "axi", "axistream", "generic"] {
             let extract = run(&["wavepeek", "extract", command, "--help"]);
             assert_eq!(extract.status, 0);
+            assert!(
+                extract
+                    .stdout
+                    .contains("Path to the active VCD or FST file")
+            );
+            assert!(!extract.stdout.contains("VWDB"));
             assert!(!extract.stdout.contains("source-file"));
             assert!(
                 !extract

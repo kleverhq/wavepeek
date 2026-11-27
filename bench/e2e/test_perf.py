@@ -47,6 +47,32 @@ class PerfHelpersTest(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "incomplete VWDB input"):
                 perf.input_identity(catalog, tests)
 
+    def test_vwdb_identity_checks_the_published_components(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            catalog = root / "tests.json"
+            catalog.write_text("{}")
+            fixture = root / "vwdb" / "sample"
+            recording = fixture / "waveform.vwdb"
+            design = recording / "dsn_0" / "design"
+            history = recording / "waves_ida.shm" / "waves_ida.trn"
+            for part in (design, history):
+                part.parent.mkdir(parents=True)
+                part.write_text("component")
+            (recording / "vwdb_info.json").write_text("{}")
+            tests = [{"name": "case", "command": ["{wavepeek_bin}", "info", "--waves", str(recording)]}]
+            hashes = perf.input_identity(catalog, tests)["files"][str(recording)]
+            manifest = {"artifact": {
+                "file": "waveform.vwdb", "format": "vwdb",
+                "files": [{"file": name, "sha256": digest} for name, digest in hashes.items()],
+            }}
+            (fixture / "fixture.json").write_text(json.dumps(manifest))
+            with mock.patch.dict(os.environ, {"ONDAS_FIXTURES_DIR": str(root)}):
+                self.assertEqual(perf.input_identity(catalog, tests)["files"][str(recording)], hashes)
+                history.unlink()
+                with self.assertRaisesRegex(SystemExit, "does not match fixture manifest"):
+                    perf.input_identity(catalog, tests)
+
     @staticmethod
     def _write_hyperfine_artifact(
         path: pathlib.Path,
@@ -2318,6 +2344,15 @@ class PerfHelpersTest(unittest.TestCase):
                 max_negative_delta_pct=5.0,
             )
             exit_code = perf.cmd_compare(args)
+            args.golden = args.revised
+            args.require_timing_samples = True
+            args.result_json = root / "strict.json"
+            self.assertEqual(perf.cmd_compare(args), 1)
+            result = json.loads(args.result_json.read_text())
+            self.assertEqual(
+                result["functional_artifact_errors"],
+                ["sample: timeout artifact on revised, golden"],
+            )
 
         self.assertEqual(exit_code, 0)
 

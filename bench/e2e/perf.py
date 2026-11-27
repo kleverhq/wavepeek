@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import math
+import os
 import pathlib
 import re
 import shlex
@@ -305,6 +306,21 @@ def binary_run_dir(run_dir: pathlib.Path, binary: BinarySpec) -> pathlib.Path:
     return run_dir / binary.label
 
 
+def check_published_vwdb(path: pathlib.Path, hashes: Mapping[str, str]) -> None:
+    fixture_root = os.environ.get("ONDAS_FIXTURES_DIR")
+    if not fixture_root or path.parent.parent != pathlib.Path(fixture_root) / "vwdb":
+        return
+    sidecar = path.parent / "fixture.json"
+    try:
+        artifact = json.loads(sidecar.read_text(encoding="utf-8"))["artifact"]
+        expected = {part["file"]: part["sha256"] for part in artifact["files"]}
+        matches = artifact["file"] == path.name and artifact["format"] == "vwdb" and expected == hashes
+    except (KeyError, TypeError, ValueError) as error:
+        fail(f"error: run: invalid VWDB fixture manifest {sidecar}: {error}")
+    if not matches:
+        fail(f"error: run: VWDB input {path} does not match fixture manifest {sidecar}")
+
+
 def input_identity(
     tests_path: pathlib.Path, selected_tests: list[dict[str, Any]]
 ) -> dict[str, Any]:
@@ -328,11 +344,14 @@ def input_identity(
                 continue
             path = REPO_ROOT / name
             try:
-                if flag == "--waves" and path.suffix == ".vwdb":
-                    if not (path / "vwdb_info.json").is_file() or not (path / "dsn_0").is_dir():
+                vwdb_layout = (path / "vwdb_info.json").is_file() and (path / "dsn_0").is_dir()
+                if flag == "--waves" and path.is_dir() and (vwdb_layout or path.suffix.lower() == ".vwdb"):
+                    if not vwdb_layout:
                         fail(f"error: run: incomplete VWDB input {name} for {test['name']}")
                     files = sorted(file for file in path.rglob("*") if file.is_file())
-                    inputs[name] = {file.relative_to(path).as_posix(): sha256(file) for file in files}
+                    hashes = {file.relative_to(path).as_posix(): sha256(file) for file in files}
+                    check_published_vwdb(path, hashes)
+                    inputs[name] = hashes
                 elif flag == "--waves" and path.suffix == ".shm":
                     files = sorted(p for p in path.iterdir() if p.suffix in (".dsn", ".trn"))
                     if {file.suffix for file in files} != {".dsn", ".trn"}:
@@ -1922,9 +1941,11 @@ def cmd_compare(args: argparse.Namespace) -> int:
                 timeout_sides.append("revised")
             if golden_timed_out:
                 timeout_sides.append("golden")
-            functional_timeout_warnings.append(
-                f"{test_name}: timeout artifact on {', '.join(timeout_sides)}"
-            )
+            issue = f"{test_name}: timeout artifact on {', '.join(timeout_sides)}"
+            if require_timing_samples:
+                functional_artifact_errors.append(issue)
+            else:
+                functional_timeout_warnings.append(issue)
 
         diff_fields = functional_diff_fields(revised_payload, golden_payload)
         if diff_fields:
@@ -2219,7 +2240,7 @@ def build_parser() -> argparse.ArgumentParser:
     compare_parser.add_argument(
         "--require-timing-samples",
         action="store_true",
-        help="validate the saved timing samples for every compared scenario",
+        help="require valid timing samples and functional results for every compared scenario",
     )
     compare_parser.add_argument(
         "--allow-golden-extra",

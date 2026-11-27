@@ -14,7 +14,7 @@ Use `./dev just bench-gate <baseline-ref> <revised-ref>` for diagnostics. For se
 
 ## Workload constraints
 
-Use `bench-e2e-run` for FST and `bench-e2e-<format>-run` for VCD, FSDB, SHM, WLF, and VWDB. Run each through `./dev` in its profile. The full recipes and release gate use the same format catalogs and fail on a missing or failed scenario or a timeout. Input preparation and checksums run before timing. Run manifests contain the catalog and input SHA-256 checksums. VWDB inputs record one checksum per component, keyed by its path relative to the recording. The container pins the original fixture corpus by revision and verifies its published checksums during installation.
+Use `bench-e2e-run` for FST and `bench-e2e-<format>-run` for VCD, FSDB, SHM, WLF, and VWDB. Run each through `./dev` in its profile. The full recipes and release gate use the same format catalogs and fail on a missing or failed scenario or a timeout. Input preparation and checksums run before timing. Run manifests contain the catalog and input SHA-256 checksums. VWDB inputs record one checksum per component, keyed by its path relative to the recording. Before timing an installed VWDB fixture, the runner verifies its current components against the published fixture manifest. The container pins the original fixture corpus by revision and verifies its published checksums during installation.
 
 Maintain the FST workload in `bench/e2e/tests.json`. Each derived-format run generates a catalog under `tmp/bench-catalogs/`. The run manifest records its path and checksum. Use at least ten measured runs and five warmups for release-gate workloads. The short CI smoke saves checked payloads under `tmp/bench-smoke/`.
 

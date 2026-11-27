@@ -47,8 +47,8 @@
         "--scope",
         "tb_opb.regular64",
         "--recursive",
-        "--max",
-        "unlimited",
+        "--filter",
+        "^tb_opb[.]regular64[.]word\\[0\\][.]data[.]q$",
         "--json"
       ],
       "meta": {

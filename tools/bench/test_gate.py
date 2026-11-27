@@ -750,9 +750,19 @@ class BenchGateHelperTest(unittest.TestCase):
                 )
             for capture_dir, suites in entries.items():
                 common.write_json(capture_dir / "manifest.json", {"suites": suites})
-            with mock.patch.object(
-                compare, "run_e2e_compare", side_effect=lambda **kwargs: {"status": "passed"},
-            ) as runner:
+            shm_run = root / "e2e-shm/revised"
+            timing = shm_run / "case.hyperfine.json"
+            metrics = {"mean": 0.01, "median": 0.01, "min": 0.01, "max": 0.01}
+            common.write_json(timing, {"results": [{**metrics, "times": [0.01]}]})
+            common.write_json(shm_run / "case.wavepeek.json", {"data": [], "diagnostics": []})
+            real_compare = compare.run_e2e_compare
+
+            def compare_first_baseline(**kwargs: object) -> dict[str, object]:
+                if kwargs["name"] == "e2e-shm-first-baseline-validation":
+                    return real_compare(**kwargs)
+                return {"status": "passed"}
+
+            with mock.patch.object(compare, "run_e2e_compare", side_effect=compare_first_baseline) as runner:
                 result = compare.compare_captures(
                     golden_dir=baseline, revised_dir=revised, compare_dir=root / "compare",
                     release_profile="private",
@@ -771,7 +781,18 @@ class BenchGateHelperTest(unittest.TestCase):
                     if call.kwargs["name"].startswith("cross-"):
                         self.assertFalse(call.kwargs["allow_golden_extra"])
 
-                (root / "e2e-shm/revised/case.hyperfine.json").unlink()
+                common.write_json(timing, {"results": [{**metrics, "times": []}]})
+                output = root / "missing-samples"
+                result = compare.compare_captures(
+                    golden_dir=baseline, revised_dir=revised, compare_dir=output,
+                    release_profile="private",
+                )
+                self.assertEqual(result.exit_code, 1)
+                self.assertEqual(result.manifest["suites"]["e2e-shm"]["status"], "failed")
+                log = (output / "e2e-shm-first-baseline-validation.log").read_text()
+                self.assertIn("missing non-empty `results[0].times` array", log)
+
+                timing.unlink()
                 result = compare.compare_captures(
                     golden_dir=baseline, revised_dir=revised, compare_dir=root / "incomplete",
                     release_profile="private",

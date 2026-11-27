@@ -123,6 +123,15 @@ WLF_FUNCTIONAL_IGNORES: tuple[tuple[str, str], ...] = (
     ),
 )
 
+WLF_EXPECTED_WARNINGS = tuple(
+    (
+        f"signal_scr1_top_recursive_{suffix}_json:WPK-W0005="
+        f"omitted ambiguous signal paths: count={count}, "
+        "first='TOP.scr1_top_tb_axi.i_memory_tb.araddr'; multiple source declarations; no candidate was selected"
+    )
+    for suffix, count in (("all", 16), ("depth2", 13), ("filter_valid", 16))
+)
+
 
 def e2e_artifact_stems(run_dir: pathlib.Path, *, functional_only: bool = False) -> set[str]:
     hyperfine = {path.name.removesuffix(HYPERFINE_SUFFIX) for path in run_dir.glob(f"*{HYPERFINE_SUFFIX}")}
@@ -370,6 +379,7 @@ def run_e2e_compare(
     functional_only: bool,
     allow_golden_extra: bool = False,
     ignored_functional_tests: Sequence[tuple[str, str]] = (),
+    expected_revised_warnings: Sequence[str] = (),
     require_timing_samples: bool = False,
 ) -> dict[str, Any]:
     if functional_only and allow_golden_extra:
@@ -401,6 +411,8 @@ def run_e2e_compare(
             args.append("--allow-golden-extra")
         for test_name, reason in ignored_functional_tests:
             args.extend(["--ignore-functional-test", f"{test_name}={reason}"])
+        for rule in expected_revised_warnings:
+            args.extend(["--expect-revised-warning", rule])
     else:
         if require_timing_samples:
             args.append("--require-timing-samples")
@@ -446,6 +458,8 @@ def run_e2e_compare(
             copy_compare_result_summary(suite, compare_result)
             if "ignored_functional_tests" in compare_result:
                 suite["ignored_functional_tests"] = compare_result["ignored_functional_tests"]
+            if compare_result.get("expected_revised_warnings"):
+                suite["expected_revised_warnings"] = compare_result["expected_revised_warnings"]
 
     if not functional_only and result.returncode != 0 and compare_failed_only_on_timing(compare_result):
         failed_tests = timing_failure_names(compare_result)
@@ -647,6 +661,7 @@ def compare_captures(
                 functional_only=True,
                 allow_golden_extra=release_profile is None and fmt == "fsdb",
                 ignored_functional_tests=cross_ignores.get(fmt, ()),
+                expected_revised_warnings=WLF_EXPECTED_WARNINGS if fmt == "wlf" else (),
             )
         except BenchGateError as error:
             suite_result = {"status": "failed", "reason": str(error)}

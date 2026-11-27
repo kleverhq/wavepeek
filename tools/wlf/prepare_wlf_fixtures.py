@@ -67,7 +67,7 @@ def prepare(source: Path, output: Path, converter: Path) -> None:
         subprocess.run(command, check=True)
         if not staged.is_file() or not staged.stat().st_size:
             raise RuntimeError(f"converter produced no waveform for {source}")
-        staged_marker = staged.with_suffix(".json")
+        staged_marker = staged.parent / marker.name
         staged_marker.write_text(stamp)
         staged.replace(output)
         staged_marker.replace(marker)

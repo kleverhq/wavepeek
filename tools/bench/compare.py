@@ -339,6 +339,7 @@ def run_e2e_compare(
     functional_only: bool,
     allow_golden_extra: bool = False,
     ignored_functional_tests: Sequence[tuple[str, str]] = (),
+    require_timing_samples: bool = False,
 ) -> dict[str, Any]:
     if functional_only and allow_golden_extra:
         assert_e2e_subset(superset=golden, subset=revised)
@@ -370,6 +371,8 @@ def run_e2e_compare(
         for test_name, reason in ignored_functional_tests:
             args.extend(["--ignore-functional-test", f"{test_name}={reason}"])
     else:
+        if require_timing_samples:
+            args.append("--require-timing-samples")
         args.extend(
             [
                 "--max-negative-delta-pct",
@@ -545,6 +548,7 @@ def compare_captures(
                     threshold_pct=timing_threshold_pct,
                     threshold_seconds=timing_threshold_seconds,
                     functional_only=False,
+                    require_timing_samples=True,
                 )
                 if validation["status"] != "passed":
                     raise BenchGateError(f"invalid first-baseline results; see {validation['log_path']}")

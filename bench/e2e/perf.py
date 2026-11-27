@@ -1770,6 +1770,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
     ensure_existing_dir(golden_dir, "compare")
 
     functional_only = bool(getattr(args, "functional_only", False))
+    require_timing_samples = bool(getattr(args, "require_timing_samples", False))
     allow_golden_extra = bool(getattr(args, "allow_golden_extra", False))
     verbose = bool(getattr(args, "verbose", False))
 
@@ -1780,6 +1781,8 @@ def cmd_compare(args: argparse.Namespace) -> int:
         fail("error: compare: --allow-golden-extra requires --functional-only")
     if ignored_tests and not functional_only:
         fail("error: compare: --ignore-functional-test requires --functional-only")
+    if require_timing_samples and functional_only:
+        fail("error: compare: --require-timing-samples requires a timing comparison")
     result_json = getattr(args, "result_json", None)
 
     if functional_only:
@@ -1832,6 +1835,9 @@ def cmd_compare(args: argparse.Namespace) -> int:
         functional_artifact_errors.append("no comparable tests between revised and golden")
 
     for test_name in matched:
+        if require_timing_samples:
+            for run_dir in dict.fromkeys((golden_dir, revised_dir)):
+                hyperfine_sample_times(run_dir, test_name, "compare")
         revised_row = revised[test_name]
         golden_row = golden[test_name]
 
@@ -2171,6 +2177,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--functional-only",
         action="store_true",
         help="compare only wavepeek JSON artifacts and skip timing artifacts",
+    )
+    compare_parser.add_argument(
+        "--require-timing-samples",
+        action="store_true",
+        help="validate the saved timing samples for every compared scenario",
     )
     compare_parser.add_argument(
         "--allow-golden-extra",

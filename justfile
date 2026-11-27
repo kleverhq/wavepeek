@@ -1,7 +1,6 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 export ONDAS_FIXTURES_DIR := `. ./.devcontainer/env_contract.sh; printf '%s\n' "$ONDAS_FIXTURES_DIR"`
-bench_e2e_fsdb_tests := "bench/e2e/tests_fsdb.json"
 wavepeek_release_bin := "./target/release/wavepeek"
 wavepeek_fsdb_release_bin := "./target/fsdb/release/wavepeek"
 python := "python3 -B"
@@ -66,19 +65,12 @@ check-shm-build: require-xcelium
 build-release-shm: require-xcelium
     CARGO_TARGET_DIR=target/shm bash tools/shm/with_shm_env.sh cargo build --release --features shm
 
-# Generate or check the SHM benchmark catalog
-update-bench-e2e-shm-catalog: require-container
-    {{ python }} tools/fsdb/generate_bench_catalog.py --target shm
-
-check-bench-e2e-shm-catalog: require-container
-    {{ python }} tools/fsdb/generate_bench_catalog.py --target shm --check
-
 # Prepare small SHM regression inputs
 prepare-shm-test-fixtures: require-xcelium prepare-waveform-fixtures
     {{ python }} tools/shm/prepare_shm_fixtures.py --tests-only
 
 # Prepare SHM inputs for selected benchmark scenarios
-prepare-shm-fixtures filter="": require-xcelium check-ondas-fixtures prepare-waveform-fixtures check-bench-e2e-shm-catalog
+prepare-shm-fixtures filter="": require-xcelium check-ondas-fixtures prepare-waveform-fixtures
     {{ python }} tools/shm/prepare_shm_fixtures.py --bench-only --filter '{{ filter }}'
 
 # Run SHM regression tests with the selected native reader
@@ -87,7 +79,8 @@ test-shm: prepare-shm-test-fixtures
 
 # Run selected SHM benchmark scenarios
 bench-e2e-shm-run filter="": (prepare-shm-fixtures filter) build-release-shm
-    bash tools/shm/with_shm_env.sh {{ python }} bench/e2e/perf.py run --strict --binary shm=./target/shm/release/wavepeek --tests bench/e2e/tests_shm.json --filter '{{ filter }}'
+    @catalog="$(just generate-bench-e2e-catalog shm)"; \
+        bash tools/shm/with_shm_env.sh {{ python }} bench/e2e/perf.py run --strict --binary shm=./target/shm/release/wavepeek --tests "$catalog" --filter '{{ filter }}'
 
 # Smoke-test the SHM reader on a small RTL fixture
 bench-e2e-shm-smoke: prepare-shm-test-fixtures build-release-shm
@@ -135,23 +128,12 @@ prepare-waveform-fixtures: require-container
 check-actions: require-container
     actionlint .github/workflows/*.yml
 
-# Regenerate FSDB benchmark catalog from the FST benchmark catalog
-update-bench-e2e-fsdb-catalog: require-container
-    @{{ python }} tools/fsdb/generate_bench_catalog.py
-
-# Validate FSDB benchmark catalog freshness
-check-bench-e2e-fsdb-catalog: require-container
-    @{{ python }} tools/fsdb/generate_bench_catalog.py --check
-
-# Generate and validate the VCD benchmark catalog from the FST catalog
-update-bench-e2e-vcd-catalog: require-container
-    @{{ python }} tools/fsdb/generate_bench_catalog.py --target vcd
-
-check-bench-e2e-vcd-catalog: require-container
-    @{{ python }} tools/fsdb/generate_bench_catalog.py --target vcd --check
+[private]
+generate-bench-e2e-catalog format: require-container
+    @{{ python }} bench/e2e/generate_catalog.py "{{ format }}"
 
 # Keep converted RTL VCD files beside their FST sources for benchmark runs
-prepare-vcd-ondas-fixtures: check-ondas-fixtures check-bench-e2e-vcd-catalog
+prepare-vcd-ondas-fixtures: check-ondas-fixtures
     @. ./.devcontainer/env_contract.sh; \
     for fixture in $WAVEPEEK_ONDAS_FIXTURES; do \
         source="${ONDAS_FIXTURES_DIR}/$fixture/waveform.fst"; output="${source%.fst}.vcd"; \
@@ -261,7 +243,7 @@ lint-fsdb: require-verdi
     CARGO_TARGET_DIR=target/fsdb cargo clippy --features fsdb --all-targets -- -D warnings
 
 # Prepare generated FSDB fixtures from VCD fixtures and RTL FST artifacts
-prepare-fsdb-fixtures: require-verdi check-bench-e2e-fsdb-catalog prepare-waveform-fixtures
+prepare-fsdb-fixtures: require-verdi prepare-waveform-fixtures
     bash tools/fsdb/prepare_fsdb_fixtures.sh
 
 # Prepare generated FSDB fixtures from VCD test fixtures only
@@ -270,13 +252,11 @@ prepare-fsdb-test-fixtures: require-verdi prepare-waveform-fixtures
 
 # Verify FSDB benchmark artifacts exist next to required RTL FST fixtures
 check-fsdb-ondas-fixtures: require-verdi check-ondas-fixtures
-    {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}"
+    @catalog="$(just generate-bench-e2e-catalog fsdb)"; \
+        {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "$catalog"
 
 # Prepare and verify FSDB benchmark artifacts in dependency order
-prepare-and-check-fsdb-ondas-fixtures: require-verdi
-    just check-ondas-fixtures
-    just prepare-fsdb-fixtures
-    {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}"
+prepare-and-check-fsdb-ondas-fixtures: require-verdi check-ondas-fixtures prepare-fsdb-fixtures check-fsdb-ondas-fixtures
 
 # Build release binary with optional FSDB support
 build-release-fsdb: require-verdi
@@ -312,8 +292,6 @@ test-fsdb: check-ondas-fixtures check-fsdb-build prepare-fsdb-test-fixtures
 
 # Run auxiliary Python/unit test suites
 test-aux: require-container
-    @just check-bench-e2e-fsdb-catalog
-    @just check-bench-e2e-shm-catalog
     {{ python }} -m unittest discover -s bench/e2e -p "test_*.py"
     {{ python }} -m unittest discover -s tools/bench -p "test_*.py"
     {{ python }} -m unittest discover -s tools/docs -p "test_*.py"
@@ -469,11 +447,13 @@ bench-e2e-run: check-ondas-fixtures prepare-waveform-fixtures build-release
 
 # Run the full VCD benchmark suite
 bench-e2e-vcd-run: prepare-vcd-ondas-fixtures prepare-waveform-fixtures build-release
-    {{ python }} bench/e2e/perf.py run --strict --binary vcd="{{ wavepeek_release_bin }}" --tests bench/e2e/tests_vcd.json
+    @catalog="$(just generate-bench-e2e-catalog vcd)"; \
+        {{ python }} bench/e2e/perf.py run --strict --binary vcd="{{ wavepeek_release_bin }}" --tests "$catalog"
 
 # Run the full FSDB benchmark suite
 bench-e2e-fsdb-run: prepare-and-check-fsdb-ondas-fixtures build-release-fsdb
-    {{ python }} bench/e2e/perf.py run --strict --binary fsdb="{{ wavepeek_fsdb_release_bin }}" --tests "{{ bench_e2e_fsdb_tests }}"
+    @catalog="$(just generate-bench-e2e-catalog fsdb)"; \
+        {{ python }} bench/e2e/perf.py run --strict --binary fsdb="{{ wavepeek_fsdb_release_bin }}" --tests "$catalog"
 
 # Smoke-test the public readers on a small RTL fixture
 bench-e2e-smoke: prepare-waveform-fixtures build-release
@@ -485,12 +465,12 @@ bench-e2e-fsdb-smoke: prepare-fsdb-test-fixtures build-release-fsdb
     {{ python }} bench/e2e/smoke.py fsdb "{{ wavepeek_fsdb_release_bin }}"
 
 # Check everything
-check: format-check lint check-actions check-bench-e2e-fsdb-catalog check-bench-e2e-vcd-catalog check-bench-e2e-shm-catalog check-build docs-site-check playground-test
+check: format-check lint check-actions check-build docs-site-check playground-test
     @just run-if-verdi check-fsdb-build
     @just run-if-xcelium check-shm-build
 
 # CI quality gate
-ci: format-check lint-default check-actions check-bench-e2e-vcd-catalog test-aux coverage-src-check check-build docs-site-check playground-test bench-e2e-smoke
+ci: format-check lint-default check-actions test-aux coverage-src-check check-build docs-site-check playground-test bench-e2e-smoke
     cargo test --doc
     @just ci-native
 

@@ -27,7 +27,7 @@ class CheckFsdbBenchArtifactsTest(unittest.TestCase):
         )
 
     def write_catalog(self, root: pathlib.Path, fixtures_dir: pathlib.Path) -> pathlib.Path:
-        catalog = root / "tests_fsdb.json"
+        catalog = root / "tests.json"
         catalog.write_text(
             json.dumps(
                 {

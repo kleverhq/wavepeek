@@ -8,6 +8,8 @@ mod fsdb_tests;
 mod tests;
 
 use std::fmt;
+use std::fs::File;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -99,6 +101,7 @@ impl OndasBackend {
         match self.inner.format() {
             Format::Vcd => "vcd",
             Format::Fst => "fst",
+            Format::Ghw => "ghw",
             Format::Fsdb => "fsdb",
             Format::Shm => "shm",
             Format::Wlf => "wlf",
@@ -109,31 +112,42 @@ impl OndasBackend {
     }
 
     pub fn metadata(&self) -> Result<WaveformMetadata, WavepeekError> {
-        Self::format_metadata(self.inner.metadata())
+        Self::format_metadata(self.inner.metadata(), self.inner.format() == Format::Ghw)
     }
 
     pub fn read_metadata(path: &Path) -> Result<WaveformMetadata, WavepeekError> {
         let metadata = ondas::read_metadata(path)
             .map_err(|error| read_error(path, "read metadata from", error))?;
-        Self::format_metadata(&metadata)
+        // The metadata API does not report the format. Inspect only files for
+        // which Ondas successfully read metadata without a timescale.
+        let ghw = metadata.timescale().is_none() && has_ghw_signature(path);
+        Self::format_metadata(&metadata, ghw)
     }
 
-    fn format_metadata(metadata: &ondas::Metadata) -> Result<WaveformMetadata, WavepeekError> {
-        let scale = metadata
-            .timescale()
-            .ok_or_else(|| WavepeekError::File("waveform is missing timescale metadata".into()))?;
-        let unit = time_unit(scale.unit())?;
+    fn format_metadata(
+        metadata: &ondas::Metadata,
+        ghw: bool,
+    ) -> Result<WaveformMetadata, WavepeekError> {
+        let (factor, unit) = if ghw {
+            // GHW stores only ticks. WavePeek accepts GHDL dumps recorded at 1 fs.
+            (1, "fs")
+        } else {
+            let scale = metadata.timescale().ok_or_else(|| {
+                WavepeekError::File("waveform is missing timescale metadata".into())
+            })?;
+            (scale.factor(), time_unit(scale.unit())?)
+        };
         let span = metadata.time_span();
         let start = span.map_or(0, |span| span.first().ticks());
         let end = span.map_or(start, |span| span.last().ticks());
         let normalize = |time: u64| -> Result<String, WavepeekError> {
-            let value = time.checked_mul(u64::from(scale.factor())).ok_or_else(|| {
+            let value = time.checked_mul(u64::from(factor)).ok_or_else(|| {
                 WavepeekError::File("time value overflow while normalizing timestamps".into())
             })?;
             Ok(format!("{value}{unit}"))
         };
         Ok(WaveformMetadata {
-            time_unit: format!("{}{unit}", scale.factor()),
+            time_unit: format!("{factor}{unit}"),
             time_start: normalize(start)?,
             time_end: normalize(end)?,
         })
@@ -755,6 +769,15 @@ fn sampled_signal(
         width: signal.width,
         bits,
     })
+}
+
+fn has_ghw_signature(path: &Path) -> bool {
+    let mut prefix = [0; 8];
+    path.is_file()
+        && File::open(path)
+            .and_then(|mut file| file.read_exact(&mut prefix))
+            .is_ok()
+        && &prefix == b"GHDLwave"
 }
 
 fn time_unit(unit: ondas::TimeUnit) -> Result<&'static str, WavepeekError> {

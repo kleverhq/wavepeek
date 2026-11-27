@@ -4,7 +4,7 @@ This page takes you from installation to your first `wavepeek` query.
 
 ## Install
 
-Install a prebuilt binary. Prebuilt binaries support only VCD/FST.
+Install a prebuilt binary for VCD, FST, or [GHW](waveforms.md#ghw) input.
 
 To install a specific version, see the instructions for the required release on [Releases](https://github.com/kleverhq/wavepeek/releases).
 

@@ -272,6 +272,7 @@ dev-setup: require-container
     gh --version
     iverilog -V >/dev/null
     vvp -V >/dev/null
+    ghdl --version >/dev/null
     vcd2fst --help >/dev/null
     fst2vcd --help >/dev/null
     mkdocs --version

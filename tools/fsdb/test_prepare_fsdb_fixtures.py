@@ -19,6 +19,7 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
             repo = sandbox / "repo"
             script = repo / "tools" / "fsdb" / "prepare_fsdb_fixtures.sh"
             hand_fixtures = repo / "tests" / "fixtures" / "hand"
+            ghw_fixtures = repo / "tests" / "fixtures" / "generated" / "ghw"
             ondas_fixtures = repo / "ondas-fixtures"
             bin_dir = sandbox / "bin"
             root_log = repo / "vcd2fsdbLog"
@@ -33,12 +34,14 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
                 encoding="utf-8",
             )
             hand_fixtures.mkdir(parents=True)
+            ghw_fixtures.mkdir(parents=True)
             ondas_fixtures.mkdir()
             bin_dir.mkdir()
             (hand_fixtures / "tiny.vcd").write_text(
                 "$date today $end\n$enddefinitions $end\n",
                 encoding="utf-8",
             )
+            (ghw_fixtures / "reference.vcd").write_text("$enddefinitions $end\n", encoding="utf-8")
             root_log.mkdir()
             sentinel.write_text("user-owned data\n", encoding="utf-8")
             (bin_dir / "vcd2fsdb").write_text(
@@ -83,6 +86,7 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
             self.assertFalse((root_log / "created-by-stub.txt").exists())
             generated_fixture = repo / "tests" / "fixtures" / "fsdb" / "tiny.fsdb"
             self.assertTrue(generated_fixture.is_file())
+            self.assertFalse(generated_fixture.with_name("reference.fsdb").exists())
 
     def test_rtl_reuses_persistent_vcd_when_available(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -1,12 +1,12 @@
 # Waveform formats
 
-This page describes the supported waveform dump formats. CLI builds support
-VCD/FST by default and optional FSDB/SHM/WLF/WDB/VWDB. The browser accepts VCD/FST only.
+This page describes the supported waveform dump formats. Native CLI builds support
+VCD, FST, and GHW by default and optional FSDB/SHM/WLF/WDB/VWDB. The browser accepts VCD/FST only.
 Additional Ondas library readers do not imply WavePeek product support.
 Signal kind aliases describe declarations; expression semantics use value
 encoding and metadata, not the input format or its reader name.
 
-All dump-orientation and waveform-inspection commands require `--waves <FILE>` and operate on a single dump per invocation. The path can be a file or a complete SHM or VWDB database directory. Default builds support VCD (Value Change Dump) and FST (Fast Signal Trace). See [Quickstart](quickstart.md) for optional reader builds.
+All dump-orientation and waveform-inspection commands require `--waves <FILE>` and operate on a single dump per invocation. The path can be a file or a complete SHM or VWDB database directory. See [Quickstart](quickstart.md) for optional reader builds.
 
 Output limits bound returned rows. Checking exact completeness may require the
 next matching row. Reader setup and initial state can read a prefix of the dump;
@@ -28,6 +28,12 @@ Converting a VCD dump to FST can help when the converted file will be queried re
 FST is a compact, indexed waveform format. It is usually the best default for repeated inspection with `wavepeek` because metadata and selected signal data can often be loaded without reconstructing the entire dump body.
 
 FST tends to use much less memory than large VCD input and is well suited for scripted debug loops where the same dump is queried many times.
+
+## GHW
+
+Use uncompressed GHDL Waveform (GHW) files recorded at 1fs. The file stores timestamps as ticks without a unit. WavePeek reads each GHW tick as one femtosecond, so `info` reports `time_unit: 1fs`. Check the simulator resolution before opening a dump.
+
+Query readable record fields and array elements through their paths in `scope` and `signal` output. The reader validates the full GHW body to establish the time bounds, including for `info`.
 
 ## FSDB
 

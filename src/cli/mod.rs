@@ -26,7 +26,7 @@ use crate::error::WavepeekError;
 use crate::output::{self, JsonlWriter};
 use crate::output_mode::OutputMode;
 
-const WAVES_HELP: &str = "Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB) (for example, dump.fst)";
+const WAVES_HELP: &str = "Path to a waveform file (VCD, FST, GHW, FSDB, WLF, WDB) or database directory (SHM, VWDB) (for example, dump.fst)";
 const BROWSER_WAVES_HELP: &str = "Path to the active VCD or FST file (for example, demo.vcd)";
 
 #[derive(Debug, Parser)]
@@ -39,7 +39,8 @@ const BROWSER_WAVES_HELP: &str = "Path to the active VCD or FST file (for exampl
 
 Behavior:
 - Each waveform command opens one waveform dump, runs one query, writes its output, and exits.
-- Every build supports VCD and FST. FSDB requires Linux x86_64, Cargo feature `fsdb`, and the Synopsys Verdi FSDB Reader SDK.
+- Every native build supports VCD, FST, and GHW. Use uncompressed GHW recorded at 1fs.
+- FSDB requires Linux x86_64, Cargo feature `fsdb`, and the Synopsys Verdi FSDB Reader SDK.
 - SHM directories require Linux x86_64, Cargo feature `shm`, and a compatible Xcelium reader selected by XCELIUM_HOME.
 - WLF files require Linux x86_64 GNU, Cargo feature `wlf`, and a compatible Questa reader selected by QUESTA_HOME.
 - WDB files require Linux x86_64 GNU and Cargo feature `wdb`. Set XILINX_VIVADO to a compatible Vivado installation at build time.

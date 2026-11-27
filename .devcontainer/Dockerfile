@@ -54,7 +54,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     ca-certificates curl git libatomic1 g++ \
     python3 python3-venv \
-    iverilog gtkwave \
+    iverilog gtkwave ghdl-mcode \
     libxt6t64 libxmu6 libnuma1 zlib1g-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

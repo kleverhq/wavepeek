@@ -6,7 +6,7 @@ Keep command fixtures small and tied to durable behavior. Reuse named expression
 
 ## Verification profiles
 
-GitHub Actions runs `just ci` for pull requests and release tags. Run `./dev just ci` in the public profile to reproduce the VCD and FST CLI regressions and smoke, the help and disabled-feature diagnostics for optional readers, and the shared coverage, fixture, benchmark harness, documentation, and Playground checks. The tag workflow also checks the Cargo package and builds release distributions.
+GitHub Actions runs `just ci` for pull requests and release tags. Run `./dev just ci` in the public profile to reproduce VCD, FST, and GHW CLI regressions, VCD and FST smoke, the help and disabled-feature diagnostics for optional readers, and the shared coverage, fixture, benchmark harness, documentation, and Playground checks. The tag workflow also checks the Cargo package and builds release distributions.
 
 Run `./dev just ci-native` in the private profile. It checks each native reader independently. For each available reader, it runs feature lint, verifies the loader with a binary outside Cargo, and checks CLI output on native or converted inputs. It reports each unavailable reader as skipped. `./dev just ci` invokes the same native checks after the common quality gate.
 
@@ -17,6 +17,8 @@ The WDB CLI tests record `m2_core.v` and `extract_apb3.v` with XSim and compare 
 ## Waveform fixtures
 
 Prefer source-backed fixtures in `tests/fixtures/source/`. Register the outputs in `tests/fixtures/waveform_policy.json` and use `./dev just prepare-waveform-fixtures`. Keep hand dumps in `tests/fixtures/hand/` only when raw syntax or metadata is part of the case. Record the reason in the policy file. Keep derived native-format dumps ignored.
+
+The GHW CLI tests use `ghw_core.vhd`. GHDL writes a native GHW and a reference VCD from the same simulation at 1fs. The tests compare shared signals on both inputs and check a VHDL record field on GHW.
 
 The public browser demo has a fixed checksum. Other large fixtures come from the pinned corpus in the container. Use native captures for types or names that conversion cannot preserve. See `environment.md`, `fsdb.md`, `shm.md`, `wlf.md`, and `vwdb.md`.
 

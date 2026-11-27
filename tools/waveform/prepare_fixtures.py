@@ -89,7 +89,7 @@ def load_policy() -> dict[str, Any]:
 def reconcile_generated_outputs(policy: dict[str, Any]) -> None:
     expected = expected_generated_outputs(policy)
     for path in sorted(GENERATED_DIR.rglob("*")):
-        if path.is_file() and path.suffix in {".vcd", ".fst"} and path not in expected:
+        if path.is_file() and path.suffix in {".vcd", ".fst", ".ghw"} and path not in expected:
             path.unlink()
             print(f"removed stale generated fixture {relative(path)}")
 
@@ -116,16 +116,6 @@ def generate_source_backed(entry: dict[str, Any]) -> None:
         raise FixtureError(f"source-backed fixture '{name}' source is missing: {relative(source)}")
 
     output_paths = [root_path(output) for output in outputs]
-    vcd_outputs = [path for path in output_paths if path.suffix == ".vcd"]
-    fst_outputs = [path for path in output_paths if path.suffix == ".fst"]
-    unsupported = [path for path in output_paths if path.suffix not in {".vcd", ".fst"}]
-    if unsupported:
-        raise FixtureError(
-            f"source-backed fixture '{name}' has unsupported outputs: "
-            + ", ".join(relative(path) for path in unsupported)
-        )
-    if len(vcd_outputs) != 1:
-        raise FixtureError(f"source-backed fixture '{name}' must declare exactly one VCD output")
     for output in output_paths:
         ensure_generated_output(output)
 
@@ -134,14 +124,40 @@ def generate_source_backed(entry: dict[str, Any]) -> None:
         shutil.rmtree(fixture_work_dir)
     fixture_work_dir.mkdir(parents=True)
 
-    compiled = fixture_work_dir / f"{name}.vvp"
+    if source.suffix == ".v":
+        generate_verilog(source, output_paths, fixture_work_dir)
+    elif source.suffix == ".vhd":
+        generate_vhdl(source, output_paths, fixture_work_dir)
+    else:
+        raise FixtureError(f"unsupported fixture source: {relative(source)}")
+
+    print(
+        "generated "
+        + ", ".join(relative(path) for path in output_paths)
+        + f" from {relative(source)}"
+    )
+
+
+def generate_verilog(source: Path, output_paths: list[Path], fixture_work_dir: Path) -> None:
+    vcd_outputs = [path for path in output_paths if path.suffix == ".vcd"]
+    fst_outputs = [path for path in output_paths if path.suffix == ".fst"]
+    unsupported = [path for path in output_paths if path.suffix not in {".vcd", ".fst"}]
+    if unsupported:
+        raise FixtureError(
+            f"source-backed fixture '{fixture_work_dir.name}' has unsupported outputs: "
+            + ", ".join(relative(path) for path in unsupported)
+        )
+    if len(vcd_outputs) != 1:
+        raise FixtureError(f"source-backed fixture '{fixture_work_dir.name}' must declare exactly one VCD output")
+
+    compiled = fixture_work_dir / f"{fixture_work_dir.name}.vvp"
     run(["iverilog", "-g2012", "-o", str(compiled), str(source)], cwd=ROOT)
     run(["vvp", str(compiled)], cwd=fixture_work_dir)
 
     raw_vcd = fixture_work_dir / vcd_outputs[0].name
     if not raw_vcd.is_file():
         raise FixtureError(
-            f"source-backed fixture '{name}' did not produce expected VCD {raw_vcd.name}"
+            f"source-backed fixture '{fixture_work_dir.name}' did not produce expected VCD {raw_vcd.name}"
         )
     replace_text(vcd_outputs[0], canonicalize_vcd(raw_vcd.read_text(encoding="utf-8")))
 
@@ -150,11 +166,26 @@ def generate_source_backed(entry: dict[str, Any]) -> None:
         run(["vcd2fst", str(vcd_outputs[0]), str(tmp_fst)], cwd=ROOT)
         replace_binary(tmp_fst, fst_output)
 
-    print(
-        "generated "
-        + ", ".join(relative(path) for path in output_paths)
-        + f" from {relative(source)}"
+
+def generate_vhdl(source: Path, output_paths: list[Path], fixture_work_dir: Path) -> None:
+    require_tool("ghdl")
+    dumps = sorted(output_paths, key=lambda path: path.suffix)
+    if [path.suffix for path in dumps] != [".ghw", ".vcd"]:
+        raise FixtureError(f"VHDL fixture {relative(source)} must declare one GHW and one VCD output")
+    ghw, vcd = dumps
+    run(["ghdl", "-a", "--std=08", str(source)], cwd=fixture_work_dir)
+    run(
+        [
+            "ghdl", "-r", "--std=08", "--time-resolution=fs", source.stem,
+            f"--wave={ghw.name}", f"--vcd={vcd.name}", "--vcd-nodate",
+        ],
+        cwd=fixture_work_dir,
     )
+    for output in dumps:
+        if not (fixture_work_dir / output.name).is_file():
+            raise FixtureError(f"VHDL fixture {relative(source)} did not produce {output.name}")
+    for output in dumps:
+        replace_binary(fixture_work_dir / output.name, output)
 
 
 def generate_derived_output(entry: dict[str, Any]) -> None:

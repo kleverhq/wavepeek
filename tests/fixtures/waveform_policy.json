@@ -47,6 +47,15 @@
   ],
   "source_backed": [
     {
+      "name": "ghw_core",
+      "source": "tests/fixtures/source/ghw_core.vhd",
+      "outputs": [
+        "tests/fixtures/generated/ghw/ghw_core.ghw",
+        "tests/fixtures/generated/ghw/ghw_core.vcd"
+      ],
+      "reason": "Native GHW queries and a VCD comparison from the same VHDL simulation."
+    },
+    {
       "name": "change_edge_cases",
       "source": "tests/fixtures/source/change_edge_cases.v",
       "outputs": [

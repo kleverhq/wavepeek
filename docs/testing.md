@@ -8,7 +8,7 @@ Keep command fixtures small and tied to durable behavior. Reuse named expression
 
 GitHub Actions runs `just ci` for pull requests and release tags. Run `./dev just ci` in the public profile to reproduce the VCD and FST CLI regressions and smoke, the FSDB and SHM help and disabled-feature diagnostics, and the shared coverage, fixture, catalog, documentation, and Playground checks. The tag workflow also checks the Cargo package and builds release distributions.
 
-Run `./dev just ci-native` in the private profile to require the native FSDB and SHM checks. It runs feature lint, verifies the loader with a binary outside Cargo, checks CLI output on native and converted inputs, and runs smoke. In the private profile, `./dev just ci` also runs the native checks for configured readers and reports unavailable readers as skipped.
+Run `./dev just ci-native` in the private profile. It checks each native reader independently. For each available reader, it runs feature lint, verifies the loader with a binary outside Cargo, checks CLI output on native and converted inputs, and runs smoke. It reports each unavailable reader as skipped. `./dev just ci` invokes the same native checks after the common quality gate.
 
 The smoke suite opens four equivalent dumps from `tests/fixtures/source/m2_core.v`. For each selected format it checks metadata and bounds, scope and signal paths, a point sample, and a change at the interval boundary. Each CLI call has a timeout and must produce the expected data. See `benchmarking.md` for the full E2E suites and release gate.
 

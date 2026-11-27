@@ -16,9 +16,9 @@ spec.loader.exec_module(prepare)
 
 
 class ShmEnvironmentTest(unittest.TestCase):
-    def probe(self, home: str, *args: str) -> subprocess.CompletedProcess[str]:
+    def probe(self, home: str, *args: str, reader: str = "shm") -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            ["python3", "-B", str(DIRECTORY.parent / "xcelium/check_reader_env.py"), "shm", *args],
+            ["python3", "-B", str(DIRECTORY.parent / "xcelium/check_reader_env.py"), reader, *args],
             env={**os.environ, "XCELIUM_HOME": home}, capture_output=True, text=True,
         )
 
@@ -36,6 +36,18 @@ class ShmEnvironmentTest(unittest.TestCase):
             result = self.probe(temporary, "--print-library")
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), str(library.resolve()))
+
+    def test_readers_are_independent_with_the_shared_home(self) -> None:
+        readers = {"shm": "libsst2.so", "vwdb": "libvwdbr_analog.so"}
+        for available, filename in readers.items():
+            with self.subTest(available=available), tempfile.TemporaryDirectory() as home:
+                library = Path(home) / "tools/lib/64bit" / filename
+                library.parent.mkdir(parents=True)
+                library.touch()
+                unavailable = next(reader for reader in readers if reader != available)
+                self.assertEqual(self.probe(home, reader=available).returncode, 0)
+                self.assertEqual(self.probe(home, reader=unavailable).returncode, 77)
+                self.assertEqual(self.probe(home, "--require", reader=unavailable).returncode, 1)
 
 
 class ShmPreparationTest(unittest.TestCase):

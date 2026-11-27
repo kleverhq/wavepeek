@@ -181,6 +181,7 @@ fn assert_no_tracked_proprietary_fixtures(root: &Path) {
                 || path.contains(".shm/")
                 || path.ends_with(".wlf")
                 || path.contains(".wlf.")
+                || path.contains(".vwdb/")
         })
         .collect::<Vec<_>>();
     assert!(

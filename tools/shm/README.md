@@ -1,7 +1,6 @@
 # SHM helpers
 
-`tools/xcelium/check_reader_env.py shm` probes the optional reader selected by `XCELIUM_HOME`. An unset
-installation returns 77; an explicitly configured missing library returns 1.
+`tools/xcelium/check_reader_env.py shm` probes the optional reader selected by `XCELIUM_HOME`. An unset installation or an installation with only the VWDB reader returns 77. With `--require`, a missing SHM library returns 1.
 Ondas owns ABI validation during the build.
 
 `with_shm_env.sh COMMAND ...` exposes the selected `libsst2.so` through an ignored

@@ -328,7 +328,7 @@ const OPTIONAL_FEATURES: &[OptionalFeatureHelp] = &[
     OptionalFeatureHelp {
         name: "VWDB",
         enabled: cfg!(feature = "vwdb"),
-        disabled_hint: "VWDB requires Linux x86_64 GNU, Cargo flag `--features vwdb`, and a compatible XCELIUM_HOME",
+        disabled_hint: "VWDB requires Linux x86_64 GNU, Cargo flag `--features vwdb`, and XCELIUM_HOME set to a compatible installation when building",
     },
 ];
 

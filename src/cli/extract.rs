@@ -191,8 +191,7 @@ impl std::fmt::Display for AhbProfileArg {
 
 #[derive(Debug, Args)]
 pub struct AhbArgs {
-    /// Path to a VCD, FST, FSDB, or WLF file, or an SHM database directory (for example, dump.fst)
-    #[arg(long, value_name = "FILE", help_heading = "Input options")]
+    #[arg(long, value_name = "FILE", help_heading = "Input options", help = super::WAVES_HELP)]
     pub waves: PathBuf,
     /// AHB profile from Arm IHI 0033C
     #[arg(
@@ -322,8 +321,7 @@ impl std::fmt::Display for PreadyModeArg {
 
 #[derive(Debug, Args)]
 pub struct ApbArgs {
-    /// Path to a VCD, FST, FSDB, or WLF file, or an SHM database directory (for example, dump.fst)
-    #[arg(long, value_name = "FILE", help_heading = "Input options")]
+    #[arg(long, value_name = "FILE", help_heading = "Input options", help = super::WAVES_HELP)]
     pub waves: PathBuf,
     /// APB profile from Arm IHI 0024E
     #[arg(
@@ -438,8 +436,7 @@ impl std::fmt::Display for AtbProfileArg {
 
 #[derive(Debug, Args)]
 pub struct AtbArgs {
-    /// Path to a VCD, FST, FSDB, or WLF file, or an SHM database directory (for example, dump.fst)
-    #[arg(long, value_name = "FILE", help_heading = "Input options")]
+    #[arg(long, value_name = "FILE", help_heading = "Input options", help = super::WAVES_HELP)]
     pub waves: PathBuf,
     /// ATB profile from Arm IHI 0032C Issue C
     #[arg(
@@ -603,8 +600,7 @@ impl std::fmt::Display for TreadyModeArg {
 
 #[derive(Debug, Args)]
 pub struct AxiArgs {
-    /// Path to a VCD, FST, FSDB, or WLF file, or an SHM database directory (for example, dump.fst)
-    #[arg(long, value_name = "FILE", help_heading = "Input options")]
+    #[arg(long, value_name = "FILE", help_heading = "Input options", help = super::WAVES_HELP)]
     pub waves: PathBuf,
     /// AXI profile from Arm IHI 0022H.c or IHI 0022L
     #[arg(
@@ -672,8 +668,7 @@ pub struct AxiArgs {
 
 #[derive(Debug, Args)]
 pub struct AxiStreamArgs {
-    /// Path to a VCD, FST, FSDB, or WLF file, or an SHM database directory (for example, dump.fst)
-    #[arg(long, value_name = "FILE", help_heading = "Input options")]
+    #[arg(long, value_name = "FILE", help_heading = "Input options", help = super::WAVES_HELP)]
     pub waves: PathBuf,
     /// AXI-Stream profile from Arm IHI 0051B Issue B
     #[arg(
@@ -752,8 +747,7 @@ pub struct AxiStreamArgs {
 
 #[derive(Debug, Args)]
 pub struct GenericArgs {
-    /// Path to a VCD, FST, FSDB, or WLF file, or an SHM database directory (for example, dump.fst)
-    #[arg(long, value_name = "FILE", help_heading = "Input options")]
+    #[arg(long, value_name = "FILE", help_heading = "Input options", help = super::WAVES_HELP)]
     pub waves: PathBuf,
     /// JSON file for multi-source extraction (for example, fifo-sources.json)
     #[arg(

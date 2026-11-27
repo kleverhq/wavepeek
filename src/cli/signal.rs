@@ -8,8 +8,7 @@ use crate::cli::limits::LimitArg;
 
 #[derive(Debug, Args)]
 pub struct SignalArgs {
-    /// Path to a VCD, FST, FSDB, or WLF file, or an SHM database directory (for example, dump.fst)
-    #[arg(long, value_name = "FILE", help_heading = "Input options")]
+    #[arg(long, value_name = "FILE", help_heading = "Input options", help = super::WAVES_HELP)]
     pub waves: PathBuf,
     /// Exact scope path (for example, top.cpu); empty selects root-level declarations
     #[arg(long, help_heading = "Input options")]

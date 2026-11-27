@@ -1,14 +1,12 @@
 # Waveform formats
 
 This page describes the supported waveform dump formats. CLI builds support
-VCD/FST by default and optional FSDB/SHM/WLF. The browser accepts VCD/FST only.
+VCD/FST by default and optional FSDB/SHM/WLF/VWDB. The browser accepts VCD/FST only.
 Additional Ondas library readers do not imply WavePeek product support.
 Signal kind aliases describe declarations; expression semantics use value
 encoding and metadata, not the input format or its reader name.
 
-All dump-orientation and waveform-inspection commands require `--waves <FILE>` and operate on a single dump per invocation. The path can be a file or a complete SHM database directory. Default builds support VCD (Value Change Dump) and FST (Fast Signal Trace). FSDB, SHM, and WLF require optional source builds with the corresponding SDK. See [Quickstart](quickstart.md).
-
-`wavepeek` performance depends on the waveform format, file size, selected command, requested signals, storage speed, and machine memory. Each waveform command opens the requested dump, executes the query, writes output, and exits. If a script runs many independent `wavepeek` commands, format setup costs are paid by each process. When command semantics allow it, prefer one command that requests the needed scopes, signals, timestamps, or time window over many tiny commands.
+All dump-orientation and waveform-inspection commands require `--waves <FILE>` and operate on a single dump per invocation. The path can be a file or a complete SHM or VWDB database directory. Default builds support VCD (Value Change Dump) and FST (Fast Signal Trace). See [Quickstart](quickstart.md) for optional reader builds.
 
 Output limits bound returned rows. Checking exact completeness may require the
 next matching row. Reader setup and initial state can read a prefix of the dump;
@@ -67,6 +65,16 @@ histories and window; use measurements from your design to compare SHM with FSDB
 WavePeek reads Questa waveform log files with the `wlf` feature. Ondas recognizes the `.wlf` extension without case sensitivity. See [Quickstart](quickstart.md#install-with-wlf) for setup.
 
 Read values with the same commands as for VCD and FST. Expressions can use supported reals, ASCII strings, and named events. Bit-oriented output requires integral values. If recording started late, a signal has no value until its first recorded sample.
+
+## VWDB
+
+Pass the directory with `vwdb_info.json` and its design components. Earlier recordings can have a `.shm` suffix. Ondas identifies the recording from its contents.
+
+A combined recording can contain a separate SHM directory. Some SystemC recordings store their digital histories there. To query those histories, enable `shm` and pass that directory to `--waves`. It has its own time grid.
+
+WavePeek uses the recorded widths, values, and enum labels supplied by Ondas. Dynamic strings can be absent from the recorded hierarchy. A recording gap makes persistent values unavailable until they are recorded again.
+
+`wavepeek` performance depends on the waveform format, file size, selected command, requested signals, storage speed, and machine memory. Each waveform command opens the requested dump, executes the query, writes output, and exits. If a script runs many independent `wavepeek` commands, format setup costs are paid by each process. When command semantics allow it, prefer one command that requests the needed scopes, signals, timestamps, or time window over many tiny commands.
 
 ## Performance expectations
 

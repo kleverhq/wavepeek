@@ -32,7 +32,7 @@ require-verdi: require-container
 
 [private]
 require-xcelium: require-container
-    @{{ python }} tools/shm/check_shm_env.py --require >/dev/null
+    @{{ python }} tools/xcelium/check_reader_env.py shm --require >/dev/null
 
 [private]
 require-questa: require-container
@@ -100,9 +100,9 @@ bench-e2e-wlf-smoke: prepare-wlf-test-fixtures build-release-wlf
     {{ python }} bench/e2e/smoke.py wlf ./target/wlf/release/wavepeek
 
 [private]
-run-if-xcelium recipe: require-container
+run-if-xcelium recipe reader="shm": require-container
     @set +e; \
-    output="$({{ python }} tools/shm/check_shm_env.py 2>&1)"; status="$?"; \
+    output="$({{ python }} tools/xcelium/check_reader_env.py {{ reader }} 2>&1)"; status="$?"; \
     set -e; \
     if [ "$status" -eq 0 ]; then \
         printf '%s\n' "$output"; just "{{ recipe }}"; \
@@ -114,7 +114,7 @@ run-if-xcelium recipe: require-container
 
 # Check local Xcelium reader availability
 check-shm-env: require-container
-    @set +e; {{ python }} tools/shm/check_shm_env.py; status="$?"; \
+    @set +e; {{ python }} tools/xcelium/check_reader_env.py shm; status="$?"; \
     if [ "$status" -eq 77 ]; then exit 0; fi; exit "$status"
 
 # Lint optional SHM support
@@ -150,6 +150,53 @@ bench-e2e-shm-run filter="": (prepare-shm-fixtures filter) build-release-shm
 # Smoke-test the SHM reader on a small RTL fixture
 bench-e2e-shm-smoke: prepare-shm-test-fixtures build-release-shm
     bash tools/shm/with_shm_env.sh {{ python }} bench/e2e/smoke.py shm ./target/shm/release/wavepeek
+
+[private]
+require-vwdb: require-container
+    @{{ python }} tools/xcelium/check_reader_env.py vwdb --require >/dev/null
+
+# Lint optional VWDB support
+lint-vwdb: require-vwdb
+    CARGO_TARGET_DIR=target/vwdb cargo clippy --locked --features vwdb --all-targets -- -D warnings
+
+# Build and open a VWDB outside Cargo to verify runtime loading
+check-vwdb-build: require-vwdb
+    CARGO_TARGET_DIR=target/vwdb cargo build --locked --features vwdb
+    target/vwdb/debug/wavepeek info --waves "$ONDAS_FIXTURES_DIR/vwdb/vwdb0046-opb-s/waveform.vwdb" --json
+
+# Build the release binary with VWDB support
+build-release-vwdb: require-vwdb
+    CARGO_TARGET_DIR=target/vwdb cargo build --locked --release --features vwdb
+
+# Run VWDB CLI regressions on native recordings
+test-vwdb: require-vwdb prepare-waveform-fixtures
+    @recording="$(bash tools/vwdb/record_fixture.sh m2_core extract_global_include)"; \
+    WAVEPEEK_VWDB_TEST_DIR="$recording" CARGO_TARGET_DIR=target/vwdb \
+        cargo test --locked --features vwdb --test vwdb_cli --test cli_contract
+
+# Smoke-test VWDB on a small RTL recording
+bench-e2e-vwdb-smoke: build-release-vwdb
+    @recording="$(bash tools/vwdb/record_fixture.sh m2_core)"; \
+    {{ python }} bench/e2e/smoke.py vwdb ./target/vwdb/release/wavepeek --waves "$recording/m2_core/ida.db/ida.vwdb"
+
+[private]
+check-ondas-vwdb-fixtures: require-container
+    @. ./.devcontainer/env_contract.sh; \
+    for fixture in $WAVEPEEK_ONDAS_VWDB_FIXTURES; do \
+        if [[ ! -s "$ONDAS_FIXTURES_DIR/$fixture/fixture.json" || ! -e "$ONDAS_FIXTURES_DIR/$fixture/waveform.${fixture%%/*}" ]]; then \
+            printf 'error: fixture: missing installed %s\n' "$fixture" >&2; exit 1; \
+        fi; \
+    done
+
+[private]
+prepare-vwdb-bench-fixtures: require-vwdb check-ondas-vwdb-fixtures
+    @bash tools/vwdb/record_fixture.sh extract_global_include
+
+# Run the full VWDB benchmark suite
+bench-e2e-vwdb-run filter="": build-release-vwdb
+    @recording="$(just prepare-vwdb-bench-fixtures)"; \
+    catalog="$(just generate-bench-e2e-catalog vwdb "$recording/extract_global_include/ida.db/ida.vwdb")"; \
+    {{ python }} bench/e2e/perf.py run --strict --binary vwdb=./target/vwdb/release/wavepeek --tests "$catalog" --filter '{{ filter }}'
 
 [private]
 run-if-verdi recipe: require-container
@@ -194,8 +241,8 @@ check-actions: require-container
     actionlint .github/workflows/*.yml
 
 [private]
-generate-bench-e2e-catalog format: require-container
-    @{{ python }} bench/e2e/generate_catalog.py "{{ format }}"
+generate-bench-e2e-catalog format recording="": require-container
+    @{{ python }} bench/e2e/generate_catalog.py "{{ format }}" --vwdb-recording "{{ recording }}"
 
 # Keep converted RTL VCD files beside their FST sources for benchmark runs
 prepare-vcd-ondas-fixtures: check-ondas-fixtures
@@ -257,6 +304,7 @@ lint: lint-default
     just run-if-verdi lint-fsdb
     just run-if-xcelium lint-shm
     just run-if-questa lint-wlf
+    just run-if-xcelium lint-vwdb vwdb
 
 # Fix linting with clippy
 lint-fix: require-container
@@ -272,6 +320,7 @@ test: require-container check-ondas-fixtures prepare-waveform-fixtures
     just run-if-verdi test-fsdb
     just run-if-xcelium test-shm
     just run-if-questa test-wlf
+    just run-if-xcelium test-vwdb vwdb
 
 [private]
 coverage-src-data: require-container check-ondas-fixtures prepare-waveform-fixtures
@@ -537,9 +586,10 @@ check: format-check lint check-actions check-build docs-site-check playground-te
     @just run-if-verdi check-fsdb-build
     @just run-if-xcelium check-shm-build
     @just run-if-questa check-wlf-build
+    @just run-if-xcelium check-vwdb-build vwdb
 
 # CI quality gate
-ci: format-check lint-default check-actions test-aux coverage-src-check check-build docs-site-check playground-test bench-e2e-smoke
+ci: format-check lint-default check-actions check-ondas-vwdb-fixtures test-aux coverage-src-check check-build docs-site-check playground-test bench-e2e-smoke
     cargo test --doc
     @just ci-native
 
@@ -552,11 +602,15 @@ ci-shm: lint-shm check-shm-build test-shm bench-e2e-shm-smoke
 [private]
 ci-wlf: lint-wlf check-wlf-build test-wlf bench-e2e-wlf-smoke
 
+# Check the enabled VWDB reader and a native workload
+ci-vwdb: lint-vwdb check-vwdb-build test-vwdb bench-e2e-vwdb-smoke
+
 # Run native lint, loader checks, CLI tests, and smoke for available readers
 ci-native: require-container
     @just run-if-verdi ci-fsdb
     @just run-if-xcelium ci-shm
     @just run-if-questa ci-wlf
+    @just run-if-xcelium ci-vwdb vwdb
 
 # Fix everything
 fix: format lint-fix

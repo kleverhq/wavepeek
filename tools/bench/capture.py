@@ -310,6 +310,23 @@ def prepare_shm(session: CaptureSession) -> None:
     )
 
 
+def build_release_vwdb(session: CaptureSession) -> None:
+    session.commands.append(
+        run_command(
+            "build-release-vwdb",
+            ["cargo", "build", "--release", "--locked", "--features", "vwdb"],
+            cwd=session.binary_checkout,
+            log_path=session.logs_dir / "build-release-vwdb.log",
+            env={"CARGO_TARGET_DIR": "target/vwdb"},
+        )
+    )
+
+
+def prepare_vwdb(session: CaptureSession) -> pathlib.Path:
+    result = run_output(["just", "prepare-vwdb-bench-fixtures"], cwd=session.tooling_root)
+    return pathlib.Path(result.stdout.strip()) / "extract_global_include/ida.db/ida.vwdb"
+
+
 def run_e2e_many(
     *,
     format_name: str,
@@ -318,6 +335,7 @@ def run_e2e_many(
     log_path: pathlib.Path,
     binary_path: str,
     command_prefix: Sequence[str] = (),
+    recording: pathlib.Path | None = None,
 ) -> None:
     if not sessions:
         return
@@ -333,9 +351,10 @@ def run_e2e_many(
         str(run_dir),
     ]
     if format_name != "fst":
-        catalog = run_output(
-            ["just", "generate-bench-e2e-catalog", format_name], cwd=first.tooling_root,
-        )
+        generate = ["just", "generate-bench-e2e-catalog", format_name]
+        if recording is not None:
+            generate.append(str(recording))
+        catalog = run_output(generate, cwd=first.tooling_root)
         args.extend(["--tests", catalog.stdout.strip()])
     if first.strict:
         args.append("--strict")

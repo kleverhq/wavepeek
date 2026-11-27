@@ -25,8 +25,7 @@ pub enum RowValues {
 
 #[derive(Debug, Args)]
 pub struct ChangeArgs {
-    /// Path to a VCD, FST, FSDB, or WLF file, or an SHM database directory (for example, dump.fst)
-    #[arg(long, value_name = "FILE", help_heading = "Input options")]
+    #[arg(long, value_name = "FILE", help_heading = "Input options", help = super::WAVES_HELP)]
     pub waves: PathBuf,
     /// Start of the inclusive time range (for example, 1234ns; default: dump start)
     #[arg(long, help_heading = "Selection options")]

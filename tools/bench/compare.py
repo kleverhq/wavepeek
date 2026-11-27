@@ -132,6 +132,10 @@ WLF_EXPECTED_WARNINGS = tuple(
     for suffix, count in (("all", 16), ("depth2", 13), ("filter_valid", 16))
 )
 
+VWDB_FUNCTIONAL_IGNORES = (
+    ("vwdb_parity_signal_opb_s:kind:bit_vector:reg", "VWDB records generic bit declarations."),
+)
+
 
 def e2e_artifact_stems(run_dir: pathlib.Path, *, functional_only: bool = False) -> set[str]:
     hyperfine = {path.name.removesuffix(HYPERFINE_SUFFIX) for path in run_dir.glob(f"*{HYPERFINE_SUFFIX}")}
@@ -563,8 +567,8 @@ def compare_captures(
     if release_profile:
         required.add("e2e-vcd")
     if release_profile == "private":
-        required.update(("e2e-fsdb", "e2e-shm", "e2e-wlf"))
-    names = ("e2e-fst", "e2e-vcd", "e2e-fsdb", "e2e-shm", "e2e-wlf")
+        required.update(("e2e-fsdb", "e2e-shm", "e2e-wlf", "e2e-vwdb"))
+    names = ("e2e-fst", "e2e-vcd", "e2e-fsdb", "e2e-shm", "e2e-wlf", "e2e-vwdb")
     for name in names:
         golden = suite_dir(golden_dir, name)
         revised = suite_dir(revised_dir, name)
@@ -667,6 +671,38 @@ def compare_captures(
             suite_result = {"status": "failed", "reason": str(error)}
         suites[name] = suite_result
         if suite_result.get("status") != "passed":
+            failures.append(name)
+
+    for label, capture_dir in (("golden", golden_dir), ("revised", revised_dir)):
+        vwdb = suite_dir(capture_dir, "e2e-vwdb")
+        if not vwdb.is_dir():
+            continue
+        name = f"cross-{label}-vwdb-fst"
+        fst = suite_dir(capture_dir, "e2e-vwdb-fst")
+        try:
+            reference = suite_entry(capture_dir, "e2e-vwdb-fst")
+            if reference.get("status") != "passed" or not fst.is_dir():
+                raise BenchGateError("equivalent FST reference suite missing or failed")
+            inputs = suite_inputs(fst)
+            if inputs is None:
+                raise BenchGateError("input checksums missing from the equivalent FST reference")
+            assert_recorded_coverage(fst, inputs)
+            suite_result = run_e2e_compare(
+                name=name,
+                golden=vwdb,
+                revised=fst,
+                compare_dir=compare_dir,
+                tooling_root=tooling_root,
+                threshold_pct=timing_threshold_pct,
+                threshold_seconds=timing_threshold_seconds,
+                functional_only=True,
+                allow_golden_extra=True,
+                ignored_functional_tests=VWDB_FUNCTIONAL_IGNORES,
+            )
+        except BenchGateError as error:
+            suite_result = {"status": "failed", "reason": str(error)}
+        suites[name] = suite_result
+        if suite_result["status"] != "passed":
             failures.append(name)
 
     status = "passed" if not failures else "failed"

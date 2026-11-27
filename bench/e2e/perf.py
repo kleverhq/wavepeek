@@ -328,7 +328,12 @@ def input_identity(
                 continue
             path = REPO_ROOT / name
             try:
-                if flag == "--waves" and path.suffix == ".shm":
+                if flag == "--waves" and path.suffix == ".vwdb":
+                    if not (path / "vwdb_info.json").is_file() or not (path / "dsn_0").is_dir():
+                        fail(f"error: run: incomplete VWDB input {name} for {test['name']}")
+                    files = sorted(file for file in path.rglob("*") if file.is_file())
+                    inputs[name] = {file.relative_to(path).as_posix(): sha256(file) for file in files}
+                elif flag == "--waves" and path.suffix == ".shm":
                     files = sorted(p for p in path.iterdir() if p.suffix in (".dsn", ".trn"))
                     if {file.suffix for file in files} != {".dsn", ".trn"}:
                         fail(f"error: run: incomplete SHM input {name} for {test['name']}")

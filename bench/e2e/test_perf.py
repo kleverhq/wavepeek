@@ -23,6 +23,30 @@ SPEC.loader.exec_module(perf)
 
 
 class PerfHelpersTest(unittest.TestCase):
+    def test_vwdb_identity_covers_nested_components(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            catalog = root / "tests.json"
+            catalog.write_text("{}")
+            input_path = root / "trace.vwdb"
+            marker = input_path / "vwdb_info.json"
+            design = input_path / "dsn_0" / "data"
+            history = input_path / "trn_0_0" / "data"
+            for component in (design, history):
+                component.parent.mkdir(parents=True)
+                component.write_bytes(b"original")
+            marker.write_text("{}")
+            tests = [{"name": "case", "command": ["{wavepeek_bin}", "info", "--waves", str(input_path)]}]
+            first = perf.input_identity(catalog, tests)["files"][str(input_path)]
+            self.assertEqual(set(first), {"vwdb_info.json", "dsn_0/data", "trn_0_0/data"})
+            history.write_bytes(b"modified")
+            second = perf.input_identity(catalog, tests)["files"][str(input_path)]
+            self.assertNotEqual(first["trn_0_0/data"], second["trn_0_0/data"])
+            self.assertEqual(first["dsn_0/data"], second["dsn_0/data"])
+            marker.unlink()
+            with self.assertRaisesRegex(SystemExit, "incomplete VWDB input"):
+                perf.input_identity(catalog, tests)
+
     @staticmethod
     def _write_hyperfine_artifact(
         path: pathlib.Path,

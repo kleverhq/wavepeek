@@ -10,12 +10,15 @@ from perf import REPO_ROOT, run_functional_capture, write_wavepeek_artifact
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("format", choices=("vcd", "fst", "fsdb", "shm", "wlf"))
+    parser.add_argument("format", choices=("vcd", "fst", "fsdb", "shm", "wlf", "vwdb"))
     parser.add_argument("binary", type=Path)
+    parser.add_argument("--waves", type=Path, help="recording path for VWDB")
     args = parser.parse_args()
     format_name = args.format
     fixtures = "generated" if format_name in ("vcd", "fst") else format_name
-    waves = REPO_ROOT / f"tests/fixtures/{fixtures}/m2_core.{format_name}"
+    if format_name == "vwdb" and args.waves is None:
+        parser.error("VWDB smoke requires --waves")
+    waves = args.waves or REPO_ROOT / f"tests/fixtures/{fixtures}/m2_core.{format_name}"
     path = "top.cpu.valid"
     signals = [{"path": path, "value": "1'h1"}]
     cases = (
@@ -50,7 +53,7 @@ def main() -> None:
         write_wavepeek_artifact(run_dir, command, payload)
         actual = payload["data"]
         if command == "signal":
-            # SHM exposes generic declaration kinds for converted signals.
+            # Declaration kinds differ across recordings.
             actual = [{key: value for key, value in row.items() if key != "kind"} for row in actual]
         if payload["diagnostics"] or actual != expected:
             raise SystemExit(f"error: {format_name} smoke: unexpected {command} result; see {run_dir}")

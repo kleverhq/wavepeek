@@ -83,6 +83,17 @@ The binary links the absolute library path. Keep the installation available at t
 
 `wavepeek --help` reports the enabled features. See [Waveform formats](waveforms.md) for format limits.
 
+## Install with VWDB
+
+VWDB support requires Linux x86_64 GNU, a C++17 compiler, zlib development files, and a compatible Xcelium reader. Set `XCELIUM_HOME` to that installation when building. Keep the selected installation available at runtime.
+
+```bash
+cargo install wavepeek --features vwdb
+wavepeek info --waves ida.db/ida.vwdb
+```
+
+Pass the directory that contains `vwdb_info.json` and the design components. See [Waveform formats](waveforms.md#vwdb) for recording selection. Combine features with a comma-separated list such as `--features shm,vwdb`. `wavepeek --help` reports the enabled features.
+
 ## Setup skill
 
 The `wavepeek` skill is bundled into the binary. Besides `SKILL.md`, it includes reference documentation, examples and helper scripts.

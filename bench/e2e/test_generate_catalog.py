@@ -13,6 +13,32 @@ import generate_catalog
 
 
 class GenerateCatalogTest(unittest.TestCase):
+    def test_vwdb_catalog_uses_provisioned_fixtures_and_equivalent_reference(self) -> None:
+        provisioned = (
+            generate_catalog.SCRIPT_DIR.parents[1] / ".devcontainer/env_contract.sh"
+        ).read_text(encoding="utf-8")
+        fixture_list = provisioned.split('WAVEPEEK_ONDAS_VWDB_FIXTURES="', 1)[1].split('"', 1)[0].split()
+        catalog = generate_catalog.DEFAULT_SOURCE
+        recording = "tmp/fixtures/ida.vwdb"
+        native = json.loads(generate_catalog.generate_catalog(catalog, "vwdb", recording))["tests"]
+        reference = json.loads(generate_catalog.generate_catalog(catalog, "vwdb-fst"))["tests"]
+        native_by_name = {test["name"]: test for test in native}
+        original = json.loads(catalog.read_text(encoding="utf-8"))["tests"]
+        self.assertEqual(len(native_by_name), len(original) + len(reference))
+        for test in (*native, *reference):
+            path = pathlib.PurePosixPath(test["meta"]["waves"])
+            self.assertEqual(test["command"][test["command"].index("--waves") + 1], str(path))
+            if str(path) != recording:
+                self.assertIn("/".join(path.parts[-3:-1]), fixture_list)
+        for test in reference:
+            command = test["command"].copy()
+            paired = native_by_name[test["name"]]["command"]
+            index = command.index("--waves") + 1
+            self.assertTrue(command[index].endswith(".fst"))
+            self.assertTrue(paired[index].endswith(".vwdb"))
+            command[index] = paired[index]
+            self.assertEqual(command, paired)
+
     def test_catalogs_keep_every_scenario_with_the_expected_fixture_paths(self) -> None:
         source = generate_catalog.DEFAULT_SOURCE
         base = json.loads(source.read_text(encoding="utf-8"))["tests"]

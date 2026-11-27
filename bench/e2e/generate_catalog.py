@@ -46,7 +46,7 @@ def fail(message: str) -> None:
 
 def adapt_vwdb_test(test: dict, recording: str) -> dict:
     command = test["command"].copy()
-    meta = {key: value for key, value in test["meta"].items() if key != "size"}
+    meta = {key: value for key, value in test["meta"].items() if key not in ("size", "scope_count")}
     index = command.index("--waves") + 1
     source = pathlib.PurePosixPath(command[index])
     if source.as_posix() == "tests/fixtures/generated/extract_global_include.fst":

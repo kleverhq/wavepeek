@@ -46,6 +46,11 @@ pub(super) fn read_error(path: &Path, operation: &str, error: Error) -> Wavepeek
         Error::NoBackend {
             format: Format::Wlf,
         } => "; WLF input requires Linux x86_64 GNU, --features wlf, and a compatible QUESTA_HOME",
+        Error::NoBackend {
+            format: Format::Vwdb,
+        } => {
+            "; VWDB input requires Linux x86_64 GNU, --features vwdb, and a compatible XCELIUM_HOME"
+        }
         _ => "",
     };
     category(format!(

@@ -8,8 +8,7 @@ use crate::cli::limits::LimitArg;
 
 #[derive(Debug, Args)]
 pub struct ScopeArgs {
-    /// Path to a VCD, FST, FSDB, or WLF file, or an SHM database directory (for example, dump.fst)
-    #[arg(long, value_name = "FILE", help_heading = "Input options")]
+    #[arg(long, value_name = "FILE", help_heading = "Input options", help = super::WAVES_HELP)]
     pub waves: PathBuf,
     /// Maximum traversal depth (`unlimited` disables depth truncation)
     #[arg(long, default_value = "5", help_heading = "Selection options")]

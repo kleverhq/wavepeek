@@ -1,6 +1,6 @@
 # SHM helpers
 
-`check_shm_env.py` probes the optional reader selected by `XCELIUM_HOME`. An unset
+`tools/xcelium/check_reader_env.py shm` probes the optional reader selected by `XCELIUM_HOME`. An unset
 installation returns 77; an explicitly configured missing library returns 1.
 Ondas owns ABI validation during the build.
 

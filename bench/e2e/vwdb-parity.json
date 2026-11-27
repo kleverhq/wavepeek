@@ -1,0 +1,160 @@
+{
+  "tests": [
+    {
+      "name": "vwdb_parity_info_opb_s",
+      "category": "info",
+      "runs": 10,
+      "warmup": 5,
+      "command": [
+        "{wavepeek_bin}",
+        "info",
+        "--waves",
+        "/opt/ondas-fixtures/fst/fst0092-opb-s/waveform.fst",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/ondas-fixtures/fst/fst0092-opb-s/waveform.fst"
+      }
+    },
+    {
+      "name": "vwdb_parity_scope_opb_s",
+      "category": "scope",
+      "runs": 10,
+      "warmup": 5,
+      "command": [
+        "{wavepeek_bin}",
+        "scope",
+        "--waves",
+        "/opt/ondas-fixtures/fst/fst0092-opb-s/waveform.fst",
+        "--filter",
+        "^tb_opb[.](regular64|scalar)$",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/ondas-fixtures/fst/fst0092-opb-s/waveform.fst"
+      }
+    },
+    {
+      "name": "vwdb_parity_signal_opb_s",
+      "category": "signal",
+      "runs": 10,
+      "warmup": 5,
+      "command": [
+        "{wavepeek_bin}",
+        "signal",
+        "--waves",
+        "/opt/ondas-fixtures/fst/fst0092-opb-s/waveform.fst",
+        "--scope",
+        "tb_opb.regular64",
+        "--recursive",
+        "--max",
+        "unlimited",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/ondas-fixtures/fst/fst0092-opb-s/waveform.fst"
+      }
+    },
+    {
+      "name": "vwdb_parity_value_opb_s",
+      "category": "value",
+      "runs": 10,
+      "warmup": 5,
+      "command": [
+        "{wavepeek_bin}",
+        "value",
+        "--waves",
+        "/opt/ondas-fixtures/fst/fst0092-opb-s/waveform.fst",
+        "--signals",
+        "tb_opb.regular64.word[0].data.q,tb_opb.scalar.word[0].data.q",
+        "--at",
+        "10ns",
+        "--at",
+        "20ns",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/ondas-fixtures/fst/fst0092-opb-s/waveform.fst"
+      }
+    },
+    {
+      "name": "vwdb_parity_change_opb_s",
+      "category": "change",
+      "runs": 10,
+      "warmup": 5,
+      "command": [
+        "{wavepeek_bin}",
+        "change",
+        "--waves",
+        "/opt/ondas-fixtures/fst/fst0092-opb-s/waveform.fst",
+        "--signals",
+        "tb_opb.regular64.word[0].data.q",
+        "--from",
+        "1ns",
+        "--to",
+        "5ns",
+        "--on",
+        "*",
+        "--sample-mode",
+        "native",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/ondas-fixtures/fst/fst0092-opb-s/waveform.fst"
+      }
+    },
+    {
+      "name": "vwdb_parity_property_opb_s",
+      "category": "property",
+      "runs": 10,
+      "warmup": 5,
+      "command": [
+        "{wavepeek_bin}",
+        "property",
+        "--waves",
+        "/opt/ondas-fixtures/fst/fst0092-opb-s/waveform.fst",
+        "--eval",
+        "tb_opb.scalar.word[0].data.q == 1'b1",
+        "--from",
+        "1ns",
+        "--to",
+        "5ns",
+        "--on",
+        "tb_opb.scalar.word[0].data.q",
+        "--sample-mode",
+        "native",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/ondas-fixtures/fst/fst0092-opb-s/waveform.fst"
+      }
+    },
+    {
+      "name": "vwdb_parity_extract_opb_s",
+      "category": "extract",
+      "runs": 10,
+      "warmup": 5,
+      "command": [
+        "{wavepeek_bin}",
+        "extract",
+        "generic",
+        "--waves",
+        "/opt/ondas-fixtures/fst/fst0092-opb-s/waveform.fst",
+        "--on",
+        "posedge tb_opb.scalar.word[0].data.q",
+        "--when",
+        "1",
+        "--payload",
+        "tb_opb.regular64.word[0].data.q",
+        "--from",
+        "1ns",
+        "--to",
+        "5ns",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/ondas-fixtures/fst/fst0092-opb-s/waveform.fst"
+      }
+    }
+  ]
+}

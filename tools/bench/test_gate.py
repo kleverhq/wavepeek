@@ -698,7 +698,7 @@ class BenchGateHelperTest(unittest.TestCase):
             baseline, revised = root / "baseline", root / "revised"
             baseline.mkdir()
             revised.mkdir()
-            for feature in ("fsdb", "shm", "wlf"):
+            for feature in ("fsdb", "shm", "wlf", "vwdb"):
                 (baseline / "Cargo.toml").write_text("[features]\n")
                 (revised / "Cargo.toml").write_text(f"[features]\n{feature} = []\n")
                 self.assertTrue(gate.first_baseline(baseline, revised, feature))
@@ -739,14 +739,15 @@ class BenchGateHelperTest(unittest.TestCase):
             root = pathlib.Path(temporary)
             baseline, revised = root / "baseline", root / "revised"
             entries = {baseline: {}, revised: {}}
-            for fmt in ("fst", "vcd", "fsdb", "shm", "wlf"):
+            for fmt in ("fst", "vcd", "fsdb", "shm", "wlf", "vwdb", "vwdb-fst"):
                 name = f"e2e-{fmt}"
                 job = root / name
                 for capture_dir in (baseline, revised):
-                    if fmt in ("shm", "wlf") and capture_dir == baseline:
-                        entries[baseline][name] = {
-                            "status": "first-baseline", "reason": f"baseline lacks {fmt}",
-                        }
+                    if fmt in ("shm", "wlf", "vwdb", "vwdb-fst") and capture_dir == baseline:
+                        if fmt != "vwdb-fst":
+                            entries[baseline][name] = {
+                                "status": "first-baseline", "reason": f"baseline lacks {fmt}",
+                            }
                         continue
                     run = job / capture_dir.name
                     run.mkdir(parents=True)
@@ -794,6 +795,8 @@ class BenchGateHelperTest(unittest.TestCase):
                 self.assertEqual(suites["e2e-wlf"]["status"], "first-baseline")
                 self.assertEqual(suites["e2e-wlf"]["measured_count"], 1)
                 self.assertEqual(suites["e2e-wlf"]["comparable_count"], 0)
+                self.assertEqual(suites["e2e-vwdb"]["status"], "first-baseline")
+                self.assertEqual(suites["e2e-vwdb"]["measured_count"], 1)
                 names = {call.kwargs["name"] for call in runner.call_args_list}
                 self.assertIn("cross-revised-fst-shm", names)
                 self.assertIn("cross-revised-fst-wlf", names)
@@ -801,9 +804,24 @@ class BenchGateHelperTest(unittest.TestCase):
                 self.assertIn("cross-golden-fst-vcd", names)
                 self.assertNotIn("cross-golden-fst-shm", names)
                 self.assertIn("e2e-shm-first-baseline-validation", names)
+                self.assertIn("e2e-vwdb-first-baseline-validation", names)
+                self.assertIn("cross-revised-vwdb-fst", names)
+                self.assertNotIn("cross-golden-vwdb-fst", names)
                 for call in runner.call_args_list:
                     if call.kwargs["name"].startswith("cross-"):
-                        self.assertFalse(call.kwargs["allow_golden_extra"])
+                        self.assertEqual(
+                            call.kwargs["allow_golden_extra"], call.kwargs["name"].endswith("-vwdb-fst")
+                        )
+
+                reference = root / "e2e-vwdb-fst/revised/case.wavepeek.json"
+                reference.unlink()
+                result = compare.compare_captures(
+                    golden_dir=baseline, revised_dir=revised, compare_dir=root / "missing-reference",
+                    release_profile="private",
+                )
+                self.assertEqual(result.exit_code, 1)
+                self.assertEqual(result.manifest["suites"]["cross-revised-vwdb-fst"]["status"], "failed")
+                reference.write_text("{}")
 
                 common.write_json(timing, {"results": [{**metrics, "times": []}]})
                 output = root / "missing-samples"

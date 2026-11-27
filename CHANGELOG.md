@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Add optional native WLF file input through Ondas and a local Questa reader.
+- Add optional native VWDB directory input through Ondas and a compatible Xcelium reader.
 - Add `$signal("path")` expression operands for explicit canonical signal names.
 - Add `--path-style logical|sv` for scope, signal, value, change, and extract output.
 

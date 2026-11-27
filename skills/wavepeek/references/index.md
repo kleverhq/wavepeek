@@ -8,7 +8,7 @@ The primary use cases are LLM-driven debugging workflows and other automation. F
 
 The main usage flow is simple:
 
-- Provide a VCD, FST, FSDB, or WLF file, or an SHM database directory.
+- Provide a VCD, FST, FSDB, or WLF file, or an SHM or VWDB database directory.
 - Specify an inspection command and its arguments.
 - Get results in human-readable, JSON, or JSONL format.
 - Analyze the output and repeat.

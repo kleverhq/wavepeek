@@ -4,8 +4,7 @@ use clap::Args;
 
 #[derive(Debug, Args)]
 pub struct InfoArgs {
-    /// Path to a VCD, FST, FSDB, or WLF file, or an SHM database directory (for example, dump.fst)
-    #[arg(long, value_name = "FILE", help_heading = "Input options")]
+    #[arg(long, value_name = "FILE", help_heading = "Input options", help = super::WAVES_HELP)]
     pub waves: PathBuf,
     /// Machine-readable JSON output
     #[arg(long, help_heading = "Output options")]

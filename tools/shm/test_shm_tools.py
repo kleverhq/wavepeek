@@ -18,7 +18,7 @@ spec.loader.exec_module(prepare)
 class ShmEnvironmentTest(unittest.TestCase):
     def probe(self, home: str, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            ["python3", "-B", str(DIRECTORY / "check_shm_env.py"), *args],
+            ["python3", "-B", str(DIRECTORY.parent / "xcelium/check_reader_env.py"), "shm", *args],
             env={**os.environ, "XCELIUM_HOME": home}, capture_output=True, text=True,
         )
 

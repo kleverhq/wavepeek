@@ -15,14 +15,17 @@ from capture import (
     build_release_fsdb,
     build_release_reader,
     build_release_shm,
+    build_release_vwdb,
     finalize_capture,
     init_capture_session,
     prepare_fsdb,
     prepare_shm,
     prepare_wlf,
+    prepare_vwdb,
     resolve_gate_fsdb_plan,
     run_e2e_fsdb_many,
     run_e2e_fst_many,
+    run_e2e_many,
     run_e2e_shm_many,
     run_e2e_vcd_many,
     run_e2e_wlf_many,
@@ -201,6 +204,7 @@ def run_gate(args: argparse.Namespace, manifest: dict[str, Any], out_dir: pathli
     new_fsdb = profile == "private" and first_baseline(baseline_checkout, revised_checkout, "fsdb")
     new_shm = profile == "private" and first_baseline(baseline_checkout, revised_checkout, "shm")
     new_wlf = profile == "private" and first_baseline(baseline_checkout, revised_checkout, "wlf")
+    new_vwdb = profile == "private" and first_baseline(baseline_checkout, revised_checkout, "vwdb")
     baseline_fsdb = (
         FsdbPlan(capture=False, status="unsupported")
         if new_fsdb
@@ -248,7 +252,7 @@ def run_gate(args: argparse.Namespace, manifest: dict[str, Any], out_dir: pathli
         binary_label="revised",
         strict=bool(profile),
     )
-    for feature, introduced in (("fsdb", new_fsdb), ("shm", new_shm), ("wlf", new_wlf)):
+    for feature, introduced in (("fsdb", new_fsdb), ("shm", new_shm), ("wlf", new_wlf), ("vwdb", new_vwdb)):
         if introduced:
             baseline.suites[f"e2e-{feature}"] = {
                 "status": "first-baseline",
@@ -268,6 +272,7 @@ def run_gate(args: argparse.Namespace, manifest: dict[str, Any], out_dir: pathli
         prepare_fsdb(revised)
     shm_sessions = [revised] if new_shm else [baseline, revised]
     wlf_sessions = [revised] if new_wlf else [baseline, revised]
+    vwdb_sessions = [revised] if new_vwdb else [baseline, revised]
     if profile == "private":
         for session in shm_sessions:
             build_release_shm(session)
@@ -275,6 +280,26 @@ def run_gate(args: argparse.Namespace, manifest: dict[str, Any], out_dir: pathli
         for session in wlf_sessions:
             build_release_reader(session, "wlf")
         prepare_wlf(revised)
+        for session in vwdb_sessions:
+            build_release_vwdb(session)
+        vwdb_recording = prepare_vwdb(revised)
+
+    if profile == "private":
+        run_e2e_many(
+            format_name="vwdb",
+            sessions=vwdb_sessions,
+            run_dir=out_dir / "e2e-vwdb",
+            log_path=out_dir / "logs" / "bench-e2e-vwdb.log",
+            binary_path="target/vwdb/release/wavepeek",
+            recording=vwdb_recording,
+        )
+        run_e2e_many(
+            format_name="vwdb-fst",
+            sessions=vwdb_sessions,
+            run_dir=out_dir / "e2e-vwdb-fst",
+            log_path=out_dir / "logs" / "bench-e2e-vwdb-fst.log",
+            binary_path="target/release/wavepeek",
+        )
 
     run_e2e_fst_many(
         [baseline, revised],
@@ -334,7 +359,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--vcd", choices=("always", "never"), default="never")
     parser.add_argument(
         "--release-profile", choices=("public", "private"),
-        help="require VCD and FST, plus FSDB, SHM, and WLF in the private profile",
+        help="require VCD and FST, plus FSDB, SHM, WLF, and VWDB in the private profile",
     )
     parser.add_argument(
         "--max-negative-delta-pct",

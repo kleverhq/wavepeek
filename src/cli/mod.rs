@@ -27,6 +27,7 @@ use crate::output::{self, JsonlWriter};
 use crate::output_mode::OutputMode;
 
 const WAVES_HELP: &str = "Path to a waveform file (VCD, FST, FSDB, WLF) or database directory (SHM, VWDB) (for example, dump.fst)";
+const BROWSER_WAVES_HELP: &str = "Path to the active VCD or FST file (for example, demo.vcd)";
 
 #[derive(Debug, Parser)]
 #[command(
@@ -605,13 +606,13 @@ fn build_cli_command_for(browser: bool) -> clap::Command {
     let mut command = Cli::command().after_long_help(root_after_long_help());
     for command_name in ["info", "scope", "signal", "value", "change", "property"] {
         if let Some(subcommand) = command.find_subcommand_mut(command_name) {
-            *subcommand = with_other_help_options(subcommand.clone());
+            *subcommand = with_other_help_options(subcommand.clone(), browser);
         }
     }
     if let Some(extract) = command.find_subcommand_mut("extract") {
         for name in ["ahb", "apb", "atb", "axi", "axistream", "generic"] {
             if let Some(subcommand) = extract.find_subcommand_mut(name) {
-                let mut updated = with_other_help_options(subcommand.clone());
+                let mut updated = with_other_help_options(subcommand.clone(), browser);
                 if browser {
                     updated = updated.mut_arg("source", |arg| arg.hide(true));
                     if let Some(help) = updated.get_long_about() {
@@ -657,7 +658,12 @@ fn build_cli_command_for(browser: bool) -> clap::Command {
     command
 }
 
-fn with_other_help_options(command: clap::Command) -> clap::Command {
+fn with_other_help_options(command: clap::Command, browser: bool) -> clap::Command {
+    let command = if browser {
+        command.mut_arg("waves", |arg| arg.help(BROWSER_WAVES_HELP))
+    } else {
+        command
+    };
     command
         .disable_help_flag(true)
         .arg(

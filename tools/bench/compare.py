@@ -625,6 +625,7 @@ def compare_captures(
                     threshold_pct=timing_threshold_pct,
                     threshold_seconds=timing_threshold_seconds,
                     functional_only=False,
+                    require_timing_samples=bool(release_profile),
                 )
                 suite_result["input_identity"] = input_status
         except BenchGateError as error:

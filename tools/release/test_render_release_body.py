@@ -122,7 +122,7 @@ class RenderReleaseBodyCliTest(unittest.TestCase):
             "gh attestation verify wavepeek-x86_64-unknown-linux-gnu.tar.gz --repo kleverhq/wavepeek",
             result.stdout,
         )
-        self.assertIn("Prebuilt binaries are VCD/FST-only", result.stdout)
+        self.assertIn("FSDB support requires a source build on Linux x86_64", result.stdout)
         self.assertIn("cargo install --locked wavepeek --version 1.2.3 --features fsdb", result.stdout)
         self.assertIn("https://kleverhq.github.io/wavepeek/1.2.3/", result.stdout)
         self.assertIn("https://crates.io/crates/wavepeek/1.2.3", result.stdout)

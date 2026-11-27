@@ -262,7 +262,7 @@ def render_release_body(
             "",
             "## FSDB support",
             "",
-            "Prebuilt binaries are VCD/FST-only. FSDB support remains source-only and requires a Linux x86_64 host with a valid Synopsys Verdi / FSDB Reader SDK environment:",
+            "FSDB support requires a source build on Linux x86_64 with a valid Synopsys Verdi / FSDB Reader SDK environment. Install the FSDB-enabled binary with Cargo.",
             "",
             f"    cargo install --locked wavepeek --version {version} --features fsdb",
             "",

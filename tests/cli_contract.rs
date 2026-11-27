@@ -201,7 +201,7 @@ fn top_level_help_documents_general_conventions() {
             "Each waveform command opens one waveform dump, runs one query, writes its output, and exits.",
         ))
         .stdout(predicate::str::contains(
-            "Every native build supports VCD, FST, and GHW. Use uncompressed GHW recorded at 1fs. FSDB requires Linux x86_64",
+            "Every native build supports VCD, FST, and GHW. Use uncompressed GHW recorded at 1fs.",
         ))
         .stdout(predicate::str::contains("Optional features:"))
         .stdout(predicate::str::contains(EXPECTED_FSDB_FEATURE_STATUS))

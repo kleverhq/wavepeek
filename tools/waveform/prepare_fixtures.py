@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import fcntl
 import json
 import os
@@ -16,6 +17,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 POLICY_PATH = ROOT / "tests" / "fixtures" / "waveform_policy.json"
 GENERATED_DIR = ROOT / "tests" / "fixtures" / "generated"
+GHW_GENERATED_DIR = GENERATED_DIR / "ghw"
 WORK_DIR = ROOT / "tmp" / "waveform-fixtures"
 
 
@@ -43,21 +45,28 @@ class ScopeNode:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--ghw", action="store_true", help="prepare only GHW and its reference VCD")
+    args = parser.parse_args()
+
     try:
-        require_tool("iverilog")
-        require_tool("vvp")
-        require_tool("vcd2fst")
+        tools = ("ghdl",) if args.ghw else ("iverilog", "vvp", "vcd2fst")
+        for tool in tools:
+            require_tool(tool)
         GENERATED_DIR.mkdir(parents=True, exist_ok=True)
         WORK_DIR.mkdir(parents=True, exist_ok=True)
         # All runs use the same work directories and staged output names.
         with (WORK_DIR / ".lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             policy = load_policy()
-            reconcile_generated_outputs(policy)
+            reconcile_generated_outputs(policy, ghw=args.ghw)
             for entry in policy.get("source_backed", []):
-                generate_source_backed(entry)
-            for entry in policy.get("derived_outputs", []):
-                generate_derived_output(entry)
+                is_vhdl = Path(expect_str(entry, "source")).suffix == ".vhd"
+                if is_vhdl == args.ghw:
+                    generate_source_backed(entry)
+            if not args.ghw:
+                for entry in policy.get("derived_outputs", []):
+                    generate_derived_output(entry)
     except FixtureError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
@@ -86,9 +95,12 @@ def load_policy() -> dict[str, Any]:
     return policy
 
 
-def reconcile_generated_outputs(policy: dict[str, Any]) -> None:
+def reconcile_generated_outputs(policy: dict[str, Any], *, ghw: bool) -> None:
     expected = expected_generated_outputs(policy)
-    for path in sorted(GENERATED_DIR.rglob("*")):
+    directory = GHW_GENERATED_DIR if ghw else GENERATED_DIR
+    for path in sorted(directory.rglob("*")):
+        if not ghw and path.is_relative_to(GHW_GENERATED_DIR):
+            continue
         if path.is_file() and path.suffix in {".vcd", ".fst", ".ghw"} and path not in expected:
             path.unlink()
             print(f"removed stale generated fixture {relative(path)}")
@@ -168,7 +180,6 @@ def generate_verilog(source: Path, output_paths: list[Path], fixture_work_dir: P
 
 
 def generate_vhdl(source: Path, output_paths: list[Path], fixture_work_dir: Path) -> None:
-    require_tool("ghdl")
     dumps = sorted(output_paths, key=lambda path: path.suffix)
     if [path.suffix for path in dumps] != [".ghw", ".vcd"]:
         raise FixtureError(f"VHDL fixture {relative(source)} must declare one GHW and one VCD output")

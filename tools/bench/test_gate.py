@@ -734,7 +734,7 @@ class BenchGateHelperTest(unittest.TestCase):
             with self.assertRaisesRegex(common.BenchGateError, "inputs or catalog differ"):
                 compare.compare_suite_inputs(baseline, revised, required=True)
 
-    def test_private_release_comparison_accepts_complete_first_native_baselines(self) -> None:
+    def test_private_release_comparison_checks_first_baselines_and_paired_vwdb(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
             baseline, revised = root / "baseline", root / "revised"
@@ -822,6 +822,26 @@ class BenchGateHelperTest(unittest.TestCase):
                 self.assertEqual(result.exit_code, 1)
                 self.assertEqual(result.manifest["suites"]["cross-revised-vwdb-fst"]["status"], "failed")
                 reference.write_text("{}")
+
+                for name in ("e2e-vwdb", "e2e-vwdb-fst"):
+                    run = root / name / baseline.name
+                    run.mkdir()
+                    for suffix in ("hyperfine", "wavepeek"):
+                        (run / f"case.{suffix}.json").write_text("{}")
+                    entries[baseline][name] = {"status": "passed", "path": str(run)}
+                common.write_json(baseline / "manifest.json", {"suites": entries[baseline]})
+                runner.reset_mock()
+                paired = compare.compare_captures(
+                    golden_dir=baseline, revised_dir=revised, compare_dir=root / "paired",
+                    release_profile="private",
+                )
+                self.assertEqual(paired.exit_code, 0)
+                self.assertEqual(paired.manifest["suites"]["e2e-vwdb"]["input_identity"], "shared-run")
+                names = {call.kwargs["name"] for call in runner.call_args_list}
+                self.assertIn("e2e-vwdb", names)
+                self.assertIn("cross-golden-vwdb-fst", names)
+                self.assertIn("cross-revised-vwdb-fst", names)
+                self.assertNotIn("e2e-vwdb-first-baseline-validation", names)
 
                 common.write_json(timing, {"results": [{**metrics, "times": []}]})
                 output = root / "missing-samples"

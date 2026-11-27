@@ -23,6 +23,7 @@ class BenchGateHelperTest(unittest.TestCase):
         self.assertEqual(capture_args.ref, "HEAD")
         self.assertEqual(capture_args.fsdb, "auto")
         self.assertEqual(capture_args.vcd, "never")
+        self.assertEqual(capture_args.shm, "never")
         self.assertFalse(hasattr(capture_args, "allow_dirty_source"))
 
         compare_args = compare.build_parser().parse_args(
@@ -243,7 +244,9 @@ class BenchGateHelperTest(unittest.TestCase):
                 "compare-e2e-fst",
                 "compare-e2e-vcd",
                 "compare-e2e-fsdb",
+                "compare-cross-golden-fst-vcd",
                 "compare-cross-golden-fst-fsdb",
+                "compare-cross-revised-fst-vcd",
                 "compare-cross-revised-fst-fsdb",
             ],
         )
@@ -253,8 +256,8 @@ class BenchGateHelperTest(unittest.TestCase):
             self.assertIn("--max-negative-delta-seconds", same_format[name])
         for name, args in calls[3:]:
             self.assertIn("--functional-only", args, name)
-            self.assertIn("--allow-golden-extra", args, name)
-            self.assertIn("--ignore-functional-test", args, name)
+            self.assertEqual("--allow-golden-extra" in args, name.endswith("-fsdb"))
+            self.assertEqual("--ignore-functional-test" in args, name.endswith("-fsdb"))
             self.assertNotIn("--max-negative-delta-pct", args, name)
         self.assertFalse(result.manifest["suites"]["e2e-fst"]["functional_only"])
         self.assertFalse(result.manifest["suites"]["e2e-vcd"]["functional_only"])
@@ -554,7 +557,12 @@ class BenchGateHelperTest(unittest.TestCase):
                 )
 
         self.assertEqual(result.exit_code, 0)
-        self.assertEqual(calls, [(root / "shared/fst/base", root / "shared/fst/rev"), (root / "shared/vcd/base", root / "shared/vcd/rev")])
+        self.assertEqual(calls, [
+            (root / "shared/fst/base", root / "shared/fst/rev"),
+            (root / "shared/vcd/base", root / "shared/vcd/rev"),
+            (root / "shared/fst/base", root / "shared/vcd/base"),
+            (root / "shared/fst/rev", root / "shared/vcd/rev"),
+        ])
 
     def test_compare_captures_skips_optional_fsdb_and_cross_checks_when_missing(self) -> None:
         calls: list[str] = []
@@ -645,19 +653,24 @@ class BenchGateHelperTest(unittest.TestCase):
                         reason="test skip",
                     ),
                     vcd_mode="always",
+                    shm_mode="always",
                     environment_note="test env",
                 )
 
         self.assertEqual(result.manifest["suites"]["e2e-fst"]["status"], "passed")
         self.assertEqual(result.manifest["suites"]["e2e-vcd"]["status"], "passed")
+        self.assertEqual(result.manifest["suites"]["e2e-shm"]["status"], "passed")
         self.assertEqual(result.manifest["binary_sha"], "abc123")
         self.assertEqual(result.manifest["tooling_sha"], "toolsha")
-        self.assertEqual([call[2] for call in calls], [checkout, tooling, tooling, tooling, tooling])
-        self.assertIn("prepare-waveform-fixtures", calls[1][1])
-        self.assertIn("prepare-vcd-ondas-fixtures", calls[2][1])
-        self.assertIn(str(tooling / "bench/e2e/tests_vcd.json"), calls[4][1])
-        e2e_call = next(call for call in calls if call[0] == "bench-e2e-fst")
+        by_name = {call[0]: call for call in calls}
+        self.assertIn("prepare-waveform-fixtures", by_name["prepare-waveform-fixtures"][1])
+        self.assertIn("prepare-vcd-ondas-fixtures", by_name["vcd-prepare-fixtures"][1])
+        self.assertIn(str(tooling / "bench/e2e/tests_vcd.json"), by_name["bench-e2e-vcd"][1])
+        self.assertEqual(by_name["build-release-shm"][2], checkout)
+        self.assertIn("--record-inputs", by_name["bench-e2e-shm"][1])
+        e2e_call = by_name["bench-e2e-fst"]
         self.assertIn("bench/e2e/perf.py", e2e_call[1])
+        self.assertIn("--record-inputs", e2e_call[1])
         self.assertEqual(e2e_call[2], tooling)
         self.assertIsNone(e2e_call[3])
         self.assertIn("--binary", e2e_call[1])
@@ -753,6 +766,10 @@ class BenchGateHelperTest(unittest.TestCase):
                 self.assertIn("cross-revised-fst-shm", names)
                 self.assertIn("cross-golden-fst-vcd", names)
                 self.assertNotIn("cross-golden-fst-shm", names)
+                self.assertIn("e2e-shm-first-baseline-validation", names)
+                for call in runner.call_args_list:
+                    if call.kwargs["name"].startswith("cross-"):
+                        self.assertFalse(call.kwargs["allow_golden_extra"])
 
                 (root / "e2e-shm/revised/case.hyperfine.json").unlink()
                 result = compare.compare_captures(
@@ -761,6 +778,10 @@ class BenchGateHelperTest(unittest.TestCase):
                 )
                 self.assertEqual(result.exit_code, 1)
                 self.assertEqual(result.manifest["suites"]["e2e-shm"]["status"], "failed")
+
+    def test_missing_tool_version_is_recorded_as_unknown(self) -> None:
+        with mock.patch.object(common, "run_output", side_effect=FileNotFoundError):
+            self.assertIsNone(common.tool_version(["hyperfine", "--version"], cwd=BENCH_DIR))
 
     def test_strict_capture_saves_status_for_each_revision_after_failed_scenario(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -797,6 +818,18 @@ class BenchGateHelperTest(unittest.TestCase):
             self.assertFalse(run.call_args.kwargs["check"])
             self.assertEqual(sessions[0].suites["e2e-shm"]["status"], "failed")
             self.assertEqual(sessions[1].suites["e2e-shm"]["status"], "passed")
+
+            manifest_path = run_dir / "manifest.json"
+            report = common.read_json(manifest_path)
+            report["binaries"][0].update(wavepeek_json_count=1, hyperfine_json_count=1, failure_count=0)
+            common.write_json(manifest_path, report)
+            with mock.patch.object(
+                capture, "run_command",
+                return_value=common.CommandResult("e2e-shm", [], str(root), 1),
+            ):
+                capture.run_e2e_shm_many(sessions, run_dir=run_dir, log_path=root / "run.log")
+            for session in sessions:
+                self.assertEqual(session.suites["e2e-shm"]["status"], "failed")
 
     def test_gate_runs_preparation_before_paired_measurement(self) -> None:
         order: list[str] = []

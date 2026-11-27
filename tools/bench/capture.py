@@ -49,6 +49,7 @@ class CaptureSession:
     commands: list[CommandResult]
     suites: dict[str, dict[str, Any]]
     strict: bool = False
+    record_inputs: bool = False
 
 
 def support_files_missing(tooling_root: pathlib.Path) -> list[str]:
@@ -320,6 +321,8 @@ def run_e2e_many(
         args.extend(["--tests", str(tests_path)])
     if first.strict:
         args.append("--strict")
+    elif first.record_inputs:
+        args.append("--record-inputs")
     for session in sessions:
         args.extend(
             [
@@ -506,6 +509,7 @@ def capture_checkout(
     fsdb_mode: str,
     fsdb_plan: FsdbPlan | None = None,
     vcd_mode: str = "never",
+    shm_mode: str = "never",
     environment_note: str,
 ) -> CaptureResult:
     ensure_empty_dir(capture_dir)
@@ -531,6 +535,7 @@ def capture_checkout(
         logs_dir=logs_dir,
         commands=[],
         suites={},
+        record_inputs=True,
     )
     build_release(session)
     if vcd_mode == "always":
@@ -538,11 +543,20 @@ def capture_checkout(
     if effective_fsdb_plan.capture:
         build_release_fsdb(session)
         prepare_fsdb(session)
+    if shm_mode == "always":
+        build_release_shm(session)
+        prepare_shm(session)
     run_e2e_fst(session)
     if vcd_mode == "always":
         run_e2e_vcd(session)
     if effective_fsdb_plan.capture:
         run_e2e_fsdb(session)
+    if shm_mode == "always":
+        run_e2e_shm_many(
+            [session],
+            run_dir=capture_dir / "e2e-shm",
+            log_path=logs_dir / "bench-e2e-shm.log",
+        )
     return finalize_capture(session)
 
 
@@ -568,6 +582,7 @@ def capture_ref(args: argparse.Namespace) -> int:
         source_sha=source_sha,
         fsdb_mode=args.fsdb,
         vcd_mode=args.vcd,
+        shm_mode=args.shm,
         environment_note=args.environment_note,
     )
     print(f"capture written to {out_dir / 'run'}")
@@ -581,6 +596,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--out-dir", type=pathlib.Path)
     parser.add_argument("--fsdb", choices=("auto", "always", "never"), default="auto")
     parser.add_argument("--vcd", choices=("always", "never"), default="never")
+    parser.add_argument("--shm", choices=("always", "never"), default="never")
     parser.add_argument(
         "--environment-note",
         default="wavepeek manual performance gate",

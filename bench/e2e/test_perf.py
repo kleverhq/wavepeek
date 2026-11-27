@@ -1682,6 +1682,28 @@ class PerfHelpersTest(unittest.TestCase):
         )
         self.assertEqual(payload["functional_mismatches"], [])
 
+    def test_expected_start_difference_preserves_other_metadata_checks(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised, golden = root / "revised", root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            metadata = {"time_start": "1ps", "time_end": "10ps", "time_unit": "1ps"}
+            self._write_wavepeek_artifact(golden / "info.wavepeek.json", data=[metadata])
+            args = perf.build_parser().parse_args([
+                "compare", "--functional-only", "--golden", str(golden), "--revised", str(revised),
+                "--ignore-functional-test", "info:time_start:1ps:0ps=converted start",
+            ])
+            for data, expected in [
+                ([{**metadata, "time_start": "0ps"}], 0),
+                ([{**metadata, "time_start": "0ps", "time_end": "9ps"}], 1),
+                ([{**metadata, "time_start": "2ps"}], 1),
+                ([], 1),
+            ]:
+                with self.subTest(data=data):
+                    self._write_wavepeek_artifact(revised / "info.wavepeek.json", data=data)
+                    self.assertEqual(perf.cmd_compare(args), expected)
+
     def test_cmd_compare_functional_ignore_requires_presence_on_both_sides(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)

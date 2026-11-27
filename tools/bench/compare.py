@@ -63,15 +63,15 @@ CROSS_FORMAT_FUNCTIONAL_IGNORES: tuple[tuple[str, str], ...] = (
 
 SHM_FUNCTIONAL_IGNORES: tuple[tuple[str, str], ...] = (
     (
-        "info_scr1",
+        "info_scr1:time_start:1ps:0ps",
         "The converted SHM starts at zero; the source FST starts at 1ps.",
     ),
     (
-        "info_scr1_isr_sample",
+        "info_scr1_isr_sample:time_start:1ps:0ps",
         "The converted SHM starts at zero; the source FST starts at 1ps.",
     ),
     (
-        "info_scr1_riscv_compliance",
+        "info_scr1_riscv_compliance:time_start:1ps:0ps",
         "The converted SHM starts at zero; the source FST starts at 1ps.",
     ),
     (
@@ -87,7 +87,7 @@ SHM_FUNCTIONAL_IGNORES: tuple[tuple[str, str], ...] = (
         "SHM exposes converted declarations with generic kinds and literal indexed names.",
     ),
     (
-        "signal_scr1_top_recursive_filter_valid_json",
+        "signal_scr1_top_recursive_filter_valid_json:kind",
         "SHM exposes converted declarations with generic kinds.",
     ),
 )
@@ -186,13 +186,17 @@ def compare_suite_inputs(
         return "unverified"
     if golden_inputs != revised_inputs:
         raise BenchGateError("benchmark inputs or catalog differ between revisions")
-    assert_recorded_coverage(golden, golden_inputs)
-    assert_recorded_coverage(revised, revised_inputs)
+    assert_recorded_coverage(golden, golden_inputs, require_success=required)
+    assert_recorded_coverage(revised, revised_inputs, require_success=required)
     return "shared-run" if golden.parent == revised.parent else "matched"
 
 
-def assert_recorded_coverage(run_dir: pathlib.Path, inputs: Mapping[str, Any]) -> None:
-    if set(inputs["tests"]) != e2e_artifact_stems(run_dir) or any(run_dir.glob(f"*{FAILURE_SUFFIX}")):
+def assert_recorded_coverage(
+    run_dir: pathlib.Path, inputs: Mapping[str, Any], *, require_success: bool = True
+) -> None:
+    if set(inputs["tests"]) != e2e_artifact_stems(run_dir) or (
+        require_success and any(run_dir.glob(f"*{FAILURE_SUFFIX}"))
+    ):
         raise BenchGateError(f"incomplete benchmark coverage in {run_dir}")
 
 
@@ -356,8 +360,8 @@ def run_e2e_compare(
         "--verbose",
     ]
     ignored_records = [
-        {"test_name": test_name, "reason": reason}
-        for test_name, reason in ignored_functional_tests
+        {"test_name": rule.split(":", 1)[0], "rule": rule, "reason": reason}
+        for rule, reason in ignored_functional_tests
     ]
     if functional_only:
         args.append("--functional-only")
@@ -406,6 +410,8 @@ def run_e2e_compare(
             suite["result_json_error"] = str(error)
         else:
             copy_compare_result_summary(suite, compare_result)
+            if "ignored_functional_tests" in compare_result:
+                suite["ignored_functional_tests"] = compare_result["ignored_functional_tests"]
 
     if not functional_only and result.returncode != 0 and compare_failed_only_on_timing(compare_result):
         failed_tests = timing_failure_names(compare_result)
@@ -529,6 +535,19 @@ def compare_captures(
                 if inputs is None:
                     raise BenchGateError("input checksums missing from the first baseline capture")
                 assert_recorded_coverage(revised, inputs)
+                # Use the E2E parser to validate both kinds of saved artifacts.
+                validation = run_e2e_compare(
+                    name=f"{name}-first-baseline-validation",
+                    golden=revised,
+                    revised=revised,
+                    compare_dir=compare_dir,
+                    tooling_root=tooling_root,
+                    threshold_pct=timing_threshold_pct,
+                    threshold_seconds=timing_threshold_seconds,
+                    functional_only=False,
+                )
+                if validation["status"] != "passed":
+                    raise BenchGateError(f"invalid first-baseline results; see {validation['log_path']}")
                 suite_result = {
                     "status": "first-baseline",
                     "reason": base_entry["reason"],
@@ -561,12 +580,11 @@ def compare_captures(
         if suite_result.get("status") == "failed":
             failures.append(name)
 
-    cross_formats = ("vcd", "fsdb", "shm") if release_profile else ("fsdb",)
     cross_ignores = {"fsdb": CROSS_FORMAT_FUNCTIONAL_IGNORES, "shm": SHM_FUNCTIONAL_IGNORES}
     cross_checks = (
         (f"cross-{label}-fst-{fmt}", capture_dir, fmt)
         for label, capture_dir in (("golden", golden_dir), ("revised", revised_dir))
-        for fmt in cross_formats
+        for fmt in ("vcd", "fsdb", "shm")
     )
     for name, capture_dir, fmt in cross_checks:
         fst = suite_dir(capture_dir, "e2e-fst")
@@ -588,7 +606,7 @@ def compare_captures(
                 threshold_pct=timing_threshold_pct,
                 threshold_seconds=timing_threshold_seconds,
                 functional_only=True,
-                allow_golden_extra=release_profile is None,
+                allow_golden_extra=release_profile is None and fmt == "fsdb",
                 ignored_functional_tests=cross_ignores.get(fmt, ()),
             )
         except BenchGateError as error:

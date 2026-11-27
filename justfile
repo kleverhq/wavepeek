@@ -453,8 +453,8 @@ bench-release-gate baseline_ref revised_ref="HEAD" profile="private": require-co
     {{ python }} tools/bench/gate.py --baseline-ref "{{ baseline_ref }}" --revised-ref "{{ revised_ref }}" --release-profile "{{ profile }}"
 
 # Capture benchmark artifacts for one source ref
-bench-capture ref="HEAD" fsdb="auto" vcd="never": require-container
-    {{ python }} tools/bench/capture.py --ref "{{ ref }}" --fsdb "{{ fsdb }}" --vcd "{{ vcd }}"
+bench-capture ref="HEAD" fsdb="auto" vcd="never" shm="never": require-container
+    {{ python }} tools/bench/capture.py --ref "{{ ref }}" --fsdb "{{ fsdb }}" --vcd "{{ vcd }}" --shm "{{ shm }}"
 
 # Compare two benchmark capture directories
 bench-compare golden_dir revised_dir: require-container

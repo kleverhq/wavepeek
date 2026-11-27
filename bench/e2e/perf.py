@@ -870,11 +870,12 @@ def write_result_json(path_arg: str | None, payload: dict[str, Any]) -> None:
 
 def parse_ignored_functional_tests(values: Sequence[str] | None) -> dict[str, str]:
     ignored: dict[str, str] = {}
+    names: set[str] = set()
     for raw in values or []:
         if "=" not in raw:
             fail(
                 "error: compare: --ignore-functional-test must use "
-                "NAME=REASON"
+                "NAME[:FIELD]=REASON"
             )
         name, reason = raw.split("=", 1)
         name = name.strip()
@@ -884,8 +885,17 @@ def parse_ignored_functional_tests(values: Sequence[str] | None) -> dict[str, st
                 "error: compare: --ignore-functional-test requires non-empty "
                 "NAME and REASON"
             )
-        if name in ignored:
-            fail(f"error: compare: duplicate ignored functional test `{name}`")
+        parts = name.split(":")
+        test_name = parts[0]
+        if (
+            len(parts) not in (1, 2, 4)
+            or not all(parts)
+            or (len(parts) > 1 and not parts[1].isidentifier())
+        ):
+            fail(f"error: compare: invalid functional exception `{name}`")
+        if test_name in names:
+            fail(f"error: compare: duplicate ignored functional test `{test_name}`")
+        names.add(test_name)
         ignored[name] = reason
     return ignored
 
@@ -895,15 +905,28 @@ def ignored_functional_test_records(
     revised_names: set[str],
     golden_names: set[str],
 ) -> list[dict[str, Any]]:
-    return [
-        {
+    records = []
+    for key, reason in sorted(ignored.items()):
+        name, *details = key.split(":")
+        record = {
             "test_name": name,
-            "reason": ignored[name],
+            "reason": reason,
             "present_in_revised": name in revised_names,
             "present_in_golden": name in golden_names,
         }
-        for name in sorted(ignored)
-    ]
+        if details:
+            record["data_field"] = details[0]
+            if len(details) == 3:
+                record["expected_golden"], record["expected_revised"] = details[1:]
+        records.append(record)
+    return records
+
+
+def without_data_field(payload: dict[str, Any], field: str) -> dict[str, Any]:
+    data = payload["data"]
+    if isinstance(data, list) and all(isinstance(row, dict) for row in data):
+        return {**payload, "data": [{key: value for key, value in row.items() if key != field} for row in data]}
+    return payload
 
 
 def parse_hyperfine_times_file(path: pathlib.Path, caller: str) -> list[float]:
@@ -1192,8 +1215,9 @@ def cmd_run(args: argparse.Namespace) -> int:
     verbose = bool(getattr(args, "verbose", False))
     fail_fast = bool(getattr(args, "fail_fast", False))
     strict = bool(getattr(args, "strict", False))
-    if strict and args.missing_only:
-        fail("error: run: --strict requires a fresh result for each scenario")
+    record_inputs = strict or bool(getattr(args, "record_inputs", False))
+    if record_inputs and args.missing_only:
+        fail("error: run: recording input identity requires a fresh result for each scenario")
 
     timeout_seconds = int(args.wavepeek_timeout_seconds)
     if timeout_seconds < 1:
@@ -1206,15 +1230,15 @@ def cmd_run(args: argparse.Namespace) -> int:
     binaries = parse_binary_specs(args.binary)
     schedule = str(args.schedule)
     run_dir = resolve_run_dir(args.run_dir, args.out_dir)
-    if strict and any(run_dir.iterdir()):
-        fail(f"error: run: --strict requires an empty run directory: {run_dir}")
+    if record_inputs and any(run_dir.iterdir()):
+        fail(f"error: run: recording input identity requires an empty run directory: {run_dir}")
     for binary in binaries:
         binary_run_dir(run_dir, binary).mkdir(parents=True, exist_ok=True)
     if verbose:
         print(f"info: run directory: {run_dir}")
         print("info: binaries: " + ", ".join(f"{b.label}={b.path}" for b in binaries))
         print(f"info: schedule: {schedule}")
-    inputs = input_identity(tests_path, selected) if strict else None
+    inputs = input_identity(tests_path, selected) if record_inputs else None
 
     tests_by_name = {str(test["name"]): test for test in tests}
     runnable_by_label: dict[str, list[dict[str, Any]]] = {}
@@ -1552,12 +1576,12 @@ def compare_functional_only(
         fail(f"error: compare: no wavepeek or failure JSON files found in {golden_dir}")
 
     ignored = dict(ignored_tests or {})
-    ignored_names = set(ignored)
     ignored_records = ignored_functional_test_records(
         ignored,
         raw_revised_names,
         raw_golden_names,
     )
+    exceptions = {record["test_name"]: record for record in ignored_records}
     matched = list(classification["comparable"])
     revised_only = list(classification["revised_only"])
     golden_only = list(classification["golden_only"])
@@ -1581,7 +1605,7 @@ def compare_functional_only(
             "tests only in golden run: " + ", ".join(golden_only)
         )
 
-    for name in sorted(ignored):
+    for name in sorted(exceptions):
         missing_sides: list[str] = []
         if name not in raw_revised_names:
             missing_sides.append("revised")
@@ -1629,8 +1653,22 @@ def compare_functional_only(
             )
             continue
 
+        exception = exceptions.get(test_name, {})
+        data_field = exception.get("data_field")
+        if data_field:
+            if "expected_golden" in exception and any(
+                not isinstance(rows, list)
+                or len(rows) != 1
+                or not isinstance(rows[0], dict)
+                or rows[0].get(data_field) != exception[f"expected_{label}"]
+                for label, rows in (("golden", golden_payload["data"]), ("revised", revised_payload["data"]))
+            ):
+                functional_mismatches.append(f"{test_name}: unexpected values for {data_field}")
+                continue
+            revised_payload = without_data_field(revised_payload, data_field)
+            golden_payload = without_data_field(golden_payload, data_field)
         diff_fields = functional_diff_fields(revised_payload, golden_payload)
-        if test_name in ignored_names:
+        if exception and not data_field:
             diff_fields = [field for field in diff_fields if field != "data"]
         if diff_fields:
             functional_mismatches.append(
@@ -2082,6 +2120,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="checksum inputs and fail for incomplete scenarios or any timeout",
     )
     run_parser.add_argument(
+        "--record-inputs",
+        action="store_true",
+        help="checksum inputs for a standalone capture",
+    )
+    run_parser.add_argument(
         "--wavepeek-timeout-seconds",
         type=int,
         default=DEFAULT_WAVEPEEK_TIMEOUT_SECONDS,
@@ -2137,7 +2180,7 @@ def build_parser() -> argparse.ArgumentParser:
     compare_parser.add_argument(
         "--ignore-functional-test",
         action="append",
-        help="with --functional-only, ignore one test as NAME=REASON",
+        help="with --functional-only, accept data differences as NAME[:FIELD[:GOLDEN:REVISED]]=REASON",
     )
     compare_parser.add_argument(
         "--result-json",

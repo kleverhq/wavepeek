@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Read uncompressed GHW dumps recorded at 1fs through Ondas in standard CLI builds.
 - Add optional native WLF file input through Ondas and a local Questa reader.
 - Add optional native VWDB directory input through Ondas and a compatible Xcelium reader.
 - Read Vivado WDB waveforms through Ondas with the optional `wdb` Cargo feature.

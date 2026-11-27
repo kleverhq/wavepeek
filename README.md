@@ -21,7 +21,7 @@
 
 `wavepeek` is a stateless CLI that runs non-interactive queries over waveform files. Its main use cases are LLM-driven debugging and other automated workflows.
 
-Each invocation opens one VCD, FST, FSDB, WLF, or WDB file, or an SHM or VWDB database directory. It runs one query, writes text, JSON, or JSONL, and exits. The CLI starts on demand without a background service. This command returns the value of `top.data` at `10ns`.
+Each invocation opens one VCD, FST, GHW, FSDB, WLF, or WDB file, or an SHM or VWDB database directory. It runs one query, writes text, JSON, or JSONL, and exits. The CLI starts on demand without a background service. This command returns the value of `top.data` at `10ns`.
 
 ```text
 $ wavepeek value --waves dump.vcd --at 10ns --signals top.data
@@ -52,7 +52,7 @@ To install `wavepeek` on macOS or Linux, run:
 curl --proto '=https' --tlsv1.2 -LsSf https://kleverhq.github.io/wavepeek/install.sh | sh
 ```
 
-The prebuilt binary supports VCD and FST. FSDB, SHM, WLF, WDB, and VWDB require optional source builds on Linux x86_64 with the corresponding SDK.
+The prebuilt binary supports VCD, FST, and uncompressed GHW recorded at 1fs. FSDB, SHM, WLF, WDB, and VWDB require optional source builds on Linux x86_64 with the corresponding SDK.
 
 Alternatively, ask your agent to do the setup:
 

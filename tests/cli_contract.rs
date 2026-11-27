@@ -201,7 +201,7 @@ fn top_level_help_documents_general_conventions() {
             "Each waveform command opens one waveform dump, runs one query, writes its output, and exits.",
         ))
         .stdout(predicate::str::contains(
-            "Every build supports VCD and FST. FSDB requires Linux x86_64",
+            "Every native build supports VCD, FST, and GHW. Use uncompressed GHW recorded at 1fs. FSDB requires Linux x86_64",
         ))
         .stdout(predicate::str::contains("Optional features:"))
         .stdout(predicate::str::contains(EXPECTED_FSDB_FEATURE_STATUS))
@@ -475,7 +475,7 @@ fn change_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));
         assert!(help.contains(
-            "Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB)"
+            "Path to a waveform file (VCD, FST, GHW, FSDB, WLF, WDB) or database directory (SHM, VWDB)"
         ));
         assert!(help.contains(
             "Start of the inclusive time range (for example, 1234ns; default: dump start)"
@@ -532,7 +532,7 @@ fn property_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));
         assert!(help.contains(
-            "Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB)"
+            "Path to a waveform file (VCD, FST, GHW, FSDB, WLF, WDB) or database directory (SHM, VWDB)"
         ));
         assert!(help.contains(
             "Start of the inclusive time range (for example, 1234ns; default: dump start)"
@@ -595,7 +595,7 @@ fn info_help_uses_aligned_summary_and_simple_option_docs() {
             Some("Show metadata for one waveform dump.")
         );
         assert!(help.contains(
-            "Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB)"
+            "Path to a waveform file (VCD, FST, GHW, FSDB, WLF, WDB) or database directory (SHM, VWDB)"
         ));
     }
 
@@ -620,7 +620,7 @@ fn scope_help_uses_aligned_summary_behavior_and_simple_option_docs() {
             Some("List scopes in a waveform hierarchy.")
         );
         assert!(help.contains(
-            "Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB)"
+            "Path to a waveform file (VCD, FST, GHW, FSDB, WLF, WDB) or database directory (SHM, VWDB)"
         ));
         assert!(help.contains("[default: 5]"));
         assert!(help.contains("[default: .*]"));
@@ -647,7 +647,7 @@ fn signal_help_uses_aligned_summary_behavior_and_simple_option_docs() {
             Some("List signals in one waveform scope.")
         );
         assert!(help.contains(
-            "Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB)"
+            "Path to a waveform file (VCD, FST, GHW, FSDB, WLF, WDB) or database directory (SHM, VWDB)"
         ));
         assert!(help.contains("Exact scope path (for example, top.cpu)"));
         assert!(help.contains("[default: 5]"));
@@ -679,7 +679,7 @@ fn value_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
             Some("Read selected signal values at one or more times.")
         );
         assert!(help.contains(
-            "Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB)"
+            "Path to a waveform file (VCD, FST, GHW, FSDB, WLF, WDB) or database directory (SHM, VWDB)"
         ));
         assert!(help.contains("for example, 1337ns or 10ns,20ns"));
         assert!(help.contains("Scope for relative signal names (for example, top.cpu)"));

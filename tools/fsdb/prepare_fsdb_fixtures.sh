@@ -203,7 +203,7 @@ convert_vcd_fixtures() {
   mkdir -p "$fsdb_fixtures_dir"
   while IFS= read -r -d '' source; do
     sources+=("$source")
-  done < <(find "${source_dirs[@]}" -type f -name '*.vcd' -print0 | sort -z)
+  done < <(find "${source_dirs[@]}" -path "$generated_fixtures_dir/ghw" -prune -o -type f -name '*.vcd' -print0 | sort -z)
 
   if [ "${#sources[@]}" -eq 0 ]; then
     printf '%s\n' "error: fsdb fixture: no VCD fixtures found under tests/fixtures/hand or tests/fixtures/generated" >&2

@@ -105,7 +105,7 @@ fn assert_hand_dumps_are_manifested(root: &Path, policy: &WaveformPolicy) {
 
     assert_eq!(
         actual, expected,
-        "tracked VCD/FST dumps under tests/fixtures must match hand dumps in tests/fixtures/waveform_policy.json"
+        "tracked waveform dumps under tests/fixtures must match hand dumps in tests/fixtures/waveform_policy.json"
     );
     for path in expected {
         assert!(
@@ -130,12 +130,12 @@ fn assert_source_fixtures_are_manifested(root: &Path, policy: &WaveformPolicy) {
         })
         .unwrap_or_else(|| fixture_filesystem_paths(root.join("tests/fixtures/source")))
         .into_iter()
-        .filter(|path| path.ends_with(".v"))
+        .filter(|path| path.ends_with(".v") || path.ends_with(".vhd"))
         .collect::<BTreeSet<_>>();
 
     assert_eq!(
         actual, expected,
-        "tracked Verilog fixture sources must match tests/fixtures/waveform_policy.json"
+        "tracked Verilog and VHDL fixture sources must match tests/fixtures/waveform_policy.json"
     );
 }
 
@@ -242,5 +242,5 @@ fn collect_fixture_paths(repository_root: &Path, path: &Path, paths: &mut Vec<St
 }
 
 fn has_waveform_dump_extension(path: &str) -> bool {
-    path.ends_with(".vcd") || path.ends_with(".fst")
+    path.ends_with(".vcd") || path.ends_with(".fst") || path.ends_with(".ghw")
 }

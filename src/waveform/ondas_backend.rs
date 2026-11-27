@@ -71,14 +71,17 @@ impl OndasBackend {
     }
 
     pub fn open_bytes(path: &Path, bytes: Arc<[u8]>) -> Result<Self, WavepeekError> {
-        let inner = ondas::open_bytes(path.to_string_lossy(), bytes)
-            .map_err(|error| open_error(path, error))?;
-        if !matches!(inner.format(), Format::Vcd | Format::Fst) {
-            return Err(WavepeekError::File(
-                "the browser supports only VCD and FST waveforms".into(),
-            ));
+        match ondas::open_bytes(path.to_string_lossy(), bytes) {
+            Ok(inner) if matches!(inner.format(), Format::Vcd | Format::Fst) => {
+                Ok(Self::new(inner, path))
+            }
+            Ok(_) | Err(ondas::Error::NoBackend { .. } | ondas::Error::UnsupportedInput { .. }) => {
+                Err(WavepeekError::File(
+                    "the browser supports only VCD and FST waveforms".into(),
+                ))
+            }
+            Err(error) => Err(open_error(path, error)),
         }
-        Ok(Self::new(inner, path))
     }
 
     fn new(inner: ondas::Waveform, path: &Path) -> Self {

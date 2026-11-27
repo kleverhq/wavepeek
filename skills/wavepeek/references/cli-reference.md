@@ -13,6 +13,7 @@ Behavior:
 - Every build supports VCD and FST. FSDB requires Linux x86_64, Cargo feature `fsdb`, and the Synopsys Verdi FSDB Reader SDK.
 - SHM directories require Linux x86_64, Cargo feature `shm`, and a compatible Xcelium reader selected by XCELIUM_HOME.
 - WLF files require Linux x86_64 GNU, Cargo feature `wlf`, and a compatible Questa reader selected by QUESTA_HOME.
+- WDB files require Linux x86_64 GNU and Cargo feature `wdb`. Set XILINX_VIVADO to a compatible Vivado installation at build time.
 - VWDB directories require Linux x86_64 GNU, Cargo feature `vwdb`, and a compatible Xcelium reader selected by XCELIUM_HOME.
 - Waveform commands write text by default. Use `--json` for one JSON value or `--jsonl` for a stream of JSON records.
 - Time values use an integer and an explicit unit, for example `250ps`, `10ns`, or `2us`. Supported units are `zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, and `s`.
@@ -58,6 +59,7 @@ Optional features:
 - FSDB - disabled (FSDB support is currently Linux x86_64 only; reinstall with Cargo flag `--features fsdb` and provide the Synopsys Verdi FSDB Reader SDK)
 - SHM - disabled (SHM requires Linux x86_64, Cargo flag `--features shm`, and a compatible XCELIUM_HOME)
 - WLF - disabled (WLF requires Linux x86_64 GNU, Cargo flag `--features wlf`, and a compatible QUESTA_HOME)
+- WDB - disabled (WDB requires Linux x86_64 GNU, Cargo flag `--features wdb`, and XILINX_VIVADO set to a compatible Vivado installation)
 - VWDB - disabled (VWDB requires Linux x86_64 GNU, Cargo flag `--features vwdb`, and XCELIUM_HOME set to a compatible installation when building)
 ```
 
@@ -82,7 +84,7 @@ Usage: wavepeek info [OPTIONS] --waves <FILE>
 
 Input options:
       --waves <FILE>
-          Path to a waveform file (VCD, FST, FSDB, WLF) or database directory (SHM, VWDB) (for example, dump.fst)
+          Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB) (for example, dump.fst)
 
 Output options:
       --json
@@ -124,7 +126,7 @@ Usage: wavepeek scope [OPTIONS] --waves <FILE>
 
 Input options:
       --waves <FILE>
-          Path to a waveform file (VCD, FST, FSDB, WLF) or database directory (SHM, VWDB) (for example, dump.fst)
+          Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB) (for example, dump.fst)
 
 Selection options:
       --max-depth <MAX_DEPTH>
@@ -204,7 +206,7 @@ Usage: wavepeek signal [OPTIONS] --waves <FILE> --scope <SCOPE>
 
 Input options:
       --waves <FILE>
-          Path to a waveform file (VCD, FST, FSDB, WLF) or database directory (SHM, VWDB) (for example, dump.fst)
+          Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB) (for example, dump.fst)
 
       --scope <SCOPE>
           Exact scope path (for example, top.cpu); empty selects root-level declarations
@@ -286,7 +288,7 @@ Usage: wavepeek value [OPTIONS] --waves <FILE> --at <AT> --signals <SIGNALS>...
 
 Input options:
       --waves <FILE>
-          Path to a waveform file (VCD, FST, FSDB, WLF) or database directory (SHM, VWDB) (for example, dump.fst)
+          Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB) (for example, dump.fst)
 
 Selection options:
       --at <AT>
@@ -355,7 +357,7 @@ Usage: wavepeek change [OPTIONS] --waves <FILE> --signals <SIGNALS>... --on <ON>
 
 Input options:
       --waves <FILE>
-          Path to a waveform file (VCD, FST, FSDB, WLF) or database directory (SHM, VWDB) (for example, dump.fst)
+          Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB) (for example, dump.fst)
 
 Selection options:
       --from <FROM>
@@ -455,7 +457,7 @@ Usage: wavepeek property [OPTIONS] --waves <FILE> --on <ON> --eval <EVAL>
 
 Input options:
       --waves <FILE>
-          Path to a waveform file (VCD, FST, FSDB, WLF) or database directory (SHM, VWDB) (for example, dump.fst)
+          Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB) (for example, dump.fst)
 
 Selection options:
       --from <FROM>
@@ -576,7 +578,7 @@ Usage: wavepeek extract ahb [OPTIONS] --waves <FILE>
 
 Input options:
       --waves <FILE>
-          Path to a waveform file (VCD, FST, FSDB, WLF) or database directory (SHM, VWDB) (for example, dump.fst)
+          Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB) (for example, dump.fst)
 
       --profile <PROFILE>
           AHB profile from Arm IHI 0033C
@@ -678,7 +680,7 @@ Usage: wavepeek extract apb [OPTIONS] --waves <FILE>
 
 Input options:
       --waves <FILE>
-          Path to a waveform file (VCD, FST, FSDB, WLF) or database directory (SHM, VWDB) (for example, dump.fst)
+          Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB) (for example, dump.fst)
 
       --profile <PROFILE>
           APB profile from Arm IHI 0024E
@@ -781,7 +783,7 @@ Usage: wavepeek extract atb [OPTIONS] --waves <FILE>
 
 Input options:
       --waves <FILE>
-          Path to a waveform file (VCD, FST, FSDB, WLF) or database directory (SHM, VWDB) (for example, dump.fst)
+          Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB) (for example, dump.fst)
 
       --profile <PROFILE>
           ATB profile from Arm IHI 0032C Issue C
@@ -873,7 +875,7 @@ Usage: wavepeek extract axi [OPTIONS] --waves <FILE>
 
 Input options:
       --waves <FILE>
-          Path to a waveform file (VCD, FST, FSDB, WLF) or database directory (SHM, VWDB) (for example, dump.fst)
+          Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB) (for example, dump.fst)
 
       --profile <PROFILE>
           AXI profile from Arm IHI 0022H.c or IHI 0022L
@@ -963,7 +965,7 @@ Usage: wavepeek extract axistream [OPTIONS] --waves <FILE>
 
 Input options:
       --waves <FILE>
-          Path to a waveform file (VCD, FST, FSDB, WLF) or database directory (SHM, VWDB) (for example, dump.fst)
+          Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB) (for example, dump.fst)
 
       --profile <PROFILE>
           AXI-Stream profile from Arm IHI 0051B Issue B
@@ -1062,7 +1064,7 @@ Usage: wavepeek extract generic [OPTIONS] --waves <FILE>
 
 Input options:
       --waves <FILE>
-          Path to a waveform file (VCD, FST, FSDB, WLF) or database directory (SHM, VWDB) (for example, dump.fst)
+          Path to a waveform file (VCD, FST, FSDB, WLF, WDB) or database directory (SHM, VWDB) (for example, dump.fst)
 
       --source <FILE>
           JSON file for multi-source extraction (for example, fifo-sources.json)

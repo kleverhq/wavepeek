@@ -248,7 +248,10 @@ $enddefinitions $end
         for command in ["info", "scope", "signal", "value", "change", "property"] {
             let help = run(&["wavepeek", command, "--help"]);
             assert_eq!(help.status, 0);
-            assert!(help.stdout.contains("Path to the active VCD or FST file"), "{command}");
+            assert!(
+                help.stdout.contains("Path to the active VCD or FST file"),
+                "{command}"
+            );
             assert!(!help.stdout.contains("WDB"), "{command}");
         }
 
@@ -269,5 +272,23 @@ $enddefinitions $end
                     .any(|line| line.trim_start().starts_with("--source"))
             );
         }
+    }
+
+    #[test]
+    fn browser_rejects_wdb_content_with_a_vcd_suffix() {
+        let result = invoke(
+            ["wavepeek", "info", "--waves", "recording.vcd", "--json"]
+                .map(str::to_string)
+                .to_vec(),
+            "recording.vcd".to_string(),
+            b"Xilinx WAVE DATABASE ",
+        );
+        assert_eq!(result.status, 2);
+        let error: serde_json::Value = serde_json::from_str(&result.stdout).unwrap();
+        assert_eq!(error["code"], "WPK-F0002");
+        assert_eq!(
+            error["message"],
+            "the browser supports only VCD and FST waveforms"
+        );
     }
 }

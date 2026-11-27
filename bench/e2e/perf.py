@@ -900,6 +900,19 @@ def parse_ignored_functional_tests(values: Sequence[str] | None) -> dict[str, st
     return ignored
 
 
+def parse_expected_revised_warnings(values: Sequence[str] | None) -> dict[str, dict[str, str]]:
+    warnings = {}
+    for raw in values or []:
+        rule, separator, message = raw.partition("=")
+        name, colon, code = rule.partition(":")
+        if not separator or not colon or not name or not message or not re.fullmatch(r"WPK-W[0-9]{4}", code):
+            fail("error: compare: --expect-revised-warning must use NAME:CODE=MESSAGE")
+        if name in warnings:
+            fail(f"error: compare: duplicate expected warning for `{name}`")
+        warnings[name] = {"kind": "warning", "code": code, "message": message}
+    return warnings
+
+
 def ignored_functional_test_records(
     ignored: Mapping[str, str],
     revised_names: set[str],
@@ -1559,6 +1572,7 @@ def compare_functional_only(
     verbose: bool,
     result_json: str | None = None,
     ignored_tests: Mapping[str, str] | None = None,
+    expected_revised_warnings: Mapping[str, dict[str, str]] | None = None,
 ) -> int:
     classification = classify_compare_outcomes(
         revised_dir,
@@ -1582,6 +1596,7 @@ def compare_functional_only(
         raw_golden_names,
     )
     exceptions = {record["test_name"]: record for record in ignored_records}
+    warnings = dict(expected_revised_warnings or {})
     matched = list(classification["comparable"])
     revised_only = list(classification["revised_only"])
     golden_only = list(classification["golden_only"])
@@ -1620,6 +1635,10 @@ def compare_functional_only(
             functional_artifact_errors.append(
                 f"ignored functional test `{name}` is not comparable on both sides"
             )
+    for name in sorted(warnings.keys() - set(matched)):
+        functional_artifact_errors.append(
+            f"test with expected warning `{name}` is not comparable on both sides"
+        )
 
     for test_name in matched:
         revised_payload, revised_error = load_wavepeek_artifact_for_compare(
@@ -1652,6 +1671,15 @@ def compare_functional_only(
                 f"{test_name}: timeout artifact on {', '.join(timeout_sides)}"
             )
             continue
+
+        warning = warnings.get(test_name)
+        if warning is not None:
+            diagnostics = list(revised_payload["diagnostics"])
+            if warning not in diagnostics:
+                functional_mismatches.append(f"{test_name}: expected revised warning {warning['code']} missing")
+                continue
+            diagnostics.remove(warning)
+            revised_payload = {**revised_payload, "diagnostics": diagnostics}
 
         exception = exceptions.get(test_name, {})
         data_field = exception.get("data_field")
@@ -1740,6 +1768,7 @@ def compare_functional_only(
             "both_side_failures": both_side_failures,
             "integrity_errors": integrity_errors,
             "ignored_functional_tests": ignored_records,
+            "expected_revised_warnings": warnings,
             "functional_timeouts": functional_timeouts,
             "functional_mismatches": functional_mismatches,
             "functional_artifact_errors": functional_artifact_errors,
@@ -1777,10 +1806,13 @@ def cmd_compare(args: argparse.Namespace) -> int:
     ignored_tests = parse_ignored_functional_tests(
         getattr(args, "ignore_functional_test", None)
     )
+    warnings = parse_expected_revised_warnings(getattr(args, "expect_revised_warning", None))
     if allow_golden_extra and not functional_only:
         fail("error: compare: --allow-golden-extra requires --functional-only")
     if ignored_tests and not functional_only:
         fail("error: compare: --ignore-functional-test requires --functional-only")
+    if warnings and not functional_only:
+        fail("error: compare: --expect-revised-warning requires --functional-only")
     if require_timing_samples and functional_only:
         fail("error: compare: --require-timing-samples requires a timing comparison")
     result_json = getattr(args, "result_json", None)
@@ -1793,6 +1825,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
             verbose,
             result_json,
             ignored_tests,
+            warnings,
         )
 
     if args.max_negative_delta_pct is None:
@@ -2192,6 +2225,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--ignore-functional-test",
         action="append",
         help="with --functional-only, accept data differences as NAME[:FIELD[:GOLDEN:REVISED]]=REASON",
+    )
+    compare_parser.add_argument(
+        "--expect-revised-warning",
+        action="append",
+        help="with --functional-only, allow an exact additional revised warning as NAME:CODE=MESSAGE",
     )
     compare_parser.add_argument(
         "--result-json",

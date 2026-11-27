@@ -1669,6 +1669,37 @@ class PerfHelpersTest(unittest.TestCase):
         )
         self.assertEqual(payload["functional_mismatches"], [])
 
+    def test_expected_revised_warning_keeps_other_diagnostics_strict(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised, golden = root / "revised", root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            message = "omitted ambiguous signal paths: count=16"
+            warning = {"kind": "warning", "code": "WPK-W0005", "message": message}
+            different_count = {**warning, "message": "omitted ambiguous signal paths: count=17"}
+            unrelated = {"kind": "warning", "code": "WPK-W0001", "message": "other warning"}
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json", data=[{"name": "a"}])
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                functional_only=True,
+                ignore_functional_test=["sample=metadata differs"],
+                expect_revised_warning=[f"sample:WPK-W0005={message}"],
+            )
+            for diagnostics, expected in (
+                ([warning], 0),
+                ([], 1),
+                ([different_count], 1),
+                ([warning, unrelated], 1),
+                ([warning, warning], 1),
+            ):
+                with self.subTest(diagnostics=diagnostics):
+                    self._write_wavepeek_artifact(
+                        revised / "sample.wavepeek.json", data=[{"name": "b"}], diagnostics=diagnostics,
+                    )
+                    self.assertEqual(perf.cmd_compare(args), expected)
+
     def test_expected_start_difference_preserves_other_metadata_checks(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)

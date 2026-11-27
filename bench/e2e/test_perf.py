@@ -1,5 +1,4 @@
 import argparse
-from collections import Counter
 import importlib.util
 import io
 import json
@@ -150,8 +149,8 @@ class PerfHelpersTest(unittest.TestCase):
         default_args = parser.parse_args(["list"])
         self.assertEqual(default_args.tests, str(perf.TESTS_PATH))
 
-        override_args = parser.parse_args(["list", "--tests", "bench/e2e/tests_smoke.json"])
-        self.assertEqual(override_args.tests, "bench/e2e/tests_smoke.json")
+        override_args = parser.parse_args(["list", "--tests", "bench/e2e/tests_vcd.json"])
+        self.assertEqual(override_args.tests, "bench/e2e/tests_vcd.json")
 
     def test_run_parser_tests_flag_defaults_and_override(self) -> None:
         parser = perf.build_parser()
@@ -159,8 +158,8 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertEqual(default_args.tests, str(perf.TESTS_PATH))
         self.assertEqual(default_args.schedule, "round-robin")
 
-        override_args = parser.parse_args(["run", "--tests", "bench/e2e/tests_smoke.json"])
-        self.assertEqual(override_args.tests, "bench/e2e/tests_smoke.json")
+        override_args = parser.parse_args(["run", "--tests", "bench/e2e/tests_vcd.json"])
+        self.assertEqual(override_args.tests, "bench/e2e/tests_vcd.json")
 
     def test_parse_binary_specs_requires_explicit_labeled_binaries(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -334,55 +333,6 @@ class PerfHelpersTest(unittest.TestCase):
                 perf.load_tests(tests_path)
         self.assertIn("error: tests: invalid JSON", str(error.exception))
 
-    def test_tests_smoke_catalog_exact_subset_and_distribution(self) -> None:
-        payload = json.loads(
-            (perf.SCRIPT_DIR / "tests_smoke.json").read_text(encoding="utf-8")
-        )
-        tests = payload["tests"]
-        names = [test["name"] for test in tests]
-
-        expected_names = {
-            "change_scr1_coremark_imem_axi_1sig_to_1000ps",
-            "change_scr1_coremark_imem_axi_araddr_to_1000ps_trigger_posedge_clk_sample_native",
-            "change_scr1_coremark_imem_axi_araddr_to_1000ps_trigger_posedge_clk_sample_pre_edge",
-            "change_scr1_signals_1_window_2ns_trigger_any",
-            "info_picorv32_ez",
-            "info_scr1_isr_sample",
-            "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sample_native",
-            "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sample_pre_edge",
-            "scope_clustered_all_depth13_json",
-            "scope_scr1_all_depth7_json",
-            "signal_scr1_top_recursive_depth2_json",
-            "signal_scr1_top_recursive_filter_valid_json",
-            "value_scr1_signals_1",
-            "value_scr1_signals_10",
-        }
-        self.assertEqual(set(names), expected_names)
-        self.assertEqual(len(names), 14)
-
-        category_counts = Counter(str(test["category"]) for test in tests)
-        self.assertEqual(
-            category_counts,
-            Counter(
-                {
-                    "change": 4,
-                    "info": 2,
-                    "property": 2,
-                    "scope": 2,
-                    "signal": 2,
-                    "value": 2,
-                }
-            ),
-        )
-
-        for test in tests:
-            if "sampling_mode" in test.get("meta", {}):
-                self.assertEqual(test["runs"], 5)
-                self.assertEqual(test["warmup"], 1)
-            else:
-                self.assertEqual(test["runs"], 1)
-                self.assertEqual(test["warmup"], 0)
-
     def test_release_catalogs_use_gate_sample_minimums(self) -> None:
         for catalog in ("tests.json", "tests_fsdb.json"):
             payload = json.loads((perf.SCRIPT_DIR / catalog).read_text(encoding="utf-8"))
@@ -397,7 +347,7 @@ class PerfHelpersTest(unittest.TestCase):
             parts = trigger.split()
             return bool(parts) and parts[0] in {"posedge", "negedge", "edge"}
 
-        for catalog in ("tests.json", "tests_smoke.json", "tests_fsdb.json"):
+        for catalog in ("tests.json", "tests_vcd.json", "tests_fsdb.json", "tests_shm.json"):
             payload = json.loads((perf.SCRIPT_DIR / catalog).read_text(encoding="utf-8"))
             for test in payload["tests"]:
                 command = test["command"]
@@ -518,22 +468,6 @@ class PerfHelpersTest(unittest.TestCase):
                 "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sample_pre_edge",
             },
         )
-
-    def test_tests_smoke_catalog_commands_match_tests_json(self) -> None:
-        full_payload = json.loads((perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8"))
-        commit_payload = json.loads(
-            (perf.SCRIPT_DIR / "tests_smoke.json").read_text(encoding="utf-8")
-        )
-
-        full_by_name = {
-            str(test["name"]): test
-            for test in full_payload["tests"]
-        }
-
-        for test in commit_payload["tests"]:
-            name = str(test["name"])
-            self.assertIn(name, full_by_name)
-            self.assertEqual(test["command"], full_by_name[name]["command"])
 
     def test_tests_fsdb_catalog_matches_fst_catalog_with_fixture_paths(self) -> None:
         fst_catalog = (perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8")
@@ -911,6 +845,33 @@ class PerfHelpersTest(unittest.TestCase):
                 )
                 self.assertEqual(result.returncode, expected_status, result.stderr)
                 self.assertIn("benchmark timeout cap reached", result.stderr)
+
+    def test_strict_run_fails_and_records_preflight_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            waves = root / "sample.vcd"
+            waves.write_bytes(b"sample")
+            test = self._sample_test("bad")
+            test["command"] = ["{wavepeek_bin}", "info", "--waves", str(waves)]
+            catalog = root / "tests.json"
+            catalog.write_text(json.dumps({"tests": [test]}))
+            run_dir = root / "run"
+            args = perf.build_parser().parse_args([
+                "run", "--strict", "--tests", str(catalog), "--run-dir", str(run_dir),
+                "--binary", f"baseline={sys.executable}", "--binary", f"revised={sys.executable}",
+            ])
+            failure = perf.make_failure_artifact(
+                test_name="bad", phase="preflight", command=[], exit_code=2,
+            )
+            with (
+                mock.patch.object(perf, "run_functional_capture", return_value=(None, failure)),
+                mock.patch.object(perf, "ensure_hyperfine"),
+            ):
+                self.assertEqual(perf.cmd_run(args), 1)
+            manifest = json.loads((run_dir / "manifest.json").read_text())
+            self.assertEqual(manifest["inputs"]["tests"], ["bad"])
+            self.assertEqual(len(manifest["inputs"]["files"][str(waves)]), 64)
+            self.assertEqual([binary["failure_count"] for binary in manifest["binaries"]], [1, 1])
 
     def test_cmd_run_fail_fast_stops_after_preflight_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -2323,12 +2284,6 @@ class JustfileBenchmarkRecipeTest(unittest.TestCase):
         justfile = self.JUSTFILE_PATH.read_text(encoding="utf-8")
         self.assertNotIn("bench-e2e-update-baseline:", justfile)
         self.assertNotIn("bench-e2e-fsdb-update-baseline:", justfile)
-
-    def test_smoke_recipes_run_the_harness_with_fail_fast(self) -> None:
-        for recipe_name in ("bench-e2e-smoke", "bench-e2e-fsdb-smoke", "bench-e2e-shm-smoke"):
-            body = self._recipe_body(recipe_name)
-            self.assertIn("bench/e2e/perf.py run", body)
-            self.assertIn("--fail-fast", body)
 
 
 if __name__ == "__main__":

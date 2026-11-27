@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+import hashlib
 import json
 import math
 import pathlib
@@ -304,6 +305,45 @@ def binary_run_dir(run_dir: pathlib.Path, binary: BinarySpec) -> pathlib.Path:
     return run_dir / binary.label
 
 
+def input_identity(
+    tests_path: pathlib.Path, selected_tests: list[dict[str, Any]]
+) -> dict[str, Any]:
+    def sha256(path: pathlib.Path) -> str:
+        with path.open("rb") as stream:
+            return hashlib.file_digest(stream, "sha256").hexdigest()
+
+    inputs = {}
+    for test in selected_tests:
+        command = test["command"]
+        if "--waves" not in command:
+            fail(f"error: run: expected --waves for {test['name']}")
+        for flag in ("--waves", "--source"):
+            if flag not in command:
+                continue
+            index = command.index(flag) + 1
+            if index == len(command):
+                fail(f"error: run: missing {flag} input for {test['name']}")
+            name = command[index]
+            if name in inputs:
+                continue
+            path = REPO_ROOT / name
+            try:
+                if flag == "--waves" and path.suffix == ".shm":
+                    files = sorted(p for p in path.iterdir() if p.suffix in (".dsn", ".trn"))
+                    if {file.suffix for file in files} != {".dsn", ".trn"}:
+                        fail(f"error: run: incomplete SHM input {name} for {test['name']}")
+                    inputs[name] = {file.name: sha256(file) for file in files}
+                else:
+                    inputs[name] = sha256(path)
+            except OSError as error:
+                fail(f"error: run: cannot checksum {name} for {test['name']}: {error}")
+    return {
+        "catalog_sha256": sha256(tests_path),
+        "tests": [test["name"] for test in selected_tests],
+        "files": inputs,
+    }
+
+
 def write_run_manifest(
     *,
     run_dir: pathlib.Path,
@@ -312,6 +352,7 @@ def write_run_manifest(
     selected_tests: list[dict[str, Any]],
     schedule: str,
     timeout_seconds: int,
+    inputs: dict[str, Any] | None,
 ) -> None:
     binary_entries: list[dict[str, Any]] = []
     for binary in binaries:
@@ -345,6 +386,8 @@ def write_run_manifest(
         "test_count": len(selected_tests),
         "binaries": binary_entries,
     }
+    if inputs is not None:
+        payload["inputs"] = inputs
     (run_dir / "manifest.json").write_text(
         json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -1148,6 +1191,9 @@ def cmd_run(args: argparse.Namespace) -> int:
         fail("error: run: no tests matched the provided filter")
     verbose = bool(getattr(args, "verbose", False))
     fail_fast = bool(getattr(args, "fail_fast", False))
+    strict = bool(getattr(args, "strict", False))
+    if strict and args.missing_only:
+        fail("error: run: --strict requires a fresh result for each scenario")
 
     timeout_seconds = int(args.wavepeek_timeout_seconds)
     if timeout_seconds < 1:
@@ -1166,6 +1212,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         print(f"info: run directory: {run_dir}")
         print("info: binaries: " + ", ".join(f"{b.label}={b.path}" for b in binaries))
         print(f"info: schedule: {schedule}")
+    inputs = input_identity(tests_path, selected) if strict else None
 
     tests_by_name = {str(test["name"]): test for test in tests}
     runnable_by_label: dict[str, list[dict[str, Any]]] = {}
@@ -1194,10 +1241,11 @@ def cmd_run(args: argparse.Namespace) -> int:
             nonlocal completed
             completed += 1
             label_dir = binary_run_dir(run_dir, binary)
-            if verbose:
+            if verbose or strict:
                 print(
                     f"[{completed}/{total_jobs}] {binary.label}/{test['name']} "
-                    f"(runs={test['runs']}, warmup={test['warmup']})"
+                    f"(runs={test['runs']}, warmup={test['warmup']})",
+                    flush=True,
                 )
             test_name = str(test["name"])
             remove_test_artifacts(label_dir, test_name)
@@ -1230,7 +1278,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
             benchmark_failure = run_test(
                 test, label_dir, binary.path, timeout_seconds, verbose,
-                fail_on_timeout=fail_fast,
+                fail_on_timeout=fail_fast or strict,
             )
             if isinstance(benchmark_failure, dict):
                 benchmark_failure["binary_label"] = binary.label
@@ -1272,8 +1320,19 @@ def cmd_run(args: argparse.Namespace) -> int:
         selected_tests=selected,
         schedule=schedule,
         timeout_seconds=timeout_seconds,
+        inputs=inputs,
     )
     index_path = write_run_index(run_dir, binaries)
+    if strict:
+        failures = [
+            f"{binary.label}/{test['name']}"
+            for binary in binaries
+            for test in selected
+            if not test_has_complete_artifacts(binary_run_dir(run_dir, binary), test["name"])
+        ]
+        if failures:
+            print(f"error: run: failed scenarios in {run_dir}: {', '.join(failures)}", file=sys.stderr)
+            return 1
     if verbose:
         print(f"info: run artifacts written to {run_dir}")
         for report_path in report_paths:
@@ -2014,6 +2073,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--fail-fast",
         action="store_true",
         help="stop on the first per-test preflight or benchmark failure",
+    )
+    run_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="checksum inputs and fail for incomplete scenarios or any timeout",
     )
     run_parser.add_argument(
         "--wavepeek-timeout-seconds",

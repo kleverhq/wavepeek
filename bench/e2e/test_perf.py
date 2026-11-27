@@ -149,8 +149,8 @@ class PerfHelpersTest(unittest.TestCase):
         default_args = parser.parse_args(["list"])
         self.assertEqual(default_args.tests, str(perf.TESTS_PATH))
 
-        override_args = parser.parse_args(["list", "--tests", "bench/e2e/tests_vcd.json"])
-        self.assertEqual(override_args.tests, "bench/e2e/tests_vcd.json")
+        override_args = parser.parse_args(["list", "--tests", "custom.json"])
+        self.assertEqual(override_args.tests, "custom.json")
 
     def test_run_parser_tests_flag_defaults_and_override(self) -> None:
         parser = perf.build_parser()
@@ -158,8 +158,8 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertEqual(default_args.tests, str(perf.TESTS_PATH))
         self.assertEqual(default_args.schedule, "round-robin")
 
-        override_args = parser.parse_args(["run", "--tests", "bench/e2e/tests_vcd.json"])
-        self.assertEqual(override_args.tests, "bench/e2e/tests_vcd.json")
+        override_args = parser.parse_args(["run", "--tests", "custom.json"])
+        self.assertEqual(override_args.tests, "custom.json")
 
     def test_parse_binary_specs_requires_explicit_labeled_binaries(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -187,10 +187,10 @@ class PerfHelpersTest(unittest.TestCase):
                 "--run-dir",
                 "bench/e2e/runs/sample",
                 "--tests",
-                "bench/e2e/tests_fsdb.json",
+                "custom.json",
             ]
         )
-        self.assertEqual(override_args.tests, "bench/e2e/tests_fsdb.json")
+        self.assertEqual(override_args.tests, "custom.json")
 
     def test_compare_parser_functional_only_flags(self) -> None:
         parser = perf.build_parser()
@@ -333,37 +333,33 @@ class PerfHelpersTest(unittest.TestCase):
                 perf.load_tests(tests_path)
         self.assertIn("error: tests: invalid JSON", str(error.exception))
 
-    def test_release_catalogs_use_gate_sample_minimums(self) -> None:
-        for catalog in ("tests.json", "tests_fsdb.json"):
-            payload = json.loads((perf.SCRIPT_DIR / catalog).read_text(encoding="utf-8"))
-            for test in payload["tests"]:
-                self.assertGreaterEqual(test["runs"], 10, f"{catalog}:{test['name']}")
-                self.assertGreaterEqual(test["warmup"], 5, f"{catalog}:{test['name']}")
+    def test_release_catalog_uses_gate_sample_minimums(self) -> None:
+        for test in perf.load_tests(perf.TESTS_PATH):
+            self.assertGreaterEqual(test["runs"], 10, test["name"])
+            self.assertGreaterEqual(test["warmup"], 5, test["name"])
 
-    def test_change_property_catalogs_pin_required_trigger_sampling(self) -> None:
+    def test_catalog_pins_required_change_property_trigger_sampling(self) -> None:
         def is_edge_only(trigger: str) -> bool:
             if trigger == "*" or " or " in trigger or "," in trigger:
                 return False
             parts = trigger.split()
             return bool(parts) and parts[0] in {"posedge", "negedge", "edge"}
 
-        for catalog in ("tests.json", "tests_vcd.json", "tests_fsdb.json", "tests_shm.json"):
-            payload = json.loads((perf.SCRIPT_DIR / catalog).read_text(encoding="utf-8"))
-            for test in payload["tests"]:
-                command = test["command"]
-                if len(command) < 2 or command[1] not in {"change", "property"}:
-                    continue
+        for test in perf.load_tests(perf.TESTS_PATH):
+            command = test["command"]
+            if len(command) < 2 or command[1] not in {"change", "property"}:
+                continue
 
-                with self.subTest(catalog=catalog, name=test["name"]):
-                    self.assertIn("--on", command)
-                    trigger = command[command.index("--on") + 1]
-                    mode = (
-                        command[command.index("--sample-mode") + 1]
-                        if "--sample-mode" in command
-                        else "pre-edge"
-                    )
-                    if not is_edge_only(trigger):
-                        self.assertEqual(mode, "native")
+            with self.subTest(name=test["name"]):
+                self.assertIn("--on", command)
+                trigger = command[command.index("--on") + 1]
+                mode = (
+                    command[command.index("--sample-mode") + 1]
+                    if "--sample-mode" in command
+                    else "pre-edge"
+                )
+                if not is_edge_only(trigger):
+                    self.assertEqual(mode, "native")
 
     def test_tests_json_contains_expected_scope_benchmarks(self) -> None:
         payload = json.loads((perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8"))
@@ -468,15 +464,6 @@ class PerfHelpersTest(unittest.TestCase):
                 "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sample_pre_edge",
             },
         )
-
-    def test_tests_fsdb_catalog_matches_fst_catalog_with_fixture_paths(self) -> None:
-        fst_catalog = (perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8")
-        fsdb_catalog = (perf.SCRIPT_DIR / "tests_fsdb.json").read_text(encoding="utf-8")
-
-        expected = fst_catalog.replace(".fst", ".fsdb").replace(
-            "tests/fixtures/generated/", "tests/fixtures/fsdb/"
-        )
-        self.assertEqual(fsdb_catalog, expected)
 
     def test_cmd_list_resolves_relative_tests_path_from_cwd(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -598,7 +585,7 @@ class PerfHelpersTest(unittest.TestCase):
             args = argparse.Namespace(
                 run_dir=str(run_dir),
                 compare=None,
-                tests="fixtures/tests_fsdb.json",
+                tests="fixtures/custom.json",
             )
             load_tests_mock = mock.Mock(return_value=[self._sample_test("sample")])
 
@@ -616,7 +603,7 @@ class PerfHelpersTest(unittest.TestCase):
                 os.chdir(previous_cwd)
 
         self.assertEqual(exit_code, 0)
-        load_tests_mock.assert_called_once_with((run_from / "fixtures/tests_fsdb.json").resolve())
+        load_tests_mock.assert_called_once_with((run_from / "fixtures/custom.json").resolve())
 
     def test_cmd_list_outputs_names_only(self) -> None:
         args = argparse.Namespace(filter=None, tests=str(perf.TESTS_PATH))

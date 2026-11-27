@@ -35,7 +35,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Verify generated RTL FSDB benchmark artifacts exist."
     )
-    parser.add_argument("catalog", help="path to bench/e2e/tests_fsdb.json")
+    parser.add_argument("catalog", help="path to the generated FSDB benchmark catalog")
     parser.add_argument(
         "--filter",
         help="optional regular expression selecting benchmark test names to verify",

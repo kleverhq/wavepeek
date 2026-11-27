@@ -27,6 +27,7 @@ from common import (
     relative_to,
     resolve_ref,
     run_command,
+    run_output,
     tool_version,
     utc_now,
     write_json,
@@ -55,10 +56,10 @@ class CaptureSession:
 def support_files_missing(tooling_root: pathlib.Path) -> list[str]:
     required = [
         "tools/fsdb/check_fsdb_env.py",
-        "tools/fsdb/generate_bench_catalog.py",
+        "bench/e2e/generate_catalog.py",
+        "bench/e2e/tests.json",
         "tools/fsdb/prepare_fsdb_fixtures.sh",
         "tools/fsdb/check_fsdb_bench_artifacts.py",
-        "bench/e2e/tests_fsdb.json",
     ]
     return [path for path in required if not (tooling_root / path).is_file()]
 
@@ -297,17 +298,17 @@ def prepare_shm(session: CaptureSession) -> None:
 
 def run_e2e_many(
     *,
-    name: str,
+    format_name: str,
     sessions: Sequence[CaptureSession],
     run_dir: pathlib.Path,
     log_path: pathlib.Path,
     binary_path: str,
-    tests_path: pathlib.Path | None = None,
     command_prefix: Sequence[str] = (),
 ) -> None:
     if not sessions:
         return
     first = sessions[0]
+    name = f"e2e-{format_name}"
     args = [
         *command_prefix,
         "python3",
@@ -317,8 +318,11 @@ def run_e2e_many(
         "--run-dir",
         str(run_dir),
     ]
-    if tests_path is not None:
-        args.extend(["--tests", str(tests_path)])
+    if format_name != "fst":
+        catalog = run_output(
+            ["just", "generate-bench-e2e-catalog", format_name], cwd=first.tooling_root,
+        )
+        args.extend(["--tests", catalog.stdout.strip()])
     if first.strict:
         args.append("--strict")
     elif first.record_inputs:
@@ -379,12 +383,11 @@ def run_e2e_vcd_many(
     log_path: pathlib.Path,
 ) -> None:
     run_e2e_many(
-        name="e2e-vcd",
+        format_name="vcd",
         sessions=sessions,
         run_dir=run_dir,
         log_path=log_path,
         binary_path="target/release/wavepeek",
-        tests_path=sessions[0].tooling_root / "bench/e2e/tests_vcd.json",
     )
 
 
@@ -403,7 +406,7 @@ def run_e2e_fst_many(
     log_path: pathlib.Path,
 ) -> None:
     run_e2e_many(
-        name="e2e-fst",
+        format_name="fst",
         sessions=sessions,
         run_dir=run_dir,
         log_path=log_path,
@@ -429,12 +432,11 @@ def run_e2e_fsdb_many(
     if not active_sessions:
         return
     run_e2e_many(
-        name="e2e-fsdb",
+        format_name="fsdb",
         sessions=active_sessions,
         run_dir=run_dir,
         log_path=log_path,
         binary_path="target/fsdb/release/wavepeek",
-        tests_path=active_sessions[0].tooling_root / "bench/e2e/tests_fsdb.json",
     )
 
 
@@ -446,12 +448,11 @@ def run_e2e_shm_many(
 ) -> None:
     root = sessions[0].tooling_root
     run_e2e_many(
-        name="e2e-shm",
+        format_name="shm",
         sessions=sessions,
         run_dir=run_dir,
         log_path=log_path,
         binary_path="target/shm/release/wavepeek",
-        tests_path=root / "bench/e2e/tests_shm.json",
         command_prefix=("bash", str(root / "tools/shm/with_shm_env.sh")),
     )
 

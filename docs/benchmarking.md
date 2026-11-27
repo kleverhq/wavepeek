@@ -16,7 +16,7 @@ Use `./dev just bench-gate <baseline-ref> <revised-ref>` for diagnostics. For se
 
 The full E2E recipes are `bench-e2e-run` for FST, `bench-e2e-vcd-run` for VCD, `bench-e2e-fsdb-run` for FSDB, and `bench-e2e-shm-run` for SHM. Run each through `./dev` in its profile. The full recipes and release gate use the same format catalogs and fail on a missing or failed scenario or a timeout. Input preparation and checksums run before timing. Run manifests contain the catalog and input SHA-256 checksums. The container pins the original fixture corpus by revision and verifies its published checksums during installation.
 
-Maintain the FST workload in `bench/e2e/tests.json` and regenerate the derived catalogs with the corresponding `just` recipes. Use at least ten measured runs and five warmups for release-gate workloads. The short CI smoke saves checked payloads under `tmp/bench-smoke/`.
+Maintain the FST workload in `bench/e2e/tests.json`. Each derived-format run generates a catalog under `tmp/bench-catalogs/`. The run manifest records its path and checksum. Use at least ten measured runs and five warmups for release-gate workloads. The short CI smoke saves checked payloads under `tmp/bench-smoke/`.
 
 Use selectors that both release revisions accept. Twelve large selection cases use ordinary signal paths in place of legacy array-element selectors. This keeps the same selection counts and lets the gate run one command per case against both revisions. CLI regressions cover indexed selectors.
 

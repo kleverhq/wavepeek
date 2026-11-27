@@ -99,7 +99,7 @@ class BenchGateHelperTest(unittest.TestCase):
         revised = common.FsdbPlan(
             capture=False,
             status="unsupported",
-            reason="missing tests_fsdb.json",
+            reason="missing catalog generator",
         )
         with self.assertRaises(common.BenchGateError):
             capture.resolve_gate_fsdb_plan(baseline, revised, mode="auto")
@@ -635,8 +635,16 @@ class BenchGateHelperTest(unittest.TestCase):
             tooling = root / "tooling"
             checkout.mkdir()
             tooling.mkdir()
+
+            def generated_catalog(args, *, cwd):
+                self.assertEqual(args[:2], ["just", "generate-bench-e2e-catalog"])
+                self.assertEqual(cwd, tooling)
+                path = tooling / "tmp/bench-catalogs" / args[2] / "tests.json"
+                return mock.Mock(stdout=f"{path}\n")
+
             with (
                 mock.patch.object(capture, "run_command", side_effect=fake_run_command),
+                mock.patch.object(capture, "run_output", side_effect=generated_catalog),
                 mock.patch.object(capture, "tool_version", return_value="tool 1.0"),
             ):
                 result = capture.capture_checkout(
@@ -648,9 +656,8 @@ class BenchGateHelperTest(unittest.TestCase):
                     source_sha="abc123",
                     fsdb_mode="auto",
                     fsdb_plan=common.FsdbPlan(
-                        capture=False,
-                        status="skipped",
-                        reason="test skip",
+                        capture=True,
+                        status="available",
                     ),
                     vcd_mode="always",
                     shm_mode="always",
@@ -659,13 +666,17 @@ class BenchGateHelperTest(unittest.TestCase):
 
         self.assertEqual(result.manifest["suites"]["e2e-fst"]["status"], "passed")
         self.assertEqual(result.manifest["suites"]["e2e-vcd"]["status"], "passed")
+        self.assertEqual(result.manifest["suites"]["e2e-fsdb"]["status"], "passed")
         self.assertEqual(result.manifest["suites"]["e2e-shm"]["status"], "passed")
         self.assertEqual(result.manifest["binary_sha"], "abc123")
         self.assertEqual(result.manifest["tooling_sha"], "toolsha")
         by_name = {call[0]: call for call in calls}
         self.assertIn("prepare-waveform-fixtures", by_name["prepare-waveform-fixtures"][1])
         self.assertIn("prepare-vcd-ondas-fixtures", by_name["vcd-prepare-fixtures"][1])
-        self.assertIn(str(tooling / "bench/e2e/tests_vcd.json"), by_name["bench-e2e-vcd"][1])
+        for format_name in ("vcd", "fsdb", "shm"):
+            args = by_name[f"bench-e2e-{format_name}"][1]
+            path = tooling / "tmp/bench-catalogs" / format_name / "tests.json"
+            self.assertEqual(args[args.index("--tests") + 1], str(path))
         self.assertEqual(by_name["build-release-shm"][2], checkout)
         self.assertIn("--record-inputs", by_name["bench-e2e-shm"][1])
         e2e_call = by_name["bench-e2e-fst"]
@@ -830,10 +841,13 @@ class BenchGateHelperTest(unittest.TestCase):
                     ],
                 },
             )
-            with mock.patch.object(
-                capture, "run_command",
-                return_value=common.CommandResult("e2e-shm", [], str(root), 1),
-            ) as run:
+            with (
+                mock.patch.object(capture, "run_output", return_value=mock.Mock(stdout="tests.json\n")),
+                mock.patch.object(
+                    capture, "run_command",
+                    return_value=common.CommandResult("e2e-shm", [], str(root), 1),
+                ) as run,
+            ):
                 capture.run_e2e_shm_many(sessions, run_dir=run_dir, log_path=root / "run.log")
             self.assertIn("--strict", run.call_args.args[1])
             self.assertFalse(run.call_args.kwargs["check"])
@@ -844,9 +858,12 @@ class BenchGateHelperTest(unittest.TestCase):
             report = common.read_json(manifest_path)
             report["binaries"][0].update(wavepeek_json_count=1, hyperfine_json_count=1, failure_count=0)
             common.write_json(manifest_path, report)
-            with mock.patch.object(
-                capture, "run_command",
-                return_value=common.CommandResult("e2e-shm", [], str(root), 1),
+            with (
+                mock.patch.object(capture, "run_output", return_value=mock.Mock(stdout="tests.json\n")),
+                mock.patch.object(
+                    capture, "run_command",
+                    return_value=common.CommandResult("e2e-shm", [], str(root), 1),
+                ),
             ):
                 capture.run_e2e_shm_many(sessions, run_dir=run_dir, log_path=root / "run.log")
             for session in sessions:

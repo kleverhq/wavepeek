@@ -467,6 +467,34 @@ fn fsdb_extract_generic_json_matches_vcd_sampling_contract() {
 }
 
 #[test]
+fn fsdb_apb_extraction_matches_vcd() {
+    require_vcd2fsdb();
+    let directory = tempfile::tempdir().unwrap();
+    let fsdb = convert_vcd_fixture(directory.path(), "extract_apb3.vcd");
+    let vcd = fixture_path("extract_apb3.vcd");
+    let extract = |waves: &str| {
+        run_json_success(&[
+            "extract",
+            "apb",
+            "--waves",
+            waves,
+            "--scope",
+            "top",
+            "--profile",
+            "apb3",
+            "--include",
+            "^apb3_",
+            "--json",
+        ])
+    };
+    let expected = extract(&path_str(&vcd));
+    let actual = extract(&path_str(&fsdb));
+    assert!(!expected["data"].as_array().unwrap().is_empty());
+    assert_eq!(actual["data"], expected["data"]);
+    assert_eq!(actual["diagnostics"], json!([]));
+}
+
+#[test]
 fn fsdb_value_json_matches_vcd_sampling_contract() {
     let fixtures = GeneratedFsdbFixtures::new();
     let fsdb_fixture = path_str(&fixtures.value_vectors());

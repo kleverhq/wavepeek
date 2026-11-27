@@ -103,34 +103,6 @@ class BenchGateHelperTest(unittest.TestCase):
         with self.assertRaises(common.BenchGateError):
             capture.resolve_gate_fsdb_plan(baseline, revised, mode="auto")
 
-    def test_fsdb_catalog_filter_skips_vcd_style_scalar_elements(self) -> None:
-        supported = {"command": ["wavepeek", "value", "--signals", "top.bus"]}
-        unsupported = {"command": ["wavepeek", "value", "--signals", "top.mem.[0]"]}
-
-        self.assertTrue(capture.fsdb_catalog_test_is_supported(supported))
-        self.assertFalse(capture.fsdb_catalog_test_is_supported(unsupported))
-
-    def test_write_runnable_fsdb_catalog_records_skipped_tests(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = pathlib.Path(temp_dir)
-            checkout = root / "checkout"
-            catalog_dir = checkout / "bench/e2e"
-            catalog_dir.mkdir(parents=True)
-            (catalog_dir / "tests_fsdb.json").write_text(
-                '{"tests":[{"name":"ok","command":["wavepeek","info"]},'
-                '{"name":"skip","command":["wavepeek","value","top.mem.[0]"]}]}\n',
-                encoding="utf-8",
-            )
-
-            output, skipped = capture.write_runnable_fsdb_catalog(
-                tooling_root=checkout,
-                capture_dir=root / "capture",
-            )
-            payload = common.read_json(output)
-
-        self.assertEqual(skipped, ["skip"])
-        self.assertEqual([test["name"] for test in payload["tests"]], ["ok"])
-
     def test_e2e_artifact_identity_rejects_partial_intersection(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)
@@ -691,6 +663,44 @@ class BenchGateHelperTest(unittest.TestCase):
         self.assertIn("--binary", e2e_call[1])
         self.assertIn(f"subject={checkout / 'target/release/wavepeek'}", e2e_call[1])
 
+    def test_first_baseline_requires_feature_in_revised(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            baseline, revised = root / "baseline", root / "revised"
+            baseline.mkdir()
+            revised.mkdir()
+            for feature in ("fsdb", "shm"):
+                (baseline / "Cargo.toml").write_text("[features]\n")
+                (revised / "Cargo.toml").write_text(f"[features]\n{feature} = []\n")
+                self.assertTrue(gate.first_baseline(baseline, revised, feature))
+                self.assertFalse(gate.first_baseline(revised, revised, feature))
+                with self.assertRaisesRegex(common.BenchGateError, feature):
+                    gate.first_baseline(revised, baseline, feature)
+
+    def test_recorded_inputs_must_match_for_same_format_comparison(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            baseline, revised = root / "first" / "baseline", root / "second" / "revised"
+            for run in (baseline, revised):
+                run.mkdir(parents=True)
+                for suffix in ("hyperfine", "wavepeek"):
+                    (run / f"case.{suffix}.json").write_text("{}")
+            self.assertEqual(
+                compare.compare_suite_inputs(baseline, revised, required=False), "unverified"
+            )
+            with self.assertRaisesRegex(common.BenchGateError, "checksums missing"):
+                compare.compare_suite_inputs(baseline, revised, required=True)
+            for run in (baseline, revised):
+                common.write_json(
+                    run.parent / "manifest.json",
+                    {
+                        "kind": "wavepeek-e2e-bench-run",
+                        "inputs": {"tests": ["case"], "files": {"trace.vcd": run.name}},
+                    },
+                )
+            with self.assertRaisesRegex(common.BenchGateError, "inputs or catalog differ"):
+                compare.compare_suite_inputs(baseline, revised, required=True)
+
     def test_gate_runs_preparation_before_paired_measurement(self) -> None:
         order: list[str] = []
 
@@ -734,7 +744,6 @@ class BenchGateHelperTest(unittest.TestCase):
                 mock.patch.object(gate, "prepare_vcd", side_effect=record("prepare-vcd")),
                 mock.patch.object(gate, "build_release_fsdb", side_effect=record("build-fsdb")),
                 mock.patch.object(gate, "prepare_fsdb", side_effect=record("prepare-fsdb")),
-                mock.patch.object(gate, "write_fsdb_capture_catalog", side_effect=record("fsdb-catalog")),
                 mock.patch.object(gate, "run_e2e_fst_many", side_effect=lambda *a, **k: order.append("e2e-fst-many")),
                 mock.patch.object(gate, "run_e2e_vcd_many", side_effect=lambda *a, **k: order.append("e2e-vcd-many")),
                 mock.patch.object(gate, "run_e2e_fsdb_many", side_effect=lambda *a, **k: order.append("e2e-fsdb-many")),
@@ -756,8 +765,7 @@ class BenchGateHelperTest(unittest.TestCase):
                 "prepare-vcd-baseline",
                 "build-fsdb-baseline",
                 "build-fsdb-revised",
-                "prepare-fsdb-baseline",
-                "fsdb-catalog-revised",
+                "prepare-fsdb-revised",
                 "e2e-fst-many",
                 "e2e-vcd-many",
                 "e2e-fsdb-many",

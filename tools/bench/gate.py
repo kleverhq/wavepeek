@@ -13,15 +13,18 @@ from capture import (
     assess_fsdb,
     build_release,
     build_release_fsdb,
+    build_release_shm,
     finalize_capture,
     init_capture_session,
     prepare_fsdb,
+    prepare_shm,
     resolve_gate_fsdb_plan,
-    write_fsdb_capture_catalog,
     run_e2e_fsdb_many,
     run_e2e_fst_many,
+    run_e2e_shm_many,
     run_e2e_vcd_many,
     prepare_vcd,
+    source_supports_feature,
 )
 from common import (
     DEFAULT_TIMING_THRESHOLD_PCT,
@@ -29,6 +32,7 @@ from common import (
     GATE_SCHEMA_VERSION,
     REPO_ROOT,
     BenchGateError,
+    FsdbPlan,
     clone_checkout,
     enforce_clean_worktree,
     ensure_empty_dir,
@@ -64,6 +68,8 @@ def gate_compare_summary(compare_manifest: Mapping[str, Any]) -> dict[str, Any]:
                 "revised_failures",
                 "both_side_failures",
                 "integrity_errors",
+                "reason",
+                "input_identity",
             ):
                 if field in raw_suite:
                     summary[field] = raw_suite[field]
@@ -107,6 +113,13 @@ def render_gate_summary(manifest: Mapping[str, Any]) -> str:
                 "",
             ]
         )
+    if isinstance(compare_section, Mapping):
+        if compare_section.get("reason"):
+            lines.extend([str(compare_section["reason"]), ""])
+        for name, suite in compare_section.get("suites", {}).items():
+            detail = f" — {suite['reason']}" if suite.get("reason") else ""
+            lines.append(f"- `{name}` {suite['status']}{detail}")
+        lines.append("")
     lines.extend(
         [
             "See `baseline/`, `revised/`, and `compare/` for captured artifacts and logs.",
@@ -132,51 +145,102 @@ def gate_command(args: argparse.Namespace) -> int:
     )
     out_dir = out_dir.resolve()
     ensure_empty_dir(out_dir)
+    profile = getattr(args, "release_profile", None)
+    manifest = {
+        "schema_version": GATE_SCHEMA_VERSION,
+        "kind": "wavepeek-bench-gate",
+        "generated_at_utc": utc_now().isoformat().replace("+00:00", "Z"),
+        "baseline_ref": args.baseline_ref,
+        "baseline_sha": baseline_sha,
+        "revised_ref": args.revised_ref,
+        "revised_sha": revised_sha,
+        "source_root": str(source_root),
+        "tooling_sha": tooling_sha,
+        "release_profile": profile,
+        "timing_threshold_pct": args.max_negative_delta_pct,
+        "timing_threshold_seconds": args.max_negative_delta_seconds,
+        "timing_metric": "median",
+    }
+    try:
+        exit_code = run_gate(args, manifest, out_dir)
+    except BenchGateError as error:
+        manifest["compare"] = {"status": "failed", "reason": str(error)}
+        exit_code = 1
+        print(f"error: bench-gate: {error}", file=sys.stderr)
+    write_json(out_dir / "manifest.json", manifest)
+    (out_dir / "summary.md").write_text(render_gate_summary(manifest), encoding="utf-8")
+    print(f"gate written to {out_dir}")
+    return exit_code
+
+
+def first_baseline(baseline: pathlib.Path, revised: pathlib.Path, feature: str) -> bool:
+    if not source_supports_feature(revised, feature):
+        raise BenchGateError(f"revised ref lacks the required {feature} feature")
+    return not source_supports_feature(baseline, feature)
+
+
+def run_gate(args: argparse.Namespace, manifest: dict[str, Any], out_dir: pathlib.Path) -> int:
+    source_root = pathlib.Path(manifest["source_root"])
+    profile = manifest["release_profile"]
+    fsdb_mode = {"public": "never", "private": "always"}.get(profile, args.fsdb)
+    vcd_mode = "always" if profile else args.vcd
+    manifest.update(fsdb_mode=fsdb_mode, vcd_mode=vcd_mode)
     checkouts_dir = out_dir / "checkouts"
     checkouts_dir.mkdir(parents=True, exist_ok=True)
     baseline_checkout = checkouts_dir / "baseline"
     revised_checkout = checkouts_dir / "revised"
-    clone_checkout(source_root, baseline_sha, baseline_checkout)
-    clone_checkout(source_root, revised_sha, revised_checkout)
+    clone_checkout(source_root, manifest["baseline_sha"], baseline_checkout)
+    clone_checkout(source_root, manifest["revised_sha"], revised_checkout)
 
     preflight_dir = out_dir / "logs"
-    baseline_fsdb = assess_fsdb(
-        baseline_checkout,
-        tooling_root=source_root,
-        log_path=preflight_dir / "baseline-fsdb-check-env.log",
-        mode=args.fsdb,
+    new_fsdb = profile == "private" and first_baseline(baseline_checkout, revised_checkout, "fsdb")
+    new_shm = profile == "private" and first_baseline(baseline_checkout, revised_checkout, "shm")
+    baseline_fsdb = (
+        FsdbPlan(capture=False, status="first-baseline", reason="baseline ref lacks the fsdb feature")
+        if new_fsdb
+        else assess_fsdb(
+            baseline_checkout,
+            tooling_root=source_root,
+            log_path=preflight_dir / "baseline-fsdb-check-env.log",
+            mode=fsdb_mode,
+        )
     )
     revised_fsdb = assess_fsdb(
         revised_checkout,
         tooling_root=source_root,
         log_path=preflight_dir / "revised-fsdb-check-env.log",
-        mode=args.fsdb,
+        mode=fsdb_mode,
     )
-    gate_fsdb_plan = resolve_gate_fsdb_plan(baseline_fsdb, revised_fsdb, mode=args.fsdb)
+    gate_fsdb_plan = (
+        revised_fsdb if new_fsdb else resolve_gate_fsdb_plan(baseline_fsdb, revised_fsdb, mode=fsdb_mode)
+    )
+    manifest["fsdb_plan"] = dataclasses.asdict(gate_fsdb_plan)
 
     baseline = init_capture_session(
         tooling_root=source_root,
-        tooling_sha=tooling_sha,
+        tooling_sha=manifest["tooling_sha"],
         binary_checkout=baseline_checkout,
         capture_dir=out_dir / "baseline",
         source_ref=args.baseline_ref,
-        source_sha=baseline_sha,
-        fsdb_mode=args.fsdb,
-        fsdb_plan=gate_fsdb_plan,
+        source_sha=manifest["baseline_sha"],
+        fsdb_mode=fsdb_mode,
+        fsdb_plan=baseline_fsdb if new_fsdb else gate_fsdb_plan,
         environment_note=args.environment_note,
         binary_label="baseline",
+        strict=bool(profile),
     )
     revised = init_capture_session(
         tooling_root=source_root,
-        tooling_sha=tooling_sha,
+        tooling_sha=manifest["tooling_sha"],
         binary_checkout=revised_checkout,
         capture_dir=out_dir / "revised",
         source_ref=args.revised_ref,
-        source_sha=revised_sha,
-        fsdb_mode=args.fsdb,
+        source_sha=manifest["revised_sha"],
+        fsdb_mode=fsdb_mode,
         fsdb_plan=gate_fsdb_plan,
         environment_note=args.environment_note,
         binary_label="revised",
+        strict=bool(profile),
     )
 
     # Keep preparation work out of the measured section. Build both refs first,
@@ -184,20 +248,29 @@ def gate_command(args: argparse.Namespace) -> int:
     # in same-format pairs before comparing artifacts.
     build_release(baseline)
     build_release(revised)
-    if args.vcd == "always":
+    if vcd_mode == "always":
         prepare_vcd(baseline)
     if gate_fsdb_plan.capture:
         build_release_fsdb(baseline)
         build_release_fsdb(revised)
-        prepare_fsdb(baseline)
-        write_fsdb_capture_catalog(revised)
+        prepare_fsdb(revised)
+    shm_sessions = [revised] if new_shm else [baseline, revised]
+    if profile == "private":
+        if new_shm:
+            baseline.suites["e2e-shm"] = {
+                "status": "first-baseline",
+                "reason": "baseline ref lacks the shm feature",
+            }
+        for session in shm_sessions:
+            build_release_shm(session)
+        prepare_shm(revised)
 
     run_e2e_fst_many(
         [baseline, revised],
         run_dir=out_dir / "e2e-fst",
         log_path=out_dir / "logs" / "bench-e2e-fst.log",
     )
-    if args.vcd == "always":
+    if vcd_mode == "always":
         run_e2e_vcd_many(
             [baseline, revised],
             run_dir=out_dir / "e2e-vcd",
@@ -208,6 +281,12 @@ def gate_command(args: argparse.Namespace) -> int:
             [baseline, revised],
             run_dir=out_dir / "e2e-fsdb",
             log_path=out_dir / "logs" / "bench-e2e-fsdb.log",
+        )
+    if profile == "private":
+        run_e2e_shm_many(
+            shm_sessions,
+            run_dir=out_dir / "e2e-shm",
+            log_path=out_dir / "logs" / "bench-e2e-shm.log",
         )
 
     finalize_capture(baseline)
@@ -220,45 +299,12 @@ def gate_command(args: argparse.Namespace) -> int:
         tooling_root=source_root,
         timing_threshold_pct=args.max_negative_delta_pct,
         timing_threshold_seconds=args.max_negative_delta_seconds,
+        release_profile=profile,
     )
 
     status = "passed" if compare.exit_code == 0 else "failed"
     compare_summary = gate_compare_summary(compare.manifest)
-    manifest: dict[str, Any] = {
-        "schema_version": GATE_SCHEMA_VERSION,
-        "kind": "wavepeek-bench-gate",
-        "generated_at_utc": utc_now().isoformat().replace("+00:00", "Z"),
-        "baseline_ref": args.baseline_ref,
-        "baseline_sha": baseline_sha,
-        "revised_ref": args.revised_ref,
-        "revised_sha": revised_sha,
-        "source_root": str(source_root),
-        "tooling_sha": tooling_sha,
-        "fsdb_mode": args.fsdb,
-        "vcd_mode": args.vcd,
-        "fsdb_plan": dataclasses.asdict(gate_fsdb_plan),
-        "timing_threshold_pct": args.max_negative_delta_pct,
-        "timing_threshold_seconds": args.max_negative_delta_seconds,
-        "timing_metric": "median",
-        "compare": {"status": status, "path": "compare", **compare_summary},
-        "execution_order": [
-            "build baseline release",
-            "build revised release",
-            *(["prepare persistent RTL VCD fixtures"] if args.vcd == "always" else []),
-            "build baseline fsdb release if enabled",
-            "build revised fsdb release if enabled",
-            "prepare current fsdb fixtures if enabled",
-            "write revised fsdb runnable catalog if enabled",
-            "run FST e2e with labeled round-robin binaries",
-            *(["run VCD e2e with labeled round-robin binaries"] if args.vcd == "always" else []),
-            "run FSDB e2e with labeled round-robin binaries if enabled",
-            "compare artifacts",
-            "confirm same-format timing outliers with best samples if needed",
-        ],
-    }
-    write_json(out_dir / "manifest.json", manifest)
-    (out_dir / "summary.md").write_text(render_gate_summary(manifest), encoding="utf-8")
-    print(f"gate written to {out_dir}")
+    manifest["compare"] = {"status": status, "path": "compare", **compare_summary}
     return compare.exit_code
 
 
@@ -270,6 +316,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--out-dir", type=pathlib.Path)
     parser.add_argument("--fsdb", choices=("auto", "always", "never"), default="auto")
     parser.add_argument("--vcd", choices=("always", "never"), default="never")
+    parser.add_argument("--release-profile", choices=("public", "private"))
     parser.add_argument(
         "--max-negative-delta-pct",
         type=float,

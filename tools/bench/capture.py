@@ -48,8 +48,7 @@ class CaptureSession:
     logs_dir: pathlib.Path
     commands: list[CommandResult]
     suites: dict[str, dict[str, Any]]
-    fsdb_catalog: pathlib.Path | None = None
-    fsdb_skipped_tests: list[str] = dataclasses.field(default_factory=list)
+    strict: bool = False
 
 
 def support_files_missing(tooling_root: pathlib.Path) -> list[str]:
@@ -63,14 +62,14 @@ def support_files_missing(tooling_root: pathlib.Path) -> list[str]:
     return [path for path in required if not (tooling_root / path).is_file()]
 
 
-def source_supports_fsdb(binary_checkout: pathlib.Path) -> bool:
+def source_supports_feature(binary_checkout: pathlib.Path, feature: str) -> bool:
     cargo_toml = binary_checkout / "Cargo.toml"
     try:
         payload = tomllib.loads(cargo_toml.read_text(encoding="utf-8"))
     except (FileNotFoundError, tomllib.TOMLDecodeError) as error:
-        raise BenchGateError(f"cannot read Cargo.toml for FSDB support check: {cargo_toml}: {error}") from error
+        raise BenchGateError(f"cannot read Cargo.toml for {feature.upper()} support check: {cargo_toml}: {error}") from error
     features = payload.get("features")
-    return isinstance(features, dict) and "fsdb" in features
+    return isinstance(features, dict) and feature in features
 
 
 def assess_fsdb(
@@ -90,7 +89,7 @@ def assess_fsdb(
             raise BenchGateError(reason)
         return FsdbPlan(capture=False, status="unsupported", reason=reason)
 
-    if not source_supports_fsdb(binary_checkout):
+    if not source_supports_feature(binary_checkout, "fsdb"):
         reason = f"binary source ref does not define the fsdb feature: {binary_checkout}"
         if mode == "always":
             raise BenchGateError(reason)
@@ -145,50 +144,6 @@ def resolve_gate_fsdb_plan(
         "FSDB support is asymmetric between baseline and revised refs while Verdi appears available; "
         "use --fsdb=never only if this release intentionally skips FSDB performance review"
     )
-
-
-def fsdb_catalog_test_is_supported(test: Mapping[str, Any]) -> bool:
-    command = test.get("command")
-    if not isinstance(command, list):
-        return True
-    # Converted RTL FSDB fixtures expose packed arrays as names such as
-    # `foo[0] [31:0]`, while the FST/VCD-derived benchmark catalog uses
-    # `foo.[0]`. Current wavepeek releases cannot resolve those VCD-style
-    # scalar element names in FSDB dumps, so gate FSDB capture omits those
-    # scenarios and records the skip list in the capture manifest.
-    return not any(isinstance(token, str) and ".[" in token for token in command)
-
-
-def write_runnable_fsdb_catalog(
-    *,
-    tooling_root: pathlib.Path,
-    capture_dir: pathlib.Path,
-) -> tuple[pathlib.Path, list[str]]:
-    source = tooling_root / "bench/e2e/tests_fsdb.json"
-    payload = read_json(source)
-    tests = payload.get("tests")
-    if not isinstance(tests, list):
-        raise BenchGateError(f"FSDB benchmark catalog must contain a tests array: {source}")
-
-    kept: list[Any] = []
-    skipped: list[str] = []
-    for test in tests:
-        if not isinstance(test, dict):
-            kept.append(test)
-            continue
-        if fsdb_catalog_test_is_supported(test):
-            kept.append(test)
-        else:
-            skipped.append(str(test.get("name", "<unnamed>")))
-
-    if not kept:
-        raise BenchGateError(f"FSDB benchmark catalog has no runnable tests after filtering: {source}")
-
-    generated = dict(payload)
-    generated["tests"] = kept
-    output = capture_dir / "generated" / "tests_fsdb.runnable.json"
-    write_json(output, generated)
-    return output, skipped
 
 
 def capture_environment(*, tooling_root: pathlib.Path, binary_checkout: pathlib.Path) -> dict[str, Any]:
@@ -246,6 +201,7 @@ def init_capture_session(
     fsdb_plan: FsdbPlan,
     environment_note: str,
     binary_label: str = "subject",
+    strict: bool = False,
 ) -> CaptureSession:
     ensure_empty_dir(capture_dir)
     logs_dir = capture_dir / "logs"
@@ -264,6 +220,7 @@ def init_capture_session(
         logs_dir=logs_dir,
         commands=[],
         suites={},
+        strict=strict,
     )
 
 
@@ -271,7 +228,7 @@ def build_release(session: CaptureSession) -> None:
     session.commands.append(
         run_command(
             "build-release",
-            ["cargo", "build", "--release"],
+            ["cargo", "build", "--release", "--locked"],
             cwd=session.binary_checkout,
             log_path=session.logs_dir / "build-release.log",
         )
@@ -292,7 +249,7 @@ def build_release_fsdb(session: CaptureSession) -> None:
     session.commands.append(
         run_command(
             "build-release-fsdb",
-            ["cargo", "build", "--release", "--features", "fsdb"],
+            ["cargo", "build", "--release", "--locked", "--features", "fsdb"],
             cwd=session.binary_checkout,
             log_path=session.logs_dir / "build-release-fsdb.log",
             env={"CARGO_TARGET_DIR": "target/fsdb"},
@@ -300,49 +257,39 @@ def build_release_fsdb(session: CaptureSession) -> None:
     )
 
 
-def write_fsdb_capture_catalog(session: CaptureSession) -> None:
-    if not session.fsdb_plan.capture:
-        return
-    session.fsdb_catalog, session.fsdb_skipped_tests = write_runnable_fsdb_catalog(
-        tooling_root=session.tooling_root,
-        capture_dir=session.capture_dir,
-    )
-
-
 def prepare_fsdb(session: CaptureSession) -> None:
-    if not session.fsdb_plan.capture:
-        return
-    session.commands.append(
-        run_command(
-            "fsdb-check-env-required",
-            ["python3", "-B", "tools/fsdb/check_fsdb_env.py", "--require"],
-            cwd=session.tooling_root,
-            log_path=session.logs_dir / "fsdb-check-env-required.log",
-        )
-    )
-    session.commands.append(
-        run_command(
-            "fsdb-check-catalog",
-            ["python3", "-B", "tools/fsdb/generate_bench_catalog.py", "--check"],
-            cwd=session.tooling_root,
-            log_path=session.logs_dir / "fsdb-check-catalog.log",
-        )
-    )
     session.commands.append(
         run_command(
             "fsdb-prepare-fixtures",
-            ["bash", "tools/fsdb/prepare_fsdb_fixtures.sh"],
+            ["just", "prepare-and-check-fsdb-ondas-fixtures"],
             cwd=session.tooling_root,
             log_path=session.logs_dir / "fsdb-prepare-fixtures.log",
         )
     )
-    write_fsdb_capture_catalog(session)
+
+
+def build_release_shm(session: CaptureSession) -> None:
     session.commands.append(
         run_command(
-            "fsdb-check-artifacts",
-            ["python3", "-B", "tools/fsdb/check_fsdb_bench_artifacts.py", str(session.fsdb_catalog)],
+            "build-release-shm",
+            [
+                "bash", str(session.tooling_root / "tools/shm/with_shm_env.sh"),
+                "cargo", "build", "--release", "--locked", "--features", "shm",
+            ],
+            cwd=session.binary_checkout,
+            log_path=session.logs_dir / "build-release-shm.log",
+            env={"CARGO_TARGET_DIR": "target/shm"},
+        )
+    )
+
+
+def prepare_shm(session: CaptureSession) -> None:
+    session.commands.append(
+        run_command(
+            "shm-prepare-fixtures",
+            ["just", "prepare-shm-fixtures"],
             cwd=session.tooling_root,
-            log_path=session.logs_dir / "fsdb-check-artifacts.log",
+            log_path=session.logs_dir / "shm-prepare-fixtures.log",
         )
     )
 
@@ -355,11 +302,13 @@ def run_e2e_many(
     log_path: pathlib.Path,
     binary_path: str,
     tests_path: pathlib.Path | None = None,
+    command_prefix: Sequence[str] = (),
 ) -> None:
     if not sessions:
         return
     first = sessions[0]
     args = [
+        *command_prefix,
         "python3",
         "-B",
         "bench/e2e/perf.py",
@@ -369,6 +318,8 @@ def run_e2e_many(
     ]
     if tests_path is not None:
         args.extend(["--tests", str(tests_path)])
+    if first.strict:
+        args.append("--strict")
     for session in sessions:
         args.extend(
             [
@@ -381,13 +332,28 @@ def run_e2e_many(
         args,
         cwd=first.tooling_root,
         log_path=log_path,
+        check=not first.strict,
     )
+    completed = set()
+    run_manifest = run_dir / "manifest.json"
+    if result.returncode and run_manifest.is_file():
+        report = read_json(run_manifest)
+        count = report["test_count"]
+        completed = {
+            binary["label"]
+            for binary in report["binaries"]
+            if count == binary["wavepeek_json_count"] == binary["hyperfine_json_count"]
+            and not binary["failure_count"]
+        }
     for session in sessions:
         session.commands.append(result)
+        failed = result.returncode and session.binary_label not in completed
         session.suites[name] = {
-            "status": "passed",
+            "status": "failed" if failed else "passed",
             "path": relative_to(run_dir / session.binary_label, session.capture_dir),
         }
+        if failed:
+            session.suites[name]["reason"] = f"benchmark scenario or input failed; see {log_path}"
 
 
 def prepare_vcd(session: CaptureSession) -> None:
@@ -457,27 +423,32 @@ def run_e2e_fsdb_many(
     active_sessions = [session for session in sessions if session.fsdb_plan.capture]
     if not active_sessions:
         return
-    catalog = active_sessions[0].fsdb_catalog
-    if catalog is None:
-        raise BenchGateError("FSDB runnable catalog missing; call prepare_fsdb before run_e2e_fsdb")
     run_e2e_many(
         name="e2e-fsdb",
         sessions=active_sessions,
         run_dir=run_dir,
         log_path=log_path,
         binary_path="target/fsdb/release/wavepeek",
-        tests_path=catalog,
+        tests_path=active_sessions[0].tooling_root / "bench/e2e/tests_fsdb.json",
     )
-    for session in active_sessions:
-        if session.fsdb_catalog is None:
-            raise BenchGateError("FSDB runnable catalog missing from session manifest")
-        session.suites["e2e-fsdb"].update(
-            {
-                "filtered_catalog_path": relative_to(session.fsdb_catalog, session.capture_dir),
-                "skipped_tests": session.fsdb_skipped_tests,
-                "skipped_test_count": len(session.fsdb_skipped_tests),
-            }
-        )
+
+
+def run_e2e_shm_many(
+    sessions: Sequence[CaptureSession],
+    *,
+    run_dir: pathlib.Path,
+    log_path: pathlib.Path,
+) -> None:
+    root = sessions[0].tooling_root
+    run_e2e_many(
+        name="e2e-shm",
+        sessions=sessions,
+        run_dir=run_dir,
+        log_path=log_path,
+        binary_path="target/shm/release/wavepeek",
+        tests_path=root / "bench/e2e/tests_shm.json",
+        command_prefix=("bash", str(root / "tools/shm/with_shm_env.sh")),
+    )
 
 
 def run_e2e_fsdb(session: CaptureSession) -> None:

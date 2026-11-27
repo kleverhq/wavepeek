@@ -2,8 +2,6 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 
 export ONDAS_FIXTURES_DIR := `. ./.devcontainer/env_contract.sh; printf '%s\n' "$ONDAS_FIXTURES_DIR"`
 bench_e2e_fsdb_tests := "bench/e2e/tests_fsdb.json"
-bench_e2e_native_smoke_filter := "^(info_picorv32_ez|scope_scr1_all_depth7_json|signal_scr1_top_recursive_depth2_json|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$"
-bench_e2e_fsdb_smoke_artifact_filter := "^(fst0012-picorv32-test-ez-vcd|fst0027-scr1-max-axi-riscv-compliance)$"
 wavepeek_release_bin := "./target/release/wavepeek"
 wavepeek_fsdb_release_bin := "./target/fsdb/release/wavepeek"
 python := "python3 -B"
@@ -89,11 +87,11 @@ test-shm: prepare-shm-test-fixtures
 
 # Run selected SHM benchmark scenarios
 bench-e2e-shm-run filter="": (prepare-shm-fixtures filter) build-release-shm
-    bash tools/shm/with_shm_env.sh {{ python }} bench/e2e/perf.py run --binary subject=./target/shm/release/wavepeek --tests bench/e2e/tests_shm.json --filter '{{ filter }}'
+    bash tools/shm/with_shm_env.sh {{ python }} bench/e2e/perf.py run --strict --binary shm=./target/shm/release/wavepeek --tests bench/e2e/tests_shm.json --filter '{{ filter }}'
 
-# Run selected SHM benchmark smoke scenarios
-bench-e2e-shm-smoke: (prepare-shm-fixtures bench_e2e_native_smoke_filter) build-release-shm
-    bash tools/shm/with_shm_env.sh {{ python }} bench/e2e/perf.py run --binary subject=./target/shm/release/wavepeek --tests bench/e2e/tests_shm.json --out-dir tmp/bench-smoke/shm --filter '{{ bench_e2e_native_smoke_filter }}' --fail-fast --verbose
+# Smoke-test the SHM reader on a small RTL fixture
+bench-e2e-shm-smoke: prepare-shm-test-fixtures build-release-shm
+    bash tools/shm/with_shm_env.sh {{ python }} bench/e2e/smoke.py shm ./target/shm/release/wavepeek
 
 [private]
 run-if-verdi recipe: require-container
@@ -277,13 +275,6 @@ prepare-and-check-fsdb-ondas-fixtures: require-verdi
     just prepare-fsdb-fixtures
     {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}"
 
-# Prepare and verify the FSDB RTL artifacts required by benchmark smoke
-prepare-and-check-fsdb-smoke-ondas-fixtures: require-verdi
-    just check-ondas-fixtures
-    just check-bench-e2e-fsdb-catalog
-    bash tools/fsdb/prepare_fsdb_fixtures.sh --rtl-only --rtl-filter '{{ bench_e2e_fsdb_smoke_artifact_filter }}'
-    {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}" --filter '{{ bench_e2e_native_smoke_filter }}'
-
 # Build release binary with optional FSDB support
 build-release-fsdb: require-verdi
     CARGO_TARGET_DIR=target/fsdb cargo build --release --features fsdb
@@ -294,6 +285,7 @@ check-fsdb-build: require-verdi
     export CARGO_TARGET_DIR=target/fsdb; \
     cargo check --features fsdb; \
     cargo build --features fsdb; \
+    target/fsdb/debug/wavepeek --version; \
     readelf_output="$(readelf -d target/fsdb/debug/wavepeek)"; \
     for library in libnffr.so libnsys.so; do \
         library_path="$(readlink -f "$fsdb_libdir/$library")"; \
@@ -456,6 +448,10 @@ build-release: require-container
 bench-gate baseline_ref revised_ref="HEAD" fsdb="auto" vcd="never": require-container
     {{ python }} tools/bench/gate.py --baseline-ref "{{ baseline_ref }}" --revised-ref "{{ revised_ref }}" --fsdb "{{ fsdb }}" --vcd "{{ vcd }}"
 
+# Require the full benchmark matrix for the selected release profile
+bench-release-gate baseline_ref revised_ref="HEAD" profile="private": require-container
+    {{ python }} tools/bench/gate.py --baseline-ref "{{ baseline_ref }}" --revised-ref "{{ revised_ref }}" --release-profile "{{ profile }}"
+
 # Capture benchmark artifacts for one source ref
 bench-capture ref="HEAD" fsdb="auto" vcd="never": require-container
     {{ python }} tools/bench/capture.py --ref "{{ ref }}" --fsdb "{{ fsdb }}" --vcd "{{ vcd }}"
@@ -464,25 +460,26 @@ bench-capture ref="HEAD" fsdb="auto" vcd="never": require-container
 bench-compare golden_dir revised_dir: require-container
     {{ python }} tools/bench/compare.py --golden "{{ golden_dir }}" --revised "{{ revised_dir }}"
 
-[private]
+# Run the full FST benchmark suite
 bench-e2e-run: check-ondas-fixtures prepare-waveform-fixtures build-release
-    {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}"
+    {{ python }} bench/e2e/perf.py run --strict --binary fst="{{ wavepeek_release_bin }}"
 
-[private]
+# Run the full VCD benchmark suite
 bench-e2e-vcd-run: prepare-vcd-ondas-fixtures prepare-waveform-fixtures build-release
-    {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}" --tests bench/e2e/tests_vcd.json
+    {{ python }} bench/e2e/perf.py run --strict --binary vcd="{{ wavepeek_release_bin }}" --tests bench/e2e/tests_vcd.json
 
-[private]
+# Run the full FSDB benchmark suite
 bench-e2e-fsdb-run: prepare-and-check-fsdb-ondas-fixtures build-release-fsdb
-    {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_fsdb_release_bin }}" --tests "{{ bench_e2e_fsdb_tests }}"
+    {{ python }} bench/e2e/perf.py run --strict --binary fsdb="{{ wavepeek_fsdb_release_bin }}" --tests "{{ bench_e2e_fsdb_tests }}"
 
-# Run the FST benchmark smoke suite
-bench-e2e-smoke: check-ondas-fixtures build-release
-    {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}" --tests bench/e2e/tests_smoke.json --out-dir tmp/bench-smoke/fst --fail-fast --verbose
+# Smoke-test the public readers on a small RTL fixture
+bench-e2e-smoke: prepare-waveform-fixtures build-release
+    {{ python }} bench/e2e/smoke.py vcd "{{ wavepeek_release_bin }}"
+    {{ python }} bench/e2e/smoke.py fst "{{ wavepeek_release_bin }}"
 
-# Run selected FSDB benchmark smoke scenarios
-bench-e2e-fsdb-smoke: prepare-and-check-fsdb-smoke-ondas-fixtures build-release-fsdb
-    {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_fsdb_release_bin }}" --tests "{{ bench_e2e_fsdb_tests }}" --out-dir tmp/bench-smoke/fsdb --filter '{{ bench_e2e_native_smoke_filter }}' --fail-fast --verbose
+# Smoke-test the FSDB reader on a small RTL fixture
+bench-e2e-fsdb-smoke: prepare-fsdb-test-fixtures build-release-fsdb
+    {{ python }} bench/e2e/smoke.py fsdb "{{ wavepeek_fsdb_release_bin }}"
 
 # Check everything
 check: format-check lint check-actions check-bench-e2e-fsdb-catalog check-bench-e2e-vcd-catalog check-bench-e2e-shm-catalog check-build docs-site-check playground-test
@@ -494,8 +491,12 @@ ci: format-check lint check-actions check-bench-e2e-vcd-catalog test-aux coverag
     cargo test --doc
     @just run-if-verdi test-fsdb
     @just run-if-verdi bench-e2e-fsdb-smoke
+    @just run-if-xcelium check-shm-build
     @just run-if-xcelium test-shm
     @just run-if-xcelium bench-e2e-shm-smoke
+
+# Require native lint, loader checks, CLI tests, and smoke
+ci-native: require-verdi require-xcelium lint-fsdb lint-shm test-fsdb check-shm-build test-shm bench-e2e-fsdb-smoke bench-e2e-shm-smoke
 
 # Fix everything
 fix: format lint-fix

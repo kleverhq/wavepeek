@@ -12,11 +12,11 @@ For fork work, keep `origin` on the fork and name the upstream repository explic
 
 ## Native checks before opening a PR
 
-Before opening a PR, run native lint, tests, and smoke for each required SDK. Use the focused suites below, or run `./dev just ci` in a private profile and confirm in the log which native checks ran. Run the focused suite for any SDK whose checks CI skipped. The focused suites fail if the required SDK is unavailable.
+Before opening a PR, run `./dev just ci-native` in the private profile for changes that affect all readers. For a change confined to one native reader, use its focused suite below. These recipes require the applicable reader, run lint and CLI regressions, and launch the binary outside Cargo.
 
 ```sh
 ./dev just lint-fsdb test-fsdb bench-e2e-fsdb-smoke
-./dev just lint-shm test-shm bench-e2e-shm-smoke
+./dev just lint-shm check-shm-build test-shm bench-e2e-shm-smoke
 ```
 
 ## Upgrading a checkout with legacy WavePeek hooks

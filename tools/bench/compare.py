@@ -61,6 +61,29 @@ CROSS_FORMAT_FUNCTIONAL_IGNORES: tuple[tuple[str, str], ...] = (
     ),
 )
 
+SHM_FUNCTIONAL_IGNORES: tuple[tuple[str, str], ...] = (
+    (
+        "info_scr1_riscv_compliance",
+        "The converted SHM starts at zero; the source FST starts at 1ps.",
+    ),
+    (
+        "scope_scr1_all_depth7_json",
+        "SHM exposes indexed instance names as literal components.",
+    ),
+    (
+        "signal_scr1_top_recursive_all_json",
+        "SHM exposes converted declarations with generic kinds and literal indexed names.",
+    ),
+    (
+        "signal_scr1_top_recursive_depth2_json",
+        "SHM exposes converted declarations with generic kinds and literal indexed names.",
+    ),
+    (
+        "signal_scr1_top_recursive_filter_valid_json",
+        "SHM exposes converted declarations with generic kinds.",
+    ),
+)
+
 
 def e2e_artifact_stems(run_dir: pathlib.Path, *, functional_only: bool = False) -> set[str]:
     hyperfine = {path.name.removesuffix(HYPERFINE_SUFFIX) for path in run_dir.glob(f"*{HYPERFINE_SUFFIX}")}
@@ -104,19 +127,62 @@ def assert_matching_e2e_artifacts(golden: pathlib.Path, revised: pathlib.Path) -
         )
 
 
-def suite_dir(capture_dir: pathlib.Path, suite_name: str) -> pathlib.Path:
+def suite_entry(capture_dir: pathlib.Path, suite_name: str) -> Mapping[str, Any]:
     manifest_path = capture_dir / "manifest.json"
     if manifest_path.is_file():
         try:
             manifest = read_json(manifest_path)
         except BenchGateError:
-            return capture_dir / suite_name
+            return {}
         suites = manifest.get("suites")
         if isinstance(suites, Mapping):
             suite = suites.get(suite_name)
-            if isinstance(suite, Mapping) and isinstance(suite.get("path"), str):
-                return (capture_dir / str(suite["path"])).resolve()
+            if isinstance(suite, Mapping):
+                return suite
+    return {}
+
+
+def suite_dir(capture_dir: pathlib.Path, suite_name: str) -> pathlib.Path:
+    path = suite_entry(capture_dir, suite_name).get("path")
+    if isinstance(path, str):
+        return (capture_dir / path).resolve()
     return capture_dir / suite_name
+
+
+def suite_inputs(run_dir: pathlib.Path) -> dict[str, Any] | None:
+    manifest_path = run_dir.parent / "manifest.json"
+    if not manifest_path.is_file():
+        return None
+    manifest = read_json(manifest_path)
+    if manifest.get("kind") != "wavepeek-e2e-bench-run":
+        return None
+    inputs = manifest.get("inputs")
+    if inputs is not None and (
+        not isinstance(inputs, dict) or not inputs.get("tests") or not inputs.get("files")
+    ):
+        raise BenchGateError(f"invalid input identity in {manifest_path}")
+    return inputs
+
+
+def compare_suite_inputs(
+    golden: pathlib.Path, revised: pathlib.Path, *, required: bool
+) -> str:
+    golden_inputs = suite_inputs(golden)
+    revised_inputs = suite_inputs(revised)
+    if golden_inputs is None or revised_inputs is None:
+        if required:
+            raise BenchGateError("input checksums missing from one or both runs")
+        return "unverified"
+    if golden_inputs != revised_inputs:
+        raise BenchGateError("benchmark inputs or catalog differ between revisions")
+    assert_recorded_coverage(golden, golden_inputs)
+    assert_recorded_coverage(revised, revised_inputs)
+    return "matched"
+
+
+def assert_recorded_coverage(run_dir: pathlib.Path, inputs: Mapping[str, Any]) -> None:
+    if set(inputs["tests"]) != e2e_artifact_stems(run_dir) or any(run_dir.glob(f"*{FAILURE_SUFFIX}")):
+        raise BenchGateError(f"incomplete benchmark coverage in {run_dir}")
 
 
 def assert_e2e_subset(*, superset: pathlib.Path, subset: pathlib.Path) -> None:
@@ -125,7 +191,7 @@ def assert_e2e_subset(*, superset: pathlib.Path, subset: pathlib.Path) -> None:
     extra = sorted(subset_stems - superset_stems)
     if extra:
         raise BenchGateError(
-            f"cross-format FSDB artifact set has entries missing from FST capture {superset}: "
+            f"cross-format artifact set has entries missing from FST capture {superset}: "
             + ", ".join(extra)
         )
 
@@ -261,8 +327,6 @@ def run_e2e_compare(
 ) -> dict[str, Any]:
     if functional_only and allow_golden_extra:
         assert_e2e_subset(superset=golden, subset=revised)
-    elif functional_only:
-        assert_matching_e2e_artifacts(golden, revised)
     else:
         assert_matching_e2e_artifacts(golden, revised)
 
@@ -417,6 +481,7 @@ def compare_captures(
     tooling_root: pathlib.Path = REPO_ROOT,
     timing_threshold_pct: float = DEFAULT_TIMING_THRESHOLD_PCT,
     timing_threshold_seconds: float = DEFAULT_TIMING_THRESHOLD_SECONDS,
+    release_profile: str | None = None,
 ) -> CompareResult:
     if not golden_dir.is_dir():
         raise BenchGateError(f"golden capture directory does not exist: {golden_dir}")
@@ -429,69 +494,73 @@ def compare_captures(
     suites: dict[str, dict[str, Any]] = {}
     failures: list[str] = []
 
-    required = {
-        "e2e-fst": lambda: run_e2e_compare(
-            name="e2e-fst",
-            golden=suite_dir(golden_dir, "e2e-fst"),
-            revised=suite_dir(revised_dir, "e2e-fst"),
-            compare_dir=compare_dir,
-            tooling_root=tooling_root,
-            threshold_pct=timing_threshold_pct,
-            threshold_seconds=timing_threshold_seconds,
-            functional_only=False,
-        ),
-    }
-    for name, runner in required.items():
+    required = {"e2e-fst"}
+    if release_profile:
+        required.add("e2e-vcd")
+    if release_profile == "private":
+        required.update(("e2e-fsdb", "e2e-shm"))
+    names = ("e2e-fst", "e2e-vcd", "e2e-fsdb", "e2e-shm")
+    for name in names:
         golden = suite_dir(golden_dir, name)
         revised = suite_dir(revised_dir, name)
-        if not golden.is_dir() or not revised.is_dir():
-            suites[name] = {"status": "failed", "reason": "required suite missing from one or both captures"}
-            failures.append(name)
-            continue
+        base_entry = suite_entry(golden_dir, name)
+        revised_entry = suite_entry(revised_dir, name)
         try:
-            suite_result = runner()
+            failed = [
+                f"{label}: {entry.get('reason', 'capture failed')}"
+                for label, entry in (("baseline", base_entry), ("revised", revised_entry))
+                if entry.get("status") == "failed"
+            ]
+            if failed:
+                raise BenchGateError("; ".join(failed))
+            if base_entry.get("status") == "first-baseline" and revised.is_dir():
+                inputs = suite_inputs(revised)
+                if inputs is None:
+                    raise BenchGateError("input checksums missing from the first baseline capture")
+                assert_recorded_coverage(revised, inputs)
+                suite_result = {
+                    "status": "first-baseline",
+                    "reason": base_entry["reason"],
+                    "comparable_count": 0,
+                }
+            elif not golden.is_dir() and not revised.is_dir() and name not in required:
+                suite_result = {
+                    "status": "skipped",
+                    "reason": revised_entry.get("reason") or "optional suite missing from both captures",
+                }
+            elif not golden.is_dir() or not revised.is_dir():
+                raise BenchGateError("suite missing from one or both captures")
+            else:
+                input_status = compare_suite_inputs(golden, revised, required=bool(release_profile))
+                suite_result = run_e2e_compare(
+                    name=name,
+                    golden=golden,
+                    revised=revised,
+                    compare_dir=compare_dir,
+                    tooling_root=tooling_root,
+                    threshold_pct=timing_threshold_pct,
+                    threshold_seconds=timing_threshold_seconds,
+                    functional_only=False,
+                )
+                suite_result["input_identity"] = input_status
         except BenchGateError as error:
             suite_result = {"status": "failed", "reason": str(error)}
         suites[name] = suite_result
-        if suite_result.get("status") != "passed":
+        if suite_result.get("status") == "failed":
             failures.append(name)
 
-    for name in ("e2e-vcd", "e2e-fsdb"):
-        golden = suite_dir(golden_dir, name)
-        revised = suite_dir(revised_dir, name)
-        if not golden.is_dir() and not revised.is_dir():
-            suites[name] = {"status": "skipped", "reason": "optional suite missing from both captures"}
-            continue
-        if not golden.is_dir() or not revised.is_dir():
-            suites[name] = {"status": "failed", "reason": "suite exists in only one capture"}
-            failures.append(name)
-            continue
-        try:
-            suite_result = run_e2e_compare(
-                name=name,
-                golden=golden,
-                revised=revised,
-                compare_dir=compare_dir,
-                tooling_root=tooling_root,
-                threshold_pct=timing_threshold_pct,
-                threshold_seconds=timing_threshold_seconds,
-                functional_only=False,
-            )
-        except BenchGateError as error:
-            suite_result = {"status": "failed", "reason": str(error)}
-        suites[name] = suite_result
-        if suite_result.get("status") != "passed":
-            failures.append(name)
-
-    cross_checks = {
-        "cross-golden-fst-fsdb": golden_dir,
-        "cross-revised-fst-fsdb": revised_dir,
-    }
-    for name, capture_dir in cross_checks.items():
+    cross_formats = ("vcd", "fsdb", "shm") if release_profile else ("fsdb",)
+    cross_ignores = {"fsdb": CROSS_FORMAT_FUNCTIONAL_IGNORES, "shm": SHM_FUNCTIONAL_IGNORES}
+    cross_checks = (
+        (f"cross-{label}-fst-{fmt}", capture_dir, fmt)
+        for label, capture_dir in (("golden", golden_dir), ("revised", revised_dir))
+        for fmt in cross_formats
+    )
+    for name, capture_dir, fmt in cross_checks:
         fst = suite_dir(capture_dir, "e2e-fst")
-        fsdb = suite_dir(capture_dir, "e2e-fsdb")
-        if not fsdb.is_dir():
-            suites[name] = {"status": "skipped", "reason": "FSDB suite missing from capture"}
+        other = suite_dir(capture_dir, f"e2e-{fmt}")
+        if not other.is_dir():
+            suites[name] = {"status": "skipped", "reason": f"{fmt.upper()} suite missing from capture"}
             continue
         if not fst.is_dir():
             suites[name] = {"status": "failed", "reason": "FST suite missing from capture"}
@@ -501,14 +570,14 @@ def compare_captures(
             suite_result = run_e2e_compare(
                 name=name,
                 golden=fst,
-                revised=fsdb,
+                revised=other,
                 compare_dir=compare_dir,
                 tooling_root=tooling_root,
                 threshold_pct=timing_threshold_pct,
                 threshold_seconds=timing_threshold_seconds,
                 functional_only=True,
-                allow_golden_extra=True,
-                ignored_functional_tests=CROSS_FORMAT_FUNCTIONAL_IGNORES,
+                allow_golden_extra=fmt != "vcd",
+                ignored_functional_tests=cross_ignores.get(fmt, ()),
             )
         except BenchGateError as error:
             suite_result = {"status": "failed", "reason": str(error)}

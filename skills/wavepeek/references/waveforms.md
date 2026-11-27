@@ -74,9 +74,9 @@ A combined recording can contain a separate SHM directory. Some SystemC recordin
 
 WavePeek uses the recorded widths, values, and enum labels supplied by Ondas. Dynamic strings can be absent from the recorded hierarchy. A recording gap makes persistent values unavailable until they are recorded again.
 
-`wavepeek` performance depends on the waveform format, file size, selected command, requested signals, storage speed, and machine memory. Each waveform command opens the requested dump, executes the query, writes output, and exits. If a script runs many independent `wavepeek` commands, format setup costs are paid by each process. When command semantics allow it, prefer one command that requests the needed scopes, signals, timestamps, or time window over many tiny commands.
-
 ## Performance expectations
+
+`wavepeek` performance depends on the waveform format, input size, command, requested signals, storage speed, and memory. Each process pays the reader setup cost. When command semantics allow it, request the needed scopes, signals, timestamps, or time window in one command.
 
 The table below shows one representative design dumped to three formats and queried on one machine. Treat it as scale guidance only.
 

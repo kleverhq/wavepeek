@@ -58,7 +58,7 @@ Optional features:
 - FSDB - disabled (FSDB support is currently Linux x86_64 only; reinstall with Cargo flag `--features fsdb` and provide the Synopsys Verdi FSDB Reader SDK)
 - SHM - disabled (SHM requires Linux x86_64, Cargo flag `--features shm`, and a compatible XCELIUM_HOME)
 - WLF - disabled (WLF requires Linux x86_64 GNU, Cargo flag `--features wlf`, and a compatible QUESTA_HOME)
-- VWDB - disabled (VWDB requires Linux x86_64 GNU, Cargo flag `--features vwdb`, and a compatible XCELIUM_HOME)
+- VWDB - disabled (VWDB requires Linux x86_64 GNU, Cargo flag `--features vwdb`, and XCELIUM_HOME set to a compatible installation when building)
 ```
 
 ## `wavepeek info`

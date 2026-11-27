@@ -18,7 +18,7 @@ Boolean expressions operate on typed operands. Operands may carry 2-state or
 4-state values internally; final property decisions are reduced to 2-state.
 Dump-derived operands use the encoding, width and type metadata supplied by
 Ondas. Supported expression operations on integral, real and ASCII string
-values apply to every supported input format, including FSDB and SHM.
+values apply to every supported input format.
 The bit-oriented `value`, `change` row values and extraction payloads do not
 accept real or string values.
 

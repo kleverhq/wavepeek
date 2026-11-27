@@ -30,7 +30,15 @@ def main() -> None:
     relative_path = Path("tools/lib/64bit") / LIBRARIES[reader]
     library = Path(home).expanduser() / relative_path
     if not library.is_file():
-        sys.exit(f"error: {reader}: missing XCELIUM_HOME/{relative_path}: {library}")
+        message = f"missing XCELIUM_HOME/{relative_path}: {library}"
+        # Both readers share one installation setting. A configured installation
+        # can provide one reader without providing the other.
+        if not args.require and any(
+            (library.parent / name).is_file() for name in LIBRARIES.values()
+        ):
+            print(f"skip: {reader}: {message}")
+            sys.exit(77)
+        sys.exit(f"error: {reader}: {message}")
     print(library.resolve() if args.print_library else f"ok: {reader}: Xcelium reader found")
 
 

@@ -174,6 +174,11 @@ test-vwdb: require-vwdb prepare-waveform-fixtures
     WAVEPEEK_VWDB_TEST_DIR="$recording" CARGO_TARGET_DIR=target/vwdb \
         cargo test --locked --features vwdb --test vwdb_cli --test cli_contract
 
+# Verify VWDB and embedded SHM in one build
+test-vwdb-shm: require-vwdb require-xcelium
+    CARGO_TARGET_DIR=target/vwdb-shm bash tools/shm/with_shm_env.sh cargo test --locked --features vwdb,shm \
+        --test vwdb_cli systemc_digital_history_uses_the_selected_shm_directory -- --exact
+
 # Smoke-test VWDB on a small RTL recording
 bench-e2e-vwdb-smoke: build-release-vwdb
     @recording="$(bash tools/vwdb/record_fixture.sh m2_core)"; \
@@ -604,6 +609,7 @@ ci-wlf: lint-wlf check-wlf-build test-wlf bench-e2e-wlf-smoke
 
 # Check the enabled VWDB reader and a native workload
 ci-vwdb: lint-vwdb check-vwdb-build test-vwdb bench-e2e-vwdb-smoke
+    @just run-if-xcelium test-vwdb-shm
 
 # Run native lint, loader checks, CLI tests, and smoke for available readers
 ci-native: require-container

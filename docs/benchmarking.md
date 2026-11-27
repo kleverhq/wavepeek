@@ -10,7 +10,7 @@ Compare both payloads and timing within the same format. The gate checks median 
 
 Cross-format checks compare payloads on equivalent inputs. The gate manifest identifies both revisions and the results. The run manifest records the input and catalog SHA-256 checksums for the binaries in each suite. The comparison records format-specific exceptions. A newly introduced optional format records its first baseline from the revised ref. A missing required reader or input fails the gate.
 
-Use `./dev just bench-gate <baseline-ref> <revised-ref>` for diagnostics. For separate diagnostic captures, pass the `run` directories printed by `bench-capture` to `bench-compare`. For all four formats, use `./dev just bench-capture <ref> always always always` in the private profile. The comparison reports `shared-run` for paired release runs and `matched` for matching independently recorded inputs. Comparisons without recorded checksums report `unverified`.
+Use `./dev just bench-gate <baseline-ref> <revised-ref>` for diagnostics. For separate diagnostic captures, pass the `run` directories printed by `bench-capture` to `bench-compare`. For all four formats, use `./dev just bench-capture <ref> always always always` in the private profile. The comparison reports `shared-run` for paired release runs and `matched` for matching independently recorded inputs. Diagnostic comparisons without recorded checksums report `unverified`.
 
 ## Workload constraints
 

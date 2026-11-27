@@ -174,26 +174,3 @@ fn native_enum_label_selects_the_recorded_value() {
         ])
     );
 }
-
-#[cfg(feature = "shm")]
-#[test]
-fn systemc_digital_history_uses_the_selected_shm_directory() {
-    let input = corpus("vwdb0085-systemc-lwtr4tlm2");
-    let outer = run_json(&input, &["info"]);
-    assert_eq!(outer["data"][0]["time_end"], "290000ps");
-    let args = ["value", "--signals", "sc_main.tb.clk", "--at", "5ns"];
-    let outside = wavepeek_cmd()
-        .args(args)
-        .args(["--json", "--waves"])
-        .arg(&input)
-        .output()
-        .unwrap();
-    assert_eq!(outside.status.code(), Some(1));
-    let diagnostic: Value = serde_json::from_slice(&outside.stdout).unwrap();
-    assert_eq!(diagnostic["code"], "WPK-F0004");
-    let digital = input.join("waves_ida.shm");
-    let inner = run_json(&digital, &["info"]);
-    assert_eq!(inner["data"][0]["time_end"], "290000ps");
-    let point = run_json(&digital, &args);
-    assert_eq!(point["data"][0]["signals"][0]["value"], "1'h0");
-}

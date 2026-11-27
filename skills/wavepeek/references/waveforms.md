@@ -88,4 +88,4 @@ The table below shows one representative design dumped to three formats and quer
 
 The main lesson is the ordering, not the exact numbers: large textual VCD input can be expensive, FST is usually much cheaper for repeated inspection, and FSDB one-shot commands can be dominated by setup cost.
 
-Use the dump format you already have when you need one quick answer and conversion would take longer than the query. Prefer FST when you control dump generation or expect repeated scripted inspection. Use FSDB directly when preserving FSDB-specific metadata matters or when conversion is not available, but expect each independent CLI invocation to pay setup cost. Avoid large VCD files for repeated automation when an FST equivalent is available.
+Use the dump format you already have when you need one quick answer and conversion would take longer than the query. Prefer FST when you control dump generation or expect repeated scripted inspection. Use FSDB directly when preserving FSDB-specific metadata matters or when conversion is unavailable. Avoid large VCD files for repeated automation when an FST equivalent is available.

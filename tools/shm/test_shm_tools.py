@@ -22,7 +22,7 @@ class ShmEnvironmentTest(unittest.TestCase):
             env={**os.environ, "XCELIUM_HOME": home}, capture_output=True, text=True,
         )
 
-    def test_absent_sdk_skips_but_required_or_configured_broken_sdk_fails(self) -> None:
+    def test_unset_installation_skips_and_empty_installation_fails(self) -> None:
         self.assertEqual(self.probe("").returncode, 77)
         required = self.probe("", "--require")
         self.assertEqual(required.returncode, 1)

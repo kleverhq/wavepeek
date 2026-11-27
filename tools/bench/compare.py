@@ -63,6 +63,14 @@ CROSS_FORMAT_FUNCTIONAL_IGNORES: tuple[tuple[str, str], ...] = (
 
 SHM_FUNCTIONAL_IGNORES: tuple[tuple[str, str], ...] = (
     (
+        "info_scr1",
+        "The converted SHM starts at zero; the source FST starts at 1ps.",
+    ),
+    (
+        "info_scr1_isr_sample",
+        "The converted SHM starts at zero; the source FST starts at 1ps.",
+    ),
+    (
         "info_scr1_riscv_compliance",
         "The converted SHM starts at zero; the source FST starts at 1ps.",
     ),
@@ -158,7 +166,10 @@ def suite_inputs(run_dir: pathlib.Path) -> dict[str, Any] | None:
         return None
     inputs = manifest.get("inputs")
     if inputs is not None and (
-        not isinstance(inputs, dict) or not inputs.get("tests") or not inputs.get("files")
+        not isinstance(inputs, dict)
+        or not inputs.get("tests")
+        or not inputs.get("files")
+        or not inputs.get("catalog_sha256")
     ):
         raise BenchGateError(f"invalid input identity in {manifest_path}")
     return inputs
@@ -177,7 +188,7 @@ def compare_suite_inputs(
         raise BenchGateError("benchmark inputs or catalog differ between revisions")
     assert_recorded_coverage(golden, golden_inputs)
     assert_recorded_coverage(revised, revised_inputs)
-    return "matched"
+    return "shared-run" if golden.parent == revised.parent else "matched"
 
 
 def assert_recorded_coverage(run_dir: pathlib.Path, inputs: Mapping[str, Any]) -> None:
@@ -522,6 +533,7 @@ def compare_captures(
                     "status": "first-baseline",
                     "reason": base_entry["reason"],
                     "comparable_count": 0,
+                    "measured_count": len(inputs["tests"]),
                 }
             elif not golden.is_dir() and not revised.is_dir() and name not in required:
                 suite_result = {
@@ -576,7 +588,7 @@ def compare_captures(
                 threshold_pct=timing_threshold_pct,
                 threshold_seconds=timing_threshold_seconds,
                 functional_only=True,
-                allow_golden_extra=fmt != "vcd",
+                allow_golden_extra=release_profile is None,
                 ignored_functional_tests=cross_ignores.get(fmt, ()),
             )
         except BenchGateError as error:
@@ -638,13 +650,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-negative-delta-pct",
         type=float,
         default=DEFAULT_TIMING_THRESHOLD_PCT,
-        help="relative median slowdown threshold for same-format FST and FSDB timing",
+        help="relative median slowdown threshold for same-format timing",
     )
     parser.add_argument(
         "--max-negative-delta-seconds",
         type=float,
         default=DEFAULT_TIMING_THRESHOLD_SECONDS,
-        help="absolute median slowdown floor in seconds for same-format FST and FSDB timing",
+        help="absolute median slowdown floor in seconds for same-format timing",
     )
     return parser
 

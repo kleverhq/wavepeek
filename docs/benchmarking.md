@@ -8,7 +8,7 @@ Use `./dev just bench-release-gate vPREVIOUS HEAD` from a clean worktree in the 
 
 Compare both payloads and timing within the same format. The gate checks median regression against a 5% threshold with a 5 ms floor by default. For timing-only failures it compares the minimum recorded time for each binary. A timeout wrapper can quantize short timings. Use direct CLI timings to investigate small differences.
 
-Cross-format checks compare payloads on equivalent inputs. The manifests record the two revisions, input and catalog SHA-256 checksums, format-specific exclusions, and results. A newly introduced optional format records its first baseline from the revised ref. A missing required reader or input fails the gate.
+Cross-format checks compare payloads on equivalent inputs. The gate manifest identifies both revisions and the results. Each suite's run manifest records the input and catalog SHA-256 checksums for its paired binaries. The comparison records format-specific exceptions. A newly introduced optional format records its first baseline from the revised ref. A missing required reader or input fails the gate.
 
 Use `./dev just bench-gate <baseline-ref> <revised-ref>` for diagnostics. For separate diagnostic captures, pass the `run` directories printed by `bench-capture` to `bench-compare`. Comparisons of captures without input checksums report unverified input identity.
 
@@ -21,5 +21,7 @@ Maintain the FST workload in `bench/e2e/tests.json` and regenerate the derived c
 Use selectors that both release revisions accept. Twelve large selection cases use ordinary signal paths in place of legacy array-element selectors. This keeps the same selection counts and lets the gate run one command per case against both revisions. CLI regressions cover indexed selectors.
 
 Set `--on` explicitly for `change` and `property` scenarios. Use `--sample-mode native` for wildcard, plain-signal, and mixed-trigger scenarios.
+
+The two SCR1 instruction-memory `change` scenarios ending at `1000ps` start at `2ps`. Conversion to SHM can add an initial tick at zero, so both queries start after the initial sample.
 
 VCD timing can materialize tens of GiB of VCD beside the FST inputs for reuse in the worktree container. Diagnostic `bench-gate` and `bench-capture` require `vcd=always` to time VCD. With an available FSDB reader, diagnostic `bench-gate` in `auto` mode captures FSDB if both refs support it and fails if only one does.

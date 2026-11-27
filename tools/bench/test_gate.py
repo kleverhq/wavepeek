@@ -695,11 +695,108 @@ class BenchGateHelperTest(unittest.TestCase):
                     run.parent / "manifest.json",
                     {
                         "kind": "wavepeek-e2e-bench-run",
-                        "inputs": {"tests": ["case"], "files": {"trace.vcd": run.name}},
+                        "inputs": {
+                            "catalog_sha256": "catalog",
+                            "tests": ["case"],
+                            "files": {"trace.vcd": run.name},
+                        },
                     },
                 )
             with self.assertRaisesRegex(common.BenchGateError, "inputs or catalog differ"):
                 compare.compare_suite_inputs(baseline, revised, required=True)
+
+    def test_private_release_comparison_accepts_complete_first_shm_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            baseline, revised = root / "baseline", root / "revised"
+            entries = {baseline: {}, revised: {}}
+            for fmt in ("fst", "vcd", "fsdb", "shm"):
+                name = f"e2e-{fmt}"
+                job = root / name
+                for capture_dir in (baseline, revised):
+                    if fmt == "shm" and capture_dir == baseline:
+                        entries[baseline][name] = {
+                            "status": "first-baseline", "reason": "baseline lacks shm",
+                        }
+                        continue
+                    run = job / capture_dir.name
+                    run.mkdir(parents=True)
+                    for suffix in ("hyperfine", "wavepeek"):
+                        (run / f"case.{suffix}.json").write_text("{}")
+                    entries[capture_dir][name] = {"status": "passed", "path": str(run)}
+                common.write_json(
+                    job / "manifest.json",
+                    {
+                        "kind": "wavepeek-e2e-bench-run",
+                        "inputs": {
+                            "catalog_sha256": "catalog",
+                            "tests": ["case"],
+                            "files": {f"trace.{fmt}": "checksum"},
+                        },
+                    },
+                )
+            for capture_dir, suites in entries.items():
+                common.write_json(capture_dir / "manifest.json", {"suites": suites})
+            with mock.patch.object(
+                compare, "run_e2e_compare", side_effect=lambda **kwargs: {"status": "passed"},
+            ) as runner:
+                result = compare.compare_captures(
+                    golden_dir=baseline, revised_dir=revised, compare_dir=root / "compare",
+                    release_profile="private",
+                )
+                self.assertEqual(result.exit_code, 0)
+                suites = result.manifest["suites"]
+                self.assertEqual(suites["e2e-fst"]["input_identity"], "shared-run")
+                self.assertEqual(suites["e2e-shm"]["status"], "first-baseline")
+                self.assertEqual(suites["e2e-shm"]["measured_count"], 1)
+                names = {call.kwargs["name"] for call in runner.call_args_list}
+                self.assertIn("cross-revised-fst-shm", names)
+                self.assertIn("cross-golden-fst-vcd", names)
+                self.assertNotIn("cross-golden-fst-shm", names)
+
+                (root / "e2e-shm/revised/case.hyperfine.json").unlink()
+                result = compare.compare_captures(
+                    golden_dir=baseline, revised_dir=revised, compare_dir=root / "incomplete",
+                    release_profile="private",
+                )
+                self.assertEqual(result.exit_code, 1)
+                self.assertEqual(result.manifest["suites"]["e2e-shm"]["status"], "failed")
+
+    def test_strict_capture_saves_status_for_each_revision_after_failed_scenario(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            run_dir = root / "e2e-shm"
+            sessions = [
+                types.SimpleNamespace(
+                    strict=True, tooling_root=root, binary_label=label,
+                    binary_checkout=root / label, capture_dir=root / label, commands=[], suites={},
+                )
+                for label in ("baseline", "revised")
+            ]
+            common.write_json(
+                run_dir / "manifest.json",
+                {
+                    "test_count": 1,
+                    "binaries": [
+                        {
+                            "label": session.binary_label,
+                            "wavepeek_json_count": index,
+                            "hyperfine_json_count": index,
+                            "failure_count": 1 - index,
+                        }
+                        for index, session in enumerate(sessions)
+                    ],
+                },
+            )
+            with mock.patch.object(
+                capture, "run_command",
+                return_value=common.CommandResult("e2e-shm", [], str(root), 1),
+            ) as run:
+                capture.run_e2e_shm_many(sessions, run_dir=run_dir, log_path=root / "run.log")
+            self.assertIn("--strict", run.call_args.args[1])
+            self.assertFalse(run.call_args.kwargs["check"])
+            self.assertEqual(sessions[0].suites["e2e-shm"]["status"], "failed")
+            self.assertEqual(sessions[1].suites["e2e-shm"]["status"], "passed")
 
     def test_gate_runs_preparation_before_paired_measurement(self) -> None:
         order: list[str] = []

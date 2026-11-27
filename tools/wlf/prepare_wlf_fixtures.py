@@ -2,6 +2,7 @@
 """Prepare WLF files used by the WavePeek tests and benchmark catalog."""
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -28,10 +29,25 @@ def identity(path: Path) -> list[str | int]:
     return [str(path.resolve()), stat.st_size, stat.st_mtime_ns]
 
 
+def input_identity(path: Path) -> list[str | int]:
+    if path.is_relative_to(GENERATED):
+        # Fixture generation can replace a file with the same content.
+        with path.open("rb") as stream:
+            return [str(path), hashlib.file_digest(stream, "sha256").hexdigest()]
+    return identity(path)
+
+
+def fixture_paths(source: Path) -> tuple[Path, Path]:
+    output = source.with_suffix(".wlf")
+    if source.is_relative_to(GENERATED):
+        return source.with_suffix(".vcd"), WLF_FIXTURES / output.name
+    return source, output
+
+
 def prepare(source: Path, output: Path, converter: Path) -> None:
     marker = output.with_suffix(".wlf.source.json")
     stamp = json.dumps({
-        "input": identity(source),
+        "input": input_identity(source),
         "converter": identity(converter),
         "vcd_declarations": VCD_DECLARATIONS if source.suffix == ".fst" else None,
     })
@@ -78,15 +94,13 @@ def main() -> None:
     parser.add_argument("--filter", default="")
     args = parser.parse_args()
     converter = Path(os.environ["QUESTA_HOME"]).expanduser() / "bin/vcd2wlf"
-    if args.tests_only:
-        for name in TEST_INPUTS:
-            prepare(GENERATED / f"{name}.vcd", WLF_FIXTURES / f"{name}.wlf", converter)
-        return
-    for source in benchmark_sources(args.filter):
-        output = source.with_suffix(".wlf")
-        if source.is_relative_to(GENERATED):
-            output = WLF_FIXTURES / output.name
-        prepare(source, output, converter)
+    sources = (
+        [GENERATED / f"{name}.vcd" for name in TEST_INPUTS]
+        if args.tests_only else benchmark_sources(args.filter)
+    )
+    for source in sources:
+        input_path, output_path = fixture_paths(source)
+        prepare(input_path, output_path, converter)
 
 
 if __name__ == "__main__":

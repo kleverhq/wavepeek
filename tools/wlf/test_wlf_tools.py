@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import prepare_wlf_fixtures as prepare
 
@@ -36,6 +37,24 @@ class WlfToolsTest(unittest.TestCase):
         ).replace(b"$var real_parameter ", b"$var real ")
         output = subprocess.check_output(["sed", "-E", prepare.VCD_DECLARATIONS], input=original)
         self.assertEqual(output, expected)
+
+    def test_generated_benchmark_and_regression_share_input_and_output(self) -> None:
+        vcd = prepare.GENERATED / "extract_global_include.vcd"
+        fst = vcd.with_suffix(".fst")
+        self.assertEqual(prepare.fixture_paths(vcd), prepare.fixture_paths(fst))
+        self.assertEqual(prepare.fixture_paths(fst), (vcd, prepare.WLF_FIXTURES / "extract_global_include.wlf"))
+
+    def test_generated_input_identity_survives_identical_regeneration(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(
+            prepare, "GENERATED", Path(directory),
+        ):
+            source = Path(directory) / "input.vcd"
+            source.write_bytes(b"input VCD")
+            first = prepare.input_identity(source)
+            os.utime(source, ns=(0, 0))
+            self.assertEqual(prepare.input_identity(source), first)
+            source.write_bytes(b"new data")
+            self.assertNotEqual(prepare.input_identity(source), first)
 
 
 if __name__ == "__main__":

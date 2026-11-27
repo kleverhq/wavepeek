@@ -174,8 +174,9 @@ fn native_samples_preserve_aliases_deltas_and_expression_types() {
     assert_eq!(event["data"][0]["kind"], "assert");
     assert_eq!(event["data"][1]["time"], "5ns");
 
+    let waveform = native("wlf0072-strings-and-names");
     let string = json(
-        &native("wlf0072-strings-and-names"),
+        &waveform,
         &[
             "property",
             "--on",
@@ -191,6 +192,21 @@ fn native_samples_preserve_aliases_deltas_and_expression_types() {
     assert_eq!(string["data"][0]["time"], "1ns");
     assert_eq!(string["data"][0]["kind"], "assert");
     assert_eq!(string["data"][1]["time"], "2ns");
+
+    let listing = json(&waveform, &["signal", "--scope", "top"]);
+    let escaped = &listing["data"][0];
+    assert_eq!(escaped["name"], r"\name.with.dot ");
+    let selected = json(
+        &waveform,
+        &[
+            "value",
+            "--signals",
+            escaped["path"].as_str().unwrap(),
+            "--at",
+            "0ns",
+        ],
+    );
+    assert_eq!(selected["data"][0]["signals"][0]["value"], "8'h01");
 }
 
 #[test]

@@ -22,6 +22,6 @@ Use selectors that both release revisions accept. Twelve large selection cases u
 
 Set `--on` explicitly for `change` and `property` scenarios. Use `--sample-mode native` for wildcard, plain-signal, and mixed-trigger scenarios.
 
-The two SCR1 instruction-memory `change` scenarios with a wildcard trigger and end time `1000ps` start at `2ps`. Conversion to SHM can add an initial tick at zero, so both queries start after the initial sample.
+The two SCR1 instruction-memory `change` scenarios with a wildcard trigger and end time `1000ps` start at `2ps`. Conversion to SHM or WLF can add an initial tick at zero, so both queries start after the initial sample.
 
 VCD timing can materialize tens of GiB of VCD beside the FST inputs for reuse in the worktree container. Diagnostic `bench-gate` and `bench-capture` require `vcd=always` to time VCD. With an available FSDB reader, diagnostic `bench-gate` in `auto` mode captures FSDB if both refs support it and fails if only one does.

@@ -75,8 +75,20 @@ prepare-wlf-fixtures filter="": require-questa prepare-waveform-fixtures
     {{ python }} tools/wlf/prepare_wlf_fixtures.py --bench-only --filter '{{ filter }}'
 
 # Run WLF CLI regressions
-test-wlf: prepare-wlf-test-fixtures
-    CARGO_TARGET_DIR=target/wlf cargo test --locked --features wlf --test wlf_cli --test cli_contract
+test-wlf: check-wlf-test-fixtures prepare-wlf-test-fixtures
+    CARGO_TARGET_DIR=target/wlf cargo test --locked --features wlf --lib --test wlf_cli --test cli_contract --test change_query --test waveform_errors_cli
+
+[private]
+check-wlf-test-fixtures: require-questa
+    @. ./.devcontainer/env_contract.sh; \
+    for fixture in $WAVEPEEK_ONDAS_WLF_FIXTURES; do \
+        for file in waveform.wlf fixture.json; do \
+            if [ ! -f "${ONDAS_FIXTURES_DIR}/$fixture/$file" ]; then \
+                printf '%s\n' "error: file: required fixture missing at ${ONDAS_FIXTURES_DIR}/$fixture/$file (rebuild the devcontainer image and run ./dev --recreate true)" >&2; \
+                exit 1; \
+            fi; \
+        done; \
+    done
 
 # Run WLF E2E benchmarks
 bench-e2e-wlf-run filter="": (prepare-wlf-fixtures filter) build-release-wlf

@@ -92,6 +92,37 @@ SHM_FUNCTIONAL_IGNORES: tuple[tuple[str, str], ...] = (
     ),
 )
 
+WLF_FUNCTIONAL_IGNORES: tuple[tuple[str, str], ...] = (
+    (
+        "info_scr1:time_start:1ps:0ps",
+        "The converted WLF starts at zero; the source FST starts at 1ps.",
+    ),
+    (
+        "info_scr1_isr_sample:time_start:1ps:0ps",
+        "The converted WLF starts at zero; the source FST starts at 1ps.",
+    ),
+    (
+        "info_scr1_riscv_compliance:time_start:1ps:0ps",
+        "The converted WLF starts at zero; the source FST starts at 1ps.",
+    ),
+    (
+        "scope_scr1_all_depth7_json",
+        "WLF exposes escaped and indexed instance names as literal components.",
+    ),
+    (
+        "signal_scr1_top_recursive_all_json",
+        "WLF exposes literal indexed names and omits ambiguous converted declarations.",
+    ),
+    (
+        "signal_scr1_top_recursive_depth2_json",
+        "WLF exposes literal indexed names and omits ambiguous converted declarations.",
+    ),
+    (
+        "signal_scr1_top_recursive_filter_valid_json",
+        "WLF exposes a literal escaped scope name and reports ambiguous declarations.",
+    ),
+)
+
 
 def e2e_artifact_stems(run_dir: pathlib.Path, *, functional_only: bool = False) -> set[str]:
     hyperfine = {path.name.removesuffix(HYPERFINE_SUFFIX) for path in run_dir.glob(f"*{HYPERFINE_SUFFIX}")}
@@ -584,7 +615,11 @@ def compare_captures(
         if suite_result.get("status") == "failed":
             failures.append(name)
 
-    cross_ignores = {"fsdb": CROSS_FORMAT_FUNCTIONAL_IGNORES, "shm": SHM_FUNCTIONAL_IGNORES}
+    cross_ignores = {
+        "fsdb": CROSS_FORMAT_FUNCTIONAL_IGNORES,
+        "shm": SHM_FUNCTIONAL_IGNORES,
+        "wlf": WLF_FUNCTIONAL_IGNORES,
+    }
     cross_checks = (
         (f"cross-{label}-fst-{fmt}", capture_dir, fmt)
         for label, capture_dir in (("golden", golden_dir), ("revised", revised_dir))

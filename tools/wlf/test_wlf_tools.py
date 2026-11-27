@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -65,31 +66,32 @@ class WlfToolsTest(unittest.TestCase):
             source.write_bytes(b"input")
             converter.write_bytes(b"converter")
             first_conversion = Event()
-            second_lock = Event()
-            flock = prepare.fcntl.flock
-
-            def track_lock(lock, mode):
-                if first_conversion.is_set():
-                    second_lock.set()
-                flock(lock, mode)
+            finish_conversion = Event()
 
             def convert(command, **kwargs):
                 first_conversion.set()
-                self.assertTrue(second_lock.wait(timeout=5))
+                self.assertTrue(finish_conversion.wait(timeout=5))
                 Path(command[-1]).write_bytes(b"output")
 
             with (
-                mock.patch.object(prepare.fcntl, "flock", side_effect=track_lock),
                 mock.patch.object(prepare.subprocess, "run", side_effect=convert) as conversion,
                 ThreadPoolExecutor(max_workers=2) as pool,
             ):
                 first = pool.submit(prepare.prepare, source, output, converter)
                 self.assertTrue(first_conversion.wait(timeout=5))
-                second = pool.submit(prepare.prepare, source, output, converter)
+                try:
+                    with output.with_suffix(".wlf.lock").open("a") as lock:
+                        with self.assertRaises(BlockingIOError):
+                            prepare.fcntl.flock(lock, prepare.fcntl.LOCK_SH | prepare.fcntl.LOCK_NB)
+                    second = pool.submit(prepare.prepare, source, output, converter)
+                finally:
+                    finish_conversion.set()
                 first.result(timeout=5)
                 second.result(timeout=5)
                 self.assertEqual(conversion.call_count, 1)
             self.assertEqual(output.read_bytes(), b"output")
+            stamp = json.loads(output.with_suffix(".wlf.source.json").read_text())
+            self.assertEqual(stamp["input"], prepare.input_identity(source))
 
 
 if __name__ == "__main__":

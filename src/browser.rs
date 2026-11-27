@@ -245,10 +245,12 @@ $enddefinitions $end
         assert!(!root.stdout.contains("Extract the packaged agent skill"));
         assert!(root.stdout.contains("input accepts VCD and FST"));
 
-        let info = run(&["wavepeek", "info", "--help"]);
-        assert_eq!(info.status, 0);
-        assert!(info.stdout.contains("Path to the active VCD or FST file"));
-        assert!(!info.stdout.contains("WDB"));
+        for command in ["info", "scope", "signal", "value", "change", "property"] {
+            let help = run(&["wavepeek", command, "--help"]);
+            assert_eq!(help.status, 0);
+            assert!(help.stdout.contains("Path to the active VCD or FST file"), "{command}");
+            assert!(!help.stdout.contains("WDB"), "{command}");
+        }
 
         for command in ["ahb", "apb", "atb", "axi", "axistream", "generic"] {
             let extract = run(&["wavepeek", "extract", command, "--help"]);

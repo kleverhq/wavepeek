@@ -6,7 +6,7 @@ tmp/
 /tests/fixtures/generated/
 /tests/fixtures/shm/
 *.wlf
-*.wlf.source.json
+*.wlf.*
 *.fsdb
 *.fsdb.*
 *Log/

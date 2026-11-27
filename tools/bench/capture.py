@@ -270,17 +270,31 @@ def prepare_fsdb(session: CaptureSession) -> None:
     )
 
 
-def build_release_shm(session: CaptureSession) -> None:
+def build_release_reader(
+    session: CaptureSession, feature: str, command_prefix: Sequence[str] = (),
+) -> None:
     session.commands.append(
         run_command(
-            "build-release-shm",
-            [
-                "bash", str(session.tooling_root / "tools/shm/with_shm_env.sh"),
-                "cargo", "build", "--release", "--locked", "--features", "shm",
-            ],
+            f"build-release-{feature}",
+            [*command_prefix, "cargo", "build", "--release", "--locked", "--features", feature],
             cwd=session.binary_checkout,
-            log_path=session.logs_dir / "build-release-shm.log",
-            env={"CARGO_TARGET_DIR": "target/shm"},
+            log_path=session.logs_dir / f"build-release-{feature}.log",
+            env={"CARGO_TARGET_DIR": f"target/{feature}"},
+        )
+    )
+
+
+def build_release_shm(session: CaptureSession) -> None:
+    build_release_reader(session, "shm", ("bash", str(session.tooling_root / "tools/shm/with_shm_env.sh")))
+
+
+def prepare_wlf(session: CaptureSession) -> None:
+    session.commands.append(
+        run_command(
+            "wlf-prepare-fixtures",
+            ["just", "prepare-wlf-fixtures"],
+            cwd=session.tooling_root,
+            log_path=session.logs_dir / "wlf-prepare-fixtures.log",
         )
     )
 
@@ -457,6 +471,21 @@ def run_e2e_shm_many(
     )
 
 
+def run_e2e_wlf_many(
+    sessions: Sequence[CaptureSession],
+    *,
+    run_dir: pathlib.Path,
+    log_path: pathlib.Path,
+) -> None:
+    run_e2e_many(
+        format_name="wlf",
+        sessions=sessions,
+        run_dir=run_dir,
+        log_path=log_path,
+        binary_path="target/wlf/release/wavepeek",
+    )
+
+
 def run_e2e_fsdb(session: CaptureSession) -> None:
     if not session.fsdb_plan.capture:
         return
@@ -511,6 +540,7 @@ def capture_checkout(
     fsdb_plan: FsdbPlan | None = None,
     vcd_mode: str = "never",
     shm_mode: str = "never",
+    wlf_mode: str = "never",
     environment_note: str,
 ) -> CaptureResult:
     ensure_empty_dir(capture_dir)
@@ -547,6 +577,9 @@ def capture_checkout(
     if shm_mode == "always":
         build_release_shm(session)
         prepare_shm(session)
+    if wlf_mode == "always":
+        build_release_reader(session, "wlf")
+        prepare_wlf(session)
     run_e2e_fst(session)
     if vcd_mode == "always":
         run_e2e_vcd(session)
@@ -557,6 +590,12 @@ def capture_checkout(
             [session],
             run_dir=capture_dir / "e2e-shm",
             log_path=logs_dir / "bench-e2e-shm.log",
+        )
+    if wlf_mode == "always":
+        run_e2e_wlf_many(
+            [session],
+            run_dir=capture_dir / "e2e-wlf",
+            log_path=logs_dir / "bench-e2e-wlf.log",
         )
     return finalize_capture(session)
 
@@ -584,6 +623,7 @@ def capture_ref(args: argparse.Namespace) -> int:
         fsdb_mode=args.fsdb,
         vcd_mode=args.vcd,
         shm_mode=args.shm,
+        wlf_mode=args.wlf,
         environment_note=args.environment_note,
     )
     print(f"capture written to {out_dir / 'run'}")
@@ -598,6 +638,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--fsdb", choices=("auto", "always", "never"), default="auto")
     parser.add_argument("--vcd", choices=("always", "never"), default="never")
     parser.add_argument("--shm", choices=("always", "never"), default="never")
+    parser.add_argument("--wlf", choices=("always", "never"), default="never")
     parser.add_argument(
         "--environment-note",
         default="wavepeek manual performance gate",

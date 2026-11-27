@@ -21,6 +21,7 @@ exclude = [
 default = []
 fsdb = ["ondas/fsdb-lib"]
 shm = ["ondas/shm-lib"]
+wlf = ["ondas/wlf-lib"]
 
 [dependencies]
 clap = { version = "~4", features = ["derive"] }

@@ -91,6 +91,8 @@ fn native_format(filename: &str) -> Option<&'static str> {
         Some("FSDB")
     } else if filename.ends_with(".shm") {
         Some("SHM")
+    } else if filename.ends_with(".wlf") {
+        Some("WLF")
     } else {
         None
     }
@@ -197,6 +199,11 @@ $enddefinitions $end
                 "demo.vcd",
                 "SHM is not supported",
             ),
+            (
+                vec!["wavepeek", "info", "--waves", "other.WLF"],
+                "demo.vcd",
+                "WLF is not supported",
+            ),
         ] {
             let result = invoke(
                 args.into_iter().map(str::to_string).collect(),
@@ -214,7 +221,7 @@ $enddefinitions $end
         let root = run(&["wavepeek", "--help"]);
         assert_eq!(root.status, 0);
         assert!(!root.stdout.contains("Extract the packaged agent skill"));
-        assert!(root.stdout.contains("FSDB/SHM input, skill"));
+        assert!(root.stdout.contains("FSDB/SHM/WLF input, skill"));
 
         for command in ["ahb", "apb", "atb", "axi", "axistream", "generic"] {
             let extract = run(&["wavepeek", "extract", command, "--help"]);

@@ -69,8 +69,19 @@ wavepeek info --waves recording.shm
 ```
 
 Use the complete SHM directory containing its `.dsn` and `.trn` files.
-`--features fsdb,shm` enables both optional readers. `wavepeek --help` reports
-which features are enabled. See [Waveform formats](waveforms.md) for limits.
+
+## Install with WLF
+
+WLF requires Linux x86_64 GNU, a compatible Questa installation, a C11 compiler, and binutils. Set `QUESTA_HOME` to the installation before building. The SDK must provide `include/wlf_api.h` and `linux_x86_64/libwlf.so`. Ondas requires the library without an ELF SONAME.
+
+```bash
+cargo install wavepeek --features wlf
+wavepeek info --waves recording.wlf
+```
+
+The binary links the absolute library path. Keep the installation available at that path when running the binary. Rebuild if the SDK path changes.
+
+`wavepeek --help` reports the enabled features. See [Waveform formats](waveforms.md) for format limits.
 
 ## Setup skill
 

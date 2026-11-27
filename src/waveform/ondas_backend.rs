@@ -98,6 +98,7 @@ impl OndasBackend {
             Format::Fst => "fst",
             Format::Fsdb => "fsdb",
             Format::Shm => "shm",
+            Format::Wlf => "wlf",
             _ => "unknown",
         }
     }

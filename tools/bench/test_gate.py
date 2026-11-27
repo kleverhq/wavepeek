@@ -24,6 +24,7 @@ class BenchGateHelperTest(unittest.TestCase):
         self.assertEqual(capture_args.fsdb, "auto")
         self.assertEqual(capture_args.vcd, "never")
         self.assertEqual(capture_args.shm, "never")
+        self.assertEqual(capture_args.wlf, "never")
         self.assertFalse(hasattr(capture_args, "allow_dirty_source"))
 
         compare_args = compare.build_parser().parse_args(
@@ -661,6 +662,7 @@ class BenchGateHelperTest(unittest.TestCase):
                     ),
                     vcd_mode="always",
                     shm_mode="always",
+                    wlf_mode="always",
                     environment_note="test env",
                 )
 
@@ -668,17 +670,20 @@ class BenchGateHelperTest(unittest.TestCase):
         self.assertEqual(result.manifest["suites"]["e2e-vcd"]["status"], "passed")
         self.assertEqual(result.manifest["suites"]["e2e-fsdb"]["status"], "passed")
         self.assertEqual(result.manifest["suites"]["e2e-shm"]["status"], "passed")
+        self.assertEqual(result.manifest["suites"]["e2e-wlf"]["status"], "passed")
         self.assertEqual(result.manifest["binary_sha"], "abc123")
         self.assertEqual(result.manifest["tooling_sha"], "toolsha")
         by_name = {call[0]: call for call in calls}
         self.assertIn("prepare-waveform-fixtures", by_name["prepare-waveform-fixtures"][1])
         self.assertIn("prepare-vcd-ondas-fixtures", by_name["vcd-prepare-fixtures"][1])
-        for format_name in ("vcd", "fsdb", "shm"):
+        for format_name in ("vcd", "fsdb", "shm", "wlf"):
             args = by_name[f"bench-e2e-{format_name}"][1]
             path = tooling / "tmp/bench-catalogs" / format_name / "tests.json"
             self.assertEqual(args[args.index("--tests") + 1], str(path))
         self.assertEqual(by_name["build-release-shm"][2], checkout)
         self.assertIn("--record-inputs", by_name["bench-e2e-shm"][1])
+        self.assertEqual(by_name["build-release-wlf"][3], {"CARGO_TARGET_DIR": "target/wlf"})
+        self.assertIn(f"subject={checkout / 'target/wlf/release/wavepeek'}", by_name["bench-e2e-wlf"][1])
         e2e_call = by_name["bench-e2e-fst"]
         self.assertIn("bench/e2e/perf.py", e2e_call[1])
         self.assertIn("--record-inputs", e2e_call[1])
@@ -693,7 +698,7 @@ class BenchGateHelperTest(unittest.TestCase):
             baseline, revised = root / "baseline", root / "revised"
             baseline.mkdir()
             revised.mkdir()
-            for feature in ("fsdb", "shm"):
+            for feature in ("fsdb", "shm", "wlf"):
                 (baseline / "Cargo.toml").write_text("[features]\n")
                 (revised / "Cargo.toml").write_text(f"[features]\n{feature} = []\n")
                 self.assertTrue(gate.first_baseline(baseline, revised, feature))
@@ -729,18 +734,18 @@ class BenchGateHelperTest(unittest.TestCase):
             with self.assertRaisesRegex(common.BenchGateError, "inputs or catalog differ"):
                 compare.compare_suite_inputs(baseline, revised, required=True)
 
-    def test_private_release_comparison_accepts_complete_first_shm_baseline(self) -> None:
+    def test_private_release_comparison_accepts_complete_first_native_baselines(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
             baseline, revised = root / "baseline", root / "revised"
             entries = {baseline: {}, revised: {}}
-            for fmt in ("fst", "vcd", "fsdb", "shm"):
+            for fmt in ("fst", "vcd", "fsdb", "shm", "wlf"):
                 name = f"e2e-{fmt}"
                 job = root / name
                 for capture_dir in (baseline, revised):
-                    if fmt == "shm" and capture_dir == baseline:
+                    if fmt in ("shm", "wlf") and capture_dir == baseline:
                         entries[baseline][name] = {
-                            "status": "first-baseline", "reason": "baseline lacks shm",
+                            "status": "first-baseline", "reason": f"baseline lacks {fmt}",
                         }
                         continue
                     run = job / capture_dir.name
@@ -766,10 +771,13 @@ class BenchGateHelperTest(unittest.TestCase):
             metrics = {"mean": 0.01, "median": 0.01, "min": 0.01, "max": 0.01}
             common.write_json(timing, {"results": [{**metrics, "times": [0.01]}]})
             common.write_json(shm_run / "case.wavepeek.json", {"data": [], "diagnostics": []})
+            wlf_run = root / "e2e-wlf/revised"
+            common.write_json(wlf_run / "case.hyperfine.json", {"results": [{**metrics, "times": [0.01]}]})
+            common.write_json(wlf_run / "case.wavepeek.json", {"data": [], "diagnostics": []})
             real_compare = compare.run_e2e_compare
 
             def compare_first_baseline(**kwargs: object) -> dict[str, object]:
-                if kwargs["name"] == "e2e-shm-first-baseline-validation":
+                if str(kwargs["name"]).endswith("-first-baseline-validation"):
                     return real_compare(**kwargs)
                 return {"status": "passed"}
 
@@ -783,8 +791,13 @@ class BenchGateHelperTest(unittest.TestCase):
                 self.assertEqual(suites["e2e-fst"]["input_identity"], "shared-run")
                 self.assertEqual(suites["e2e-shm"]["status"], "first-baseline")
                 self.assertEqual(suites["e2e-shm"]["measured_count"], 1)
+                self.assertEqual(suites["e2e-wlf"]["status"], "first-baseline")
+                self.assertEqual(suites["e2e-wlf"]["measured_count"], 1)
+                self.assertEqual(suites["e2e-wlf"]["comparable_count"], 0)
                 names = {call.kwargs["name"] for call in runner.call_args_list}
                 self.assertIn("cross-revised-fst-shm", names)
+                self.assertIn("cross-revised-fst-wlf", names)
+                self.assertNotIn("cross-golden-fst-wlf", names)
                 self.assertIn("cross-golden-fst-vcd", names)
                 self.assertNotIn("cross-golden-fst-shm", names)
                 self.assertIn("e2e-shm-first-baseline-validation", names)
@@ -800,6 +813,7 @@ class BenchGateHelperTest(unittest.TestCase):
                 )
                 self.assertEqual(result.exit_code, 1)
                 self.assertEqual(result.manifest["suites"]["e2e-shm"]["status"], "failed")
+
                 log = (output / "e2e-shm-first-baseline-validation.log").read_text()
                 self.assertIn("missing non-empty `results[0].times` array", log)
 
@@ -810,6 +824,16 @@ class BenchGateHelperTest(unittest.TestCase):
                 )
                 self.assertEqual(result.exit_code, 1)
                 self.assertEqual(result.manifest["suites"]["e2e-shm"]["status"], "failed")
+
+                common.write_json(timing, {"results": [{**metrics, "times": [0.01]}]})
+                entries[revised].pop("e2e-wlf")
+                common.write_json(revised / "manifest.json", {"suites": entries[revised]})
+                result = compare.compare_captures(
+                    golden_dir=baseline, revised_dir=revised, compare_dir=root / "missing-wlf",
+                    release_profile="private",
+                )
+                self.assertEqual(result.exit_code, 1)
+                self.assertEqual(result.manifest["suites"]["e2e-wlf"]["status"], "failed")
 
     def test_missing_tool_version_is_recorded_as_unknown(self) -> None:
         with mock.patch.object(common, "run_output", side_effect=FileNotFoundError):

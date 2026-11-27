@@ -34,14 +34,14 @@ def generate_catalog(source_path: pathlib.Path, target: str) -> str:
         fail(f"error: {target} catalog: no {FST_SUFFIX} suffixes found in {source_path}")
 
     generated = source.replace(FST_SUFFIX, f".{target}")
-    if target in ("fsdb", "shm"):
+    if target in ("fsdb", "shm", "wlf"):
         generated = generated.replace("tests/fixtures/generated/", f"tests/fixtures/{target}/")
     return generated
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("target", choices=("vcd", "fsdb", "shm"), help="target waveform format")
+    parser.add_argument("target", choices=("vcd", "fsdb", "shm", "wlf"), help="target waveform format")
     parser.add_argument("--source", type=pathlib.Path, default=DEFAULT_SOURCE)
     return parser.parse_args()
 

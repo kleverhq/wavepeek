@@ -35,6 +35,59 @@ require-xcelium: require-container
     @{{ python }} tools/shm/check_shm_env.py --require >/dev/null
 
 [private]
+require-questa: require-container
+    @{{ python }} tools/wlf/check_wlf_env.py --require >/dev/null
+
+[private]
+run-if-questa recipe: require-container
+    @set +e; \
+    output="$({{ python }} tools/wlf/check_wlf_env.py 2>&1)"; status="$?"; \
+    set -e; \
+    if [ "$status" -eq 0 ]; then \
+        printf '%s\n' "$output"; just "{{ recipe }}"; \
+    elif [ "$status" -eq 77 ]; then \
+        printf '%s\n' "$output"; \
+    else \
+        printf '%s\n' "$output" >&2; exit "$status"; \
+    fi
+
+# Lint optional WLF support
+lint-wlf: require-questa
+    CARGO_TARGET_DIR=target/wlf cargo clippy --locked --features wlf --all-targets -- -D warnings
+
+# Check that the selected native library is linked and usable outside Cargo
+check-wlf-build: require-questa
+    @library="$({{ python }} tools/wlf/check_wlf_env.py --require --print-library)"; \
+        CARGO_TARGET_DIR=target/wlf cargo build --locked --features wlf; \
+        readelf -d target/wlf/debug/wavepeek | grep -F "Shared library: [$library]" >/dev/null; \
+        target/wlf/debug/wavepeek --version
+
+# Build the release binary with optional WLF support
+build-release-wlf: require-questa
+    CARGO_TARGET_DIR=target/wlf cargo build --locked --release --features wlf
+
+# Prepare small WLF inputs for the regression and smoke suites
+prepare-wlf-test-fixtures: require-questa prepare-waveform-fixtures
+    {{ python }} tools/wlf/prepare_wlf_fixtures.py --tests-only
+
+# Prepare WLF inputs for selected benchmarks
+prepare-wlf-fixtures filter="": require-questa prepare-waveform-fixtures
+    {{ python }} tools/wlf/prepare_wlf_fixtures.py --bench-only --filter '{{ filter }}'
+
+# Run WLF CLI regressions
+test-wlf: prepare-wlf-test-fixtures
+    CARGO_TARGET_DIR=target/wlf cargo test --locked --features wlf --test wlf_cli --test cli_contract
+
+# Run WLF E2E benchmarks
+bench-e2e-wlf-run filter="": (prepare-wlf-fixtures filter) build-release-wlf
+    @catalog="$(just generate-bench-e2e-catalog wlf)"; \
+        {{ python }} bench/e2e/perf.py run --strict --binary wlf=./target/wlf/release/wavepeek --tests "$catalog" --filter '{{ filter }}'
+
+# Smoke-test the WLF reader on a small RTL fixture
+bench-e2e-wlf-smoke: prepare-wlf-test-fixtures build-release-wlf
+    {{ python }} bench/e2e/smoke.py wlf ./target/wlf/release/wavepeek
+
+[private]
 run-if-xcelium recipe: require-container
     @set +e; \
     output="$({{ python }} tools/shm/check_shm_env.py 2>&1)"; status="$?"; \
@@ -191,6 +244,7 @@ lint-default: require-container
 lint: lint-default
     just run-if-verdi lint-fsdb
     just run-if-xcelium lint-shm
+    just run-if-questa lint-wlf
 
 # Fix linting with clippy
 lint-fix: require-container
@@ -205,6 +259,7 @@ test: require-container check-ondas-fixtures prepare-waveform-fixtures
     cargo test -q
     just run-if-verdi test-fsdb
     just run-if-xcelium test-shm
+    just run-if-questa test-wlf
 
 [private]
 coverage-src-data: require-container check-ondas-fixtures prepare-waveform-fixtures
@@ -299,6 +354,7 @@ test-aux: require-container
     {{ python }} -m unittest tools/coverage/test_check_coverage.py
     {{ python }} -m unittest discover -s tools/fsdb -p "test_*.py"
     {{ python }} -m unittest discover -s tools/shm -p "test_*.py"
+    {{ python }} -m unittest discover -s tools/wlf -p "test_*.py"
     {{ python }} -m unittest discover -s tools/repo -p "test_*.py"
     {{ python }} -m unittest discover -s tools/skill -p "test_*.py"
 
@@ -434,8 +490,8 @@ bench-release-gate baseline_ref revised_ref="HEAD" profile="private": require-co
     {{ python }} tools/bench/gate.py --baseline-ref "{{ baseline_ref }}" --revised-ref "{{ revised_ref }}" --release-profile "{{ profile }}"
 
 # Capture benchmark artifacts for one source ref
-bench-capture ref="HEAD" fsdb="auto" vcd="never" shm="never": require-container
-    {{ python }} tools/bench/capture.py --ref "{{ ref }}" --fsdb "{{ fsdb }}" --vcd "{{ vcd }}" --shm "{{ shm }}"
+bench-capture ref="HEAD" fsdb="auto" vcd="never" shm="never" wlf="never": require-container
+    {{ python }} tools/bench/capture.py --ref "{{ ref }}" --fsdb "{{ fsdb }}" --vcd "{{ vcd }}" --shm "{{ shm }}" --wlf "{{ wlf }}"
 
 # Compare two benchmark capture directories
 bench-compare golden_dir revised_dir: require-container
@@ -468,6 +524,7 @@ bench-e2e-fsdb-smoke: prepare-fsdb-test-fixtures build-release-fsdb
 check: format-check lint check-actions check-build docs-site-check playground-test
     @just run-if-verdi check-fsdb-build
     @just run-if-xcelium check-shm-build
+    @just run-if-questa check-wlf-build
 
 # CI quality gate
 ci: format-check lint-default check-actions test-aux coverage-src-check check-build docs-site-check playground-test bench-e2e-smoke
@@ -480,10 +537,14 @@ ci-fsdb: lint-fsdb test-fsdb bench-e2e-fsdb-smoke
 [private]
 ci-shm: lint-shm check-shm-build test-shm bench-e2e-shm-smoke
 
+[private]
+ci-wlf: lint-wlf check-wlf-build test-wlf bench-e2e-wlf-smoke
+
 # Run native lint, loader checks, CLI tests, and smoke for available readers
 ci-native: require-container
     @just run-if-verdi ci-fsdb
     @just run-if-xcelium ci-shm
+    @just run-if-questa ci-wlf
 
 # Fix everything
 fix: format lint-fix

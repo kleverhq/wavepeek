@@ -10,7 +10,7 @@ from perf import REPO_ROOT, run_functional_capture, write_wavepeek_artifact
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("format", choices=("vcd", "fst", "fsdb", "shm"))
+    parser.add_argument("format", choices=("vcd", "fst", "fsdb", "shm", "wlf"))
     parser.add_argument("binary", type=Path)
     args = parser.parse_args()
     format_name = args.format

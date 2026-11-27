@@ -2,6 +2,7 @@
 """Prepare WLF files used by the WavePeek tests and benchmark catalog."""
 
 import argparse
+import fcntl
 import hashlib
 import json
 import os
@@ -45,6 +46,13 @@ def fixture_paths(source: Path) -> tuple[Path, Path]:
 
 
 def prepare(source: Path, output: Path, converter: Path) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.with_suffix(".wlf.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        prepare_locked(source, output, converter)
+
+
+def prepare_locked(source: Path, output: Path, converter: Path) -> None:
     marker = output.with_suffix(".wlf.source.json")
     stamp = json.dumps({
         "input": input_identity(source),
@@ -53,7 +61,6 @@ def prepare(source: Path, output: Path, converter: Path) -> None:
     })
     if output.is_file() and output.stat().st_size and marker.is_file() and marker.read_text() == stamp:
         return
-    output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".wlf-", dir=output.parent) as temporary:
         staged = Path(temporary) / output.name
         if source.suffix == ".vcd":

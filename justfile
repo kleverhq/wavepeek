@@ -177,7 +177,7 @@ test-vwdb: require-vwdb prepare-waveform-fixtures
 # Verify VWDB and embedded SHM in one build
 test-vwdb-shm: require-vwdb require-xcelium
     CARGO_TARGET_DIR=target/vwdb-shm bash tools/shm/with_shm_env.sh cargo test --locked --features vwdb,shm \
-        --test vwdb_cli systemc_digital_history_uses_the_selected_shm_directory -- --exact
+        --test vwdb_shm_cli
 
 # Smoke-test VWDB on a small RTL recording
 bench-e2e-vwdb-smoke: build-release-vwdb

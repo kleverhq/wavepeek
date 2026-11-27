@@ -59,3 +59,7 @@ crate-type = ["rlib", "cdylib"]
 name = "wavepeek"
 path = "src/main.rs"
 bench = false
+
+[[test]]
+name = "vwdb_shm_cli"
+required-features = ["vwdb", "shm"]

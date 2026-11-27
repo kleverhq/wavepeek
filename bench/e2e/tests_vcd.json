@@ -1400,6 +1400,8 @@
         "change",
         "--waves",
         "/opt/ondas-fixtures/fst/fst0022-scr1-max-axi-coremark/waveform.vcd",
+        "--from",
+        "2ps",
         "--to",
         "1000ps",
         "--scope",
@@ -1417,6 +1419,7 @@
         "waves": "/opt/ondas-fixtures/fst/fst0022-scr1-max-axi-coremark/waveform.vcd",
         "scope": "TOP.scr1_top_tb_axi.i_top.i_imem_axi",
         "signal_count": 2,
+        "window_from": "2ps",
         "window_to": "1000ps",
         "trigger": "*"
       }
@@ -1431,6 +1434,8 @@
         "change",
         "--waves",
         "/opt/ondas-fixtures/fst/fst0022-scr1-max-axi-coremark/waveform.vcd",
+        "--from",
+        "2ps",
         "--to",
         "1000ps",
         "--scope",
@@ -1448,6 +1453,7 @@
         "waves": "/opt/ondas-fixtures/fst/fst0022-scr1-max-axi-coremark/waveform.vcd",
         "scope": "TOP.scr1_top_tb_axi.i_top.i_imem_axi",
         "signal_count": 1,
+        "window_from": "2ps",
         "window_to": "1000ps",
         "trigger": "*"
       }

@@ -345,6 +345,8 @@ def run_e2e_many(
             if count == binary["wavepeek_json_count"] == binary["hyperfine_json_count"]
             and not binary["failure_count"]
         }
+        if len(completed) == len(sessions):
+            completed.clear()
     for session in sessions:
         session.commands.append(result)
         failed = result.returncode and session.binary_label not in completed

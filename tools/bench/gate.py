@@ -70,6 +70,7 @@ def gate_compare_summary(compare_manifest: Mapping[str, Any]) -> dict[str, Any]:
                 "integrity_errors",
                 "reason",
                 "input_identity",
+                "measured_count",
             ):
                 if field in raw_suite:
                     summary[field] = raw_suite[field]
@@ -123,6 +124,7 @@ def render_gate_summary(manifest: Mapping[str, Any]) -> str:
     lines.extend(
         [
             "See `baseline/`, `revised/`, and `compare/` for captured artifacts and logs.",
+            "Each `e2e-*/manifest.json` records the catalog and input checksums for its run.",
             "",
         ]
     )
@@ -196,7 +198,7 @@ def run_gate(args: argparse.Namespace, manifest: dict[str, Any], out_dir: pathli
     new_fsdb = profile == "private" and first_baseline(baseline_checkout, revised_checkout, "fsdb")
     new_shm = profile == "private" and first_baseline(baseline_checkout, revised_checkout, "shm")
     baseline_fsdb = (
-        FsdbPlan(capture=False, status="first-baseline", reason="baseline ref lacks the fsdb feature")
+        FsdbPlan(capture=False, status="unsupported")
         if new_fsdb
         else assess_fsdb(
             baseline_checkout,
@@ -242,6 +244,12 @@ def run_gate(args: argparse.Namespace, manifest: dict[str, Any], out_dir: pathli
         binary_label="revised",
         strict=bool(profile),
     )
+    for feature, introduced in (("fsdb", new_fsdb), ("shm", new_shm)):
+        if introduced:
+            baseline.suites[f"e2e-{feature}"] = {
+                "status": "first-baseline",
+                "reason": f"baseline ref lacks the {feature} feature",
+            }
 
     # Keep preparation work out of the measured section. Build both refs first,
     # then prepare waveforms, then run each measured suite for baseline and revised
@@ -256,11 +264,6 @@ def run_gate(args: argparse.Namespace, manifest: dict[str, Any], out_dir: pathli
         prepare_fsdb(revised)
     shm_sessions = [revised] if new_shm else [baseline, revised]
     if profile == "private":
-        if new_shm:
-            baseline.suites["e2e-shm"] = {
-                "status": "first-baseline",
-                "reason": "baseline ref lacks the shm feature",
-            }
         for session in shm_sessions:
             build_release_shm(session)
         prepare_shm(revised)
@@ -316,18 +319,21 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--out-dir", type=pathlib.Path)
     parser.add_argument("--fsdb", choices=("auto", "always", "never"), default="auto")
     parser.add_argument("--vcd", choices=("always", "never"), default="never")
-    parser.add_argument("--release-profile", choices=("public", "private"))
+    parser.add_argument(
+        "--release-profile", choices=("public", "private"),
+        help="require VCD and FST, plus FSDB and SHM in the private profile",
+    )
     parser.add_argument(
         "--max-negative-delta-pct",
         type=float,
         default=DEFAULT_TIMING_THRESHOLD_PCT,
-        help="relative median slowdown threshold for same-format FST and FSDB timing",
+        help="relative median slowdown threshold for same-format timing",
     )
     parser.add_argument(
         "--max-negative-delta-seconds",
         type=float,
         default=DEFAULT_TIMING_THRESHOLD_SECONDS,
-        help="absolute median slowdown floor in seconds for same-format FST and FSDB timing",
+        help="absolute median slowdown floor in seconds for same-format timing",
     )
     parser.add_argument(
         "--environment-note",

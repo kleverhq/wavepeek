@@ -2280,6 +2280,20 @@ class JustfileBenchmarkRecipeTest(unittest.TestCase):
         self.assertIn("tools/bench/capture.py", self._recipe_body("bench-capture"))
         self.assertIn("tools/bench/compare.py", self._recipe_body("bench-compare"))
 
+    def test_quality_and_release_recipes_select_required_checks(self) -> None:
+        recipes = self.JUSTFILE_PATH.read_text(encoding="utf-8").splitlines()
+        ci = next(line for line in recipes if line.startswith("ci:"))
+        native = next(line for line in recipes if line.startswith("ci-native:"))
+        self.assertIn("bench-e2e-smoke", ci.split())
+        for format_name in ("vcd", "fst"):
+            self.assertIn(f"bench/e2e/smoke.py {format_name} ", self._recipe_body("bench-e2e-smoke"))
+        for format_name in ("fsdb", "shm"):
+            recipe = f"bench-e2e-{format_name}-smoke"
+            self.assertIn(recipe, native.split())
+            self.assertIn(recipe, self._recipe_body("ci"))
+            self.assertIn(f"bench/e2e/smoke.py {format_name} ", self._recipe_body(recipe))
+        self.assertIn('--release-profile "{{ profile }}"', self._recipe_body("bench-release-gate"))
+
     def test_baseline_update_recipes_removed(self) -> None:
         justfile = self.JUSTFILE_PATH.read_text(encoding="utf-8")
         self.assertNotIn("bench-e2e-update-baseline:", justfile)

@@ -1206,6 +1206,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     binaries = parse_binary_specs(args.binary)
     schedule = str(args.schedule)
     run_dir = resolve_run_dir(args.run_dir, args.out_dir)
+    if strict and any(run_dir.iterdir()):
+        fail(f"error: run: --strict requires an empty run directory: {run_dir}")
     for binary in binaries:
         binary_run_dir(run_dir, binary).mkdir(parents=True, exist_ok=True)
     if verbose:

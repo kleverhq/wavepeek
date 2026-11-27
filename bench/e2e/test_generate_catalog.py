@@ -42,6 +42,7 @@ class GenerateCatalogTest(unittest.TestCase):
         self.assertEqual(scr1["meta"]["window_size"], "4000ns")
         self.assertEqual(scr1["meta"]["trigger"], "scr1_top_tb_axi.io_axi_dmem_araddr")
         self.assertEqual(native_by_name["value_scr1_signals_1000"]["meta"]["input"], "OPB S")
+        self.assertNotIn("scope_count", native_by_name["scope_scr1_all_depth7_json"]["meta"])
 
     def test_catalogs_keep_every_scenario_with_the_expected_fixture_paths(self) -> None:
         source = generate_catalog.DEFAULT_SOURCE

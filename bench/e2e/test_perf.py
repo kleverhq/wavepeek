@@ -72,6 +72,10 @@ class PerfHelpersTest(unittest.TestCase):
                 history.unlink()
                 with self.assertRaisesRegex(SystemExit, "does not match fixture manifest"):
                     perf.input_identity(catalog, tests)
+                recording.rename(fixture / "original")
+                recording.write_bytes(b"unexpected file")
+                with self.assertRaisesRegex(SystemExit, "incomplete VWDB input"):
+                    perf.input_identity(catalog, tests)
 
     @staticmethod
     def _write_hyperfine_artifact(

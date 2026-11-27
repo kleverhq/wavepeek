@@ -306,11 +306,7 @@ def binary_run_dir(run_dir: pathlib.Path, binary: BinarySpec) -> pathlib.Path:
     return run_dir / binary.label
 
 
-def check_published_vwdb(path: pathlib.Path, hashes: Mapping[str, str]) -> None:
-    fixture_root = os.environ.get("ONDAS_FIXTURES_DIR")
-    if not fixture_root or path.parent.parent != pathlib.Path(fixture_root) / "vwdb":
-        return
-    sidecar = path.parent / "fixture.json"
+def check_published_vwdb(path: pathlib.Path, sidecar: pathlib.Path, hashes: Mapping[str, str]) -> None:
     try:
         artifact = json.loads(sidecar.read_text(encoding="utf-8"))["artifact"]
         expected = {part["file"]: part["sha256"] for part in artifact["files"]}
@@ -328,6 +324,8 @@ def input_identity(
         with path.open("rb") as stream:
             return hashlib.file_digest(stream, "sha256").hexdigest()
 
+    fixture_root = os.environ.get("ONDAS_FIXTURES_DIR")
+    vwdb_root = pathlib.Path(fixture_root) / "vwdb" if fixture_root else None
     inputs = {}
     for test in selected_tests:
         command = test["command"]
@@ -344,13 +342,17 @@ def input_identity(
                 continue
             path = REPO_ROOT / name
             try:
+                published_vwdb = path.parent.parent == vwdb_root
                 vwdb_layout = (path / "vwdb_info.json").is_file() and (path / "dsn_0").is_dir()
-                if flag == "--waves" and path.is_dir() and (vwdb_layout or path.suffix.lower() == ".vwdb"):
+                if flag == "--waves" and (
+                    published_vwdb or vwdb_layout or (path.is_dir() and path.suffix.lower() == ".vwdb")
+                ):
                     if not vwdb_layout:
                         fail(f"error: run: incomplete VWDB input {name} for {test['name']}")
                     files = sorted(file for file in path.rglob("*") if file.is_file())
                     hashes = {file.relative_to(path).as_posix(): sha256(file) for file in files}
-                    check_published_vwdb(path, hashes)
+                    if published_vwdb:
+                        check_published_vwdb(path, path.parent / "fixture.json", hashes)
                     inputs[name] = hashes
                 elif flag == "--waves" and path.suffix == ".shm":
                     files = sorted(p for p in path.iterdir() if p.suffix in (".dsn", ".trn"))

@@ -96,6 +96,8 @@ fn native_format(filename: &str) -> Option<&'static str> {
         Some("SHM")
     } else if filename.ends_with(".wlf") {
         Some("WLF")
+    } else if filename.ends_with(".wdb") {
+        Some("WDB")
     } else if filename.ends_with(".vwdb") {
         Some("VWDB")
     } else {
@@ -210,6 +212,11 @@ $enddefinitions $end
                 "WLF is not supported",
             ),
             (
+                vec!["wavepeek", "info", "--waves", "demo.WDB"],
+                "demo.WDB",
+                "WDB is not supported",
+            ),
+            (
                 vec!["wavepeek", "info", "--waves", "other.VWDB"],
                 "demo.vcd",
                 "VWDB is not supported",
@@ -236,12 +243,12 @@ $enddefinitions $end
         let root = run(&["wavepeek", "--help"]);
         assert_eq!(root.status, 0);
         assert!(!root.stdout.contains("Extract the packaged agent skill"));
-        assert!(root.stdout.contains("FSDB/SHM/WLF/VWDB input, skill"));
+        assert!(root.stdout.contains("input accepts VCD and FST"));
 
         let info = run(&["wavepeek", "info", "--help"]);
         assert_eq!(info.status, 0);
         assert!(info.stdout.contains("Path to the active VCD or FST file"));
-        assert!(!info.stdout.contains("VWDB"));
+        assert!(!info.stdout.contains("WDB"));
 
         for command in ["ahb", "apb", "atb", "axi", "axistream", "generic"] {
             let extract = run(&["wavepeek", "extract", command, "--help"]);
@@ -251,7 +258,7 @@ $enddefinitions $end
                     .stdout
                     .contains("Path to the active VCD or FST file")
             );
-            assert!(!extract.stdout.contains("VWDB"));
+            assert!(!extract.stdout.contains("WDB"));
             assert!(!extract.stdout.contains("source-file"));
             assert!(
                 !extract

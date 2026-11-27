@@ -47,6 +47,11 @@ pub(super) fn read_error(path: &Path, operation: &str, error: Error) -> Wavepeek
             format: Format::Wlf,
         } => "; WLF input requires Linux x86_64 GNU, --features wlf, and a compatible QUESTA_HOME",
         Error::NoBackend {
+            format: Format::Wdb,
+        } => {
+            "; WDB input requires Linux x86_64 GNU, --features wdb, and XILINX_VIVADO set to a compatible Vivado installation at build time"
+        }
+        Error::NoBackend {
             format: Format::Vwdb,
         } => {
             "; VWDB input requires Linux x86_64 GNU, --features vwdb, and XCELIUM_HOME set to a compatible installation when building"

@@ -8,7 +8,7 @@ Development, CI, and release checks use the public image defined in `.devcontain
 
 Set `WAVEPEEK_DEV_CONFIG` to a worktree-relative configuration path. To keep the selection across commands, set it in the ignored root `.env`. The launcher sources this file as trusted Bash. An explicit host setting takes precedence.
 
-Copy `.devcontainer/devcontainer.json` to `.devcontainer.local/devcontainer.json` and set its `build.dockerfile` to `../.devcontainer/Dockerfile`. Keep the workspace and user settings and `WAVEPEEK_IN_CONTAINER=1`. Mount the required installation read-only. Set `VERDI_HOME`, `XCELIUM_HOME`, or `QUESTA_HOME` to the applicable container path. Configure converter licenses privately. Keep all vendor payloads, license material, and credentials out of Git and public build contexts.
+Copy `.devcontainer/devcontainer.json` to `.devcontainer.local/devcontainer.json` and set its `build.dockerfile` to `../.devcontainer/Dockerfile`. Keep the workspace and user settings and `WAVEPEEK_IN_CONTAINER=1`. Mount the required installation read-only. Set `VERDI_HOME`, `XCELIUM_HOME`, `QUESTA_HOME`, or `XILINX_VIVADO` to the applicable container path. The WDB CLI tests also use XSim from that installation. Configure tool licenses privately. Keep all vendor payloads, license material, and credentials out of Git and public build contexts.
 
 For a prebuilt private image, replace `build` with `image`. For a derived image, set `build.context` to `.` and `build.dockerfile` to `Dockerfile`. Keep the Dockerfile and its `.dockerignore` in `.devcontainer.local/`.
 

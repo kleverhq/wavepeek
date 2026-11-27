@@ -1,11 +1,11 @@
 ---
 name: wavepeek
-description: Use the wavepeek CLI for deterministic VCD, FST, FSDB, SHM, WLF, or VWDB waveform inspection, including metadata and hierarchy discovery, timestamped values and transitions, Boolean properties, generic synchronous events, AMBA protocol extraction, and JSON or JSONL post-processing.
+description: Use the wavepeek CLI for deterministic VCD, FST, FSDB, SHM, WLF, WDB, or VWDB waveform inspection, including metadata and hierarchy discovery, timestamped values and transitions, Boolean properties, generic synchronous events, AMBA protocol extraction, and JSON or JSONL post-processing.
 ---
 
 # Wavepeek
 
-Use `wavepeek` for deterministic, scriptable questions about RTL waveform dumps. Pass VCD, FST, FSDB, and WLF files or SHM and VWDB database directories to the CLI.
+Use `wavepeek` for deterministic, scriptable questions about RTL waveform dumps. Pass VCD, FST, FSDB, WLF, and WDB files or SHM and VWDB database directories to the CLI.
 
 Wavepeek is a stateless command-line tool. Each invocation opens one dump, runs one query, writes human-readable, JSON, or JSONL output, and exits. It is useful for focused debug, repeatable analysis, and agent workflows. It is not a GUI waveform viewer, a live simulator connection, or a waveform comparison service.
 
@@ -167,7 +167,7 @@ A successful JSONL stream starts with `begin`, contains zero or more `data` and 
 
 ## Safety and inquiry discipline
 
-- Use waveform tools to inspect FST, FSDB, WLF, SHM, and VWDB inputs. Avoid reading raw VCD directly because dumps can be large and timing-sensitive.
+- Use waveform tools to inspect FST, FSDB, WLF, WDB, SHM, and VWDB inputs. Avoid reading raw VCD directly because dumps can be large and timing-sensitive.
 - Use `info` before inventing timestamps for an unfamiliar dump. Explicit time tokens require an integer plus `zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, or `s`; bare numbers and decimal tokens are invalid Wavepeek input.
 - Keep queries bounded with scopes, filters, signal lists, time windows, hierarchy depth, and row limits. Prefer narrowing a query over dumping more rows.
 - With `--scope`, ordinary query names may be relative to that scope or canonical paths inside it. Without `--scope`, use canonical dump-derived paths. Protocol mappings are relative to their selected scope.

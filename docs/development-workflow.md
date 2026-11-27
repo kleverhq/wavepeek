@@ -21,6 +21,7 @@ For a new optional native reader, add a separate availability check and suite to
 ./dev just lint-shm check-shm-build test-shm bench-e2e-shm-smoke
 ./dev just lint-wlf check-wlf-build test-wlf bench-e2e-wlf-smoke
 ./dev just ci-vwdb
+./dev just ci-wdb
 ```
 
 ## Upgrading a checkout with legacy WavePeek hooks

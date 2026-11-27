@@ -140,6 +140,22 @@ bench-e2e-shm-smoke: prepare-shm-test-fixtures build-release-shm
     bash tools/shm/with_shm_env.sh {{ python }} bench/e2e/smoke.py shm ./target/shm/release/wavepeek
 
 [private]
+run-if-vivado recipe: require-container
+    @if [[ -n "${XILINX_VIVADO:-}" ]]; then just "{{ recipe }}"; \
+    else printf '%s\n' 'skip: WDB: XILINX_VIVADO is unset'; fi
+
+# Lint optional WDB support
+lint-wdb: require-container
+    CARGO_TARGET_DIR=target/wdb bash tools/wdb/with_wdb_env.sh cargo clippy --locked --features wdb --all-targets -- -D warnings
+
+# Check CLI regressions and the runtime loader on native WDB recordings
+test-wdb: require-container prepare-waveform-fixtures
+    bash tools/wdb/test_wdb.sh
+
+# Run the WDB reader checks in a private profile
+ci-wdb: lint-wdb test-wdb
+
+[private]
 require-vwdb: require-container
     @{{ python }} tools/xcelium/check_reader_env.py vwdb --require >/dev/null
 
@@ -292,6 +308,7 @@ lint: lint-default
     just run-if-xcelium lint-shm
     just run-if-questa lint-wlf
     just run-if-xcelium lint-vwdb vwdb
+    just run-if-vivado lint-wdb
 
 # Fix linting with clippy
 lint-fix: require-container
@@ -308,6 +325,7 @@ test: require-container check-ondas-fixtures prepare-waveform-fixtures
     just run-if-xcelium test-shm
     just run-if-questa test-wlf
     just run-if-xcelium test-vwdb vwdb
+    just run-if-vivado test-wdb
 
 [private]
 coverage-src-data: require-container check-ondas-fixtures prepare-waveform-fixtures
@@ -599,6 +617,7 @@ ci-native: require-container
     @just run-if-xcelium ci-shm
     @just run-if-questa ci-wlf
     @just run-if-xcelium ci-vwdb vwdb
+    @just run-if-vivado ci-wdb
 
 # Fix everything
 fix: format lint-fix

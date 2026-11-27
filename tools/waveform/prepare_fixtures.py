@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import shutil
@@ -46,14 +47,17 @@ def main() -> int:
         require_tool("iverilog")
         require_tool("vvp")
         require_tool("vcd2fst")
-        policy = load_policy()
         GENERATED_DIR.mkdir(parents=True, exist_ok=True)
         WORK_DIR.mkdir(parents=True, exist_ok=True)
-        reconcile_generated_outputs(policy)
-        for entry in policy.get("source_backed", []):
-            generate_source_backed(entry)
-        for entry in policy.get("derived_outputs", []):
-            generate_derived_output(entry)
+        # All runs use the same work directories and staged output names.
+        with (WORK_DIR / ".lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            policy = load_policy()
+            reconcile_generated_outputs(policy)
+            for entry in policy.get("source_backed", []):
+                generate_source_backed(entry)
+            for entry in policy.get("derived_outputs", []):
+                generate_derived_output(entry)
     except FixtureError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

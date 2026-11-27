@@ -1,8 +1,10 @@
+from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from threading import Event
 import unittest
 from unittest import mock
 
@@ -55,6 +57,39 @@ class WlfToolsTest(unittest.TestCase):
             self.assertEqual(prepare.input_identity(source), first)
             source.write_bytes(b"new data")
             self.assertNotEqual(prepare.input_identity(source), first)
+
+    def test_concurrent_preparation_reuses_the_completed_output(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, converter, output = (root / name for name in ("input.vcd", "converter", "input.wlf"))
+            source.write_bytes(b"input")
+            converter.write_bytes(b"converter")
+            first_conversion = Event()
+            second_lock = Event()
+            flock = prepare.fcntl.flock
+
+            def track_lock(lock, mode):
+                if first_conversion.is_set():
+                    second_lock.set()
+                flock(lock, mode)
+
+            def convert(command, **kwargs):
+                first_conversion.set()
+                self.assertTrue(second_lock.wait(timeout=5))
+                Path(command[-1]).write_bytes(b"output")
+
+            with (
+                mock.patch.object(prepare.fcntl, "flock", side_effect=track_lock),
+                mock.patch.object(prepare.subprocess, "run", side_effect=convert) as conversion,
+                ThreadPoolExecutor(max_workers=2) as pool,
+            ):
+                first = pool.submit(prepare.prepare, source, output, converter)
+                self.assertTrue(first_conversion.wait(timeout=5))
+                second = pool.submit(prepare.prepare, source, output, converter)
+                first.result(timeout=5)
+                second.result(timeout=5)
+                self.assertEqual(conversion.call_count, 1)
+            self.assertEqual(output.read_bytes(), b"output")
 
 
 if __name__ == "__main__":

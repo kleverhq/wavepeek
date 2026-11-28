@@ -341,8 +341,7 @@ Browser behavior:
 - FSDB, SHM, WLF, VWDB, `skill`, and extraction `--source <FILE>` options are not available.
 - Output and time rules match the native `wavepeek` CLI."#;
 const BROWSER_HELP_TEMPLATE: &str = "{about-with-newline}\nUsage: {usage}\n\nWaveform commands:\n  info      Show metadata for one waveform dump.\n  scope     List scopes in a waveform hierarchy.\n  signal    List signals in one waveform scope.\n  value     Read selected signal values at one or more times.\n  change    Read signal values at selected events over a time range.\n  property  Evaluate a Boolean expression at selected events.\n  extract   Extract event rows from waveform signals.\n\nHelper commands:\n  help      Show detailed help for a command path.\n\nOptions:\n{options}{after-help}";
-const BROWSER_NEXT_STEPS: &str =
-    "Browser limits: FSDB/SHM/WLF/VWDB input, skill, and extraction --source files are unavailable.";
+const BROWSER_NEXT_STEPS: &str = "Browser limits: FSDB/SHM/WLF/VWDB input, skill, and extraction --source files are unavailable.";
 
 fn root_after_long_help() -> String {
     let mut help = String::from("Optional features:\n");

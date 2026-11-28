@@ -284,6 +284,10 @@ def build_release_reader(
     )
 
 
+def build_release_shm(session: CaptureSession) -> None:
+    build_release_reader(session, "shm", ("bash", str(session.tooling_root / "tools/shm/with_shm_env.sh")))
+
+
 def prepare_wlf(session: CaptureSession) -> None:
     session.commands.append(
         run_command(
@@ -293,10 +297,6 @@ def prepare_wlf(session: CaptureSession) -> None:
             log_path=session.logs_dir / "wlf-prepare-fixtures.log",
         )
     )
-
-
-def build_release_shm(session: CaptureSession) -> None:
-    build_release_reader(session, "shm", ("bash", str(session.tooling_root / "tools/shm/with_shm_env.sh")))
 
 
 def prepare_shm(session: CaptureSession) -> None:

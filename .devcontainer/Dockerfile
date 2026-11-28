@@ -8,14 +8,18 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN --mount=type=secret,id=ondas_fixtures_token,env=GITHUB_TOKEN set -eu; \
+RUN --mount=type=secret,id=ondas_fixtures_token set -eu; \
     . /tmp/wavepeek-env-contract.sh; \
     curl --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -fsSL -o /tmp/ondas-fixtures.tar.gz \
         "https://github.com/kleverhq/ondas-fixtures/archive/${WAVEPEEK_ONDAS_FIXTURES_REV}.tar.gz"; \
     mkdir -p /tmp/ondas-fixtures "${ONDAS_FIXTURES_DIR}"; \
     tar -xzf /tmp/ondas-fixtures.tar.gz -C /tmp/ondas-fixtures --strip-components=1; \
     cd /tmp/ondas-fixtures; \
-    python3 -B scripts/install.py ${WAVEPEEK_ONDAS_FIXTURES} ${WAVEPEEK_ONDAS_FSDB_FIXTURES} ${WAVEPEEK_ONDAS_WLF_FIXTURES} ${WAVEPEEK_ONDAS_VWDB_FIXTURES}; \
+    fixtures_token=""; \
+    if [ -f /run/secrets/ondas_fixtures_token ]; then \
+        fixtures_token="$(cat /run/secrets/ondas_fixtures_token)"; \
+    fi; \
+    GITHUB_TOKEN="$fixtures_token" python3 -B scripts/install.py ${WAVEPEEK_ONDAS_FIXTURES} ${WAVEPEEK_ONDAS_FSDB_FIXTURES} ${WAVEPEEK_ONDAS_WLF_FIXTURES} ${WAVEPEEK_ONDAS_VWDB_FIXTURES}; \
     for fixture in ${WAVEPEEK_ONDAS_FIXTURES}; do \
         mkdir -p "${ONDAS_FIXTURES_DIR}/${fixture}"; \
         cp "${fixture}/fixture.json" "${fixture}/waveform.fst" "${ONDAS_FIXTURES_DIR}/${fixture}/"; \

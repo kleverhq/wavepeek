@@ -250,7 +250,7 @@ def assert_e2e_subset(*, superset: pathlib.Path, subset: pathlib.Path) -> None:
     extra = sorted(subset_stems - superset_stems)
     if extra:
         raise BenchGateError(
-            f"cross-format artifact set has entries missing from FST capture {superset}: "
+            f"cross-format artifact set has entries missing from capture {superset}: "
             + ", ".join(extra)
         )
 

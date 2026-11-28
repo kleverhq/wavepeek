@@ -155,6 +155,11 @@ class BenchGateHelperTest(unittest.TestCase):
 
             compare.assert_e2e_subset(superset=superset, subset=subset)
 
+            (subset / "extra.wavepeek.json").write_text("{}", encoding="utf-8")
+            with self.assertRaises(common.BenchGateError) as error:
+                compare.assert_e2e_subset(superset=superset, subset=subset)
+            self.assertIn(f"missing from capture {superset}: extra", str(error.exception))
+
     def test_compare_command_requires_clean_current_tooling(self) -> None:
         args = argparse.Namespace(
             golden=pathlib.Path("/golden"),

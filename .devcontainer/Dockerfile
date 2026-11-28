@@ -8,7 +8,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN set -eu; \
+RUN --mount=type=secret,id=ondas_fixtures_token,env=GITHUB_TOKEN set -eu; \
     . /tmp/wavepeek-env-contract.sh; \
     curl --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -fsSL -o /tmp/ondas-fixtures.tar.gz \
         "https://github.com/kleverhq/ondas-fixtures/archive/${WAVEPEEK_ONDAS_FIXTURES_REV}.tar.gz"; \

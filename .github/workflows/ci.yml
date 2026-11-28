@@ -40,6 +40,8 @@ jobs:
       - name: Run checks in devcontainer (cache write)
         if: github.event.pull_request.head.repo.full_name == github.repository
         uses: devcontainers/ci@v0.3
+        env:
+          WAVEPEEK_ONDAS_FIXTURES_TOKEN: ${{ github.token }}
         with:
           configFile: .devcontainer/devcontainer.json
           cacheFrom: |
@@ -52,6 +54,8 @@ jobs:
       - name: Run checks in devcontainer (cache read-only)
         if: github.event.pull_request.head.repo.full_name != github.repository
         uses: devcontainers/ci@v0.3
+        env:
+          WAVEPEEK_ONDAS_FIXTURES_TOKEN: ${{ github.token }}
         with:
           configFile: .devcontainer/devcontainer.json
           push: never

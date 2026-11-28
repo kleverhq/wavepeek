@@ -73,6 +73,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+          WAVEPEEK_ONDAS_FIXTURES_TOKEN: ${{ github.token }}
         with:
           configFile: .devcontainer/devcontainer.json
           cacheFrom: |

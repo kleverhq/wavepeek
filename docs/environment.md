@@ -16,4 +16,6 @@ For a prebuilt private image, replace `build` with `image`. For a derived image,
 
 The image installs selected, pinned Ondas fixtures before tests run. Tests use them offline. `ONDAS_FIXTURES_DIR` is writable so local conversions can live next to their inputs. When changing the corpus version, selection, or layout in `.devcontainer/env_contract.sh`, update any affected provisioning, rebuild the container, and run `./dev just ci`.
 
+GitHub Actions uses its job token for fixture downloads. Docker mounts it as a BuildKit secret for the fixture installation step and removes the mount when the step ends.
+
 `DEBUG=1` enables maintainer diagnostics outside the public CLI contract.

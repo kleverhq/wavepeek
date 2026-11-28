@@ -105,6 +105,8 @@ jobs:
 
       - name: Run release quality gate in devcontainer
         uses: devcontainers/ci@v0.3
+        env:
+          WAVEPEEK_ONDAS_FIXTURES_TOKEN: ${{ github.token }}
         with:
           configFile: .devcontainer/devcontainer.json
           cacheFrom: |

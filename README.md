@@ -52,7 +52,7 @@ To install `wavepeek` on macOS or Linux, run:
 curl --proto '=https' --tlsv1.2 -LsSf https://kleverhq.github.io/wavepeek/install.sh | sh
 ```
 
-The prebuilt binary supports VCD, FST, and uncompressed GHW recorded at 1fs. FSDB, SHM, WLF, WDB, and VWDB require optional source builds on Linux x86_64 with the corresponding SDK.
+The prebuilt binary supports VCD, FST, and GHW. FSDB, SHM, WLF, WDB, and VWDB require optional source builds on Linux x86_64 with the corresponding SDK.
 
 Alternatively, ask your agent to do the setup:
 

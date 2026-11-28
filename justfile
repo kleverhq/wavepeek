@@ -75,20 +75,8 @@ prepare-wlf-fixtures filter="": require-questa prepare-waveform-fixtures
     {{ python }} tools/wlf/prepare_wlf_fixtures.py --bench-only --filter '{{ filter }}'
 
 # Run WLF CLI regressions
-test-wlf: check-wlf-test-fixtures prepare-wlf-test-fixtures
+test-wlf: check-ondas-fixtures prepare-wlf-test-fixtures
     CARGO_TARGET_DIR=target/wlf cargo test --locked --features wlf --lib --test wlf_cli --test cli_contract --test change_query --test waveform_errors_cli
-
-[private]
-check-wlf-test-fixtures: require-questa
-    @. ./.devcontainer/env_contract.sh; \
-    for fixture in $WAVEPEEK_ONDAS_WLF_FIXTURES; do \
-        for file in waveform.wlf fixture.json; do \
-            if [ ! -f "${ONDAS_FIXTURES_DIR}/$fixture/$file" ]; then \
-                printf '%s\n' "error: file: required fixture missing at ${ONDAS_FIXTURES_DIR}/$fixture/$file (rebuild the devcontainer image and run ./dev --recreate true)" >&2; \
-                exit 1; \
-            fi; \
-        done; \
-    done
 
 # Run WLF E2E benchmarks
 bench-e2e-wlf-run filter="": (prepare-wlf-fixtures filter) build-release-wlf
@@ -222,14 +210,8 @@ run-if-verdi recipe: require-container
 [private]
 check-ondas-fixtures: require-container
     @. ./.devcontainer/env_contract.sh; \
-    for fixture in $WAVEPEEK_ONDAS_FIXTURES; do \
-        if [ ! -f "${ONDAS_FIXTURES_DIR}/$fixture/waveform.fst" ]; then \
-            printf '%s\n' "error: file: required fixture missing at ${ONDAS_FIXTURES_DIR}/$fixture/waveform.fst" >&2; \
-            exit 1; \
-        fi; \
-    done; \
-    for fixture in $WAVEPEEK_ONDAS_FSDB_FIXTURES; do \
-        for file in waveform.fsdb fixture.json; do \
+    for fixture in $WAVEPEEK_ONDAS_FIXTURES $WAVEPEEK_ONDAS_FSDB_FIXTURES $WAVEPEEK_ONDAS_WLF_FIXTURES; do \
+        for file in "waveform.${fixture%%/*}" fixture.json; do \
             if [ ! -f "${ONDAS_FIXTURES_DIR}/$fixture/$file" ]; then \
                 printf '%s\n' "error: file: required fixture missing at ${ONDAS_FIXTURES_DIR}/$fixture/$file (rebuild the devcontainer image and run ./dev --recreate true)" >&2; \
                 exit 1; \
@@ -594,7 +576,7 @@ check: format-check lint check-actions check-build docs-site-check playground-te
     @just run-if-xcelium check-vwdb-build vwdb
 
 # CI quality gate
-ci: format-check lint-default check-actions check-ondas-vwdb-fixtures test-aux coverage-src-check check-build docs-site-check playground-test bench-e2e-smoke
+ci: format-check lint-default check-actions check-ondas-fixtures check-ondas-vwdb-fixtures test-aux coverage-src-check check-build docs-site-check playground-test bench-e2e-smoke
     cargo test --doc
     @just ci-native
 

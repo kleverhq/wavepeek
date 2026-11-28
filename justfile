@@ -226,7 +226,7 @@ run-if-verdi recipe: require-container
 [private]
 check-ondas-fixtures: require-container
     @. ./.devcontainer/env_contract.sh; \
-    for fixture in $WAVEPEEK_ONDAS_FIXTURES $WAVEPEEK_ONDAS_FSDB_FIXTURES $WAVEPEEK_ONDAS_WLF_FIXTURES; do \
+    for fixture in $WAVEPEEK_ONDAS_FIXTURES $WAVEPEEK_ONDAS_FSDB_FIXTURES $WAVEPEEK_ONDAS_WLF_FIXTURES $WAVEPEEK_ONDAS_WDB_FIXTURES; do \
         for file in "waveform.${fixture%%/*}" fixture.json; do \
             if [ ! -f "${ONDAS_FIXTURES_DIR}/$fixture/$file" ]; then \
                 printf '%s\n' "error: file: required fixture missing at ${ONDAS_FIXTURES_DIR}/$fixture/$file (rebuild the devcontainer image and run ./dev --recreate true)" >&2; \

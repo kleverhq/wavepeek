@@ -38,7 +38,7 @@ fn help_reports_wdb_enabled() {
     let output = wavepeek_cmd().arg("--help").output().unwrap();
     assert!(output.status.success(), "{output:?}");
     let help = String::from_utf8(output.stdout).unwrap();
-    assert!(help.contains("WDB - enabled"));
+    assert!(help.lines().any(|line| line == "- WDB - enabled"), "{help}");
 }
 
 #[test]

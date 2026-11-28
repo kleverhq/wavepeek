@@ -18,22 +18,16 @@ export WAVEPEEK_WDB_FIXTURES="$output"
 export CARGO_TARGET_DIR=target/wdb
 source_dir="$PWD/tests/fixtures/source"
 
-# Released ondas-fixtures wdb0305-enum-core. Use its native enum and name metadata.
+# Use the native enum and name metadata from the pinned fixture corpus.
 enum_wdb="$output/enum-core.wdb"
-cache="$PWD/tmp/wdb/wdb0305-enum-core.wdb"
 digest=96c2cb9d88fdd22296b26aac5b15d8826f1818bddf50433d82055d32665427dc
-if [[ -f "$cache" ]]; then
-    cp -- "$cache" "$enum_wdb"
-else
-    release=https://github.com/kleverhq/ondas-fixtures/releases/download/files-4aec75b57bad
-    curl -fsSL --retry 3 --connect-timeout 15 --max-time 60 \
-        "$release/wdb0305-enum-core.$digest.wdb.gz" | gzip -dc > "$enum_wdb"
+source_wdb="${ONDAS_FIXTURES_DIR:?set ONDAS_FIXTURES_DIR to the pinned corpus}/wdb/wdb0305-enum-core/waveform.wdb"
+if [[ ! -f "$source_wdb" ]]; then
+    printf 'error: wdb: missing %s (rebuild the devcontainer image and run ./dev --recreate true)\n' "$source_wdb" >&2
+    exit 1
 fi
+cp -- "$source_wdb" "$enum_wdb"
 printf '%s  %s\n' "$digest" "$enum_wdb" | sha256sum -c
-if [[ ! -f "$cache" ]]; then
-    cp -- "$enum_wdb" "$output/enum-core.cached"
-    mv -fT -- "$output/enum-core.cached" "$cache"
-fi
 
 for name in m2_core extract_apb3; do
     mkdir "$output/$name"

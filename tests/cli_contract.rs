@@ -207,7 +207,7 @@ fn top_level_help_documents_general_conventions() {
         .stdout(predicate::str::contains(EXPECTED_FSDB_FEATURE_STATUS))
         .stdout(predicate::str::contains(if cfg!(feature = "shm") { "SHM - enabled" } else { "SHM - disabled" }))
         .stdout(predicate::str::contains(if cfg!(feature = "wlf") { "WLF - enabled" } else { "WLF - disabled" }))
-        .stdout(predicate::str::contains(if cfg!(feature = "wdb") { "WDB - enabled" } else { "WDB - disabled" }))
+        .stdout(predicate::str::contains(if cfg!(feature = "wdb") { "\n- WDB - enabled" } else { "\n- WDB - disabled" }))
         .stdout(predicate::str::contains(if cfg!(feature = "vwdb") { "VWDB - enabled" } else { "VWDB - disabled" }))
         .stdout(predicate::str::contains(
             "Use `--json` for one JSON value or `--jsonl` for a stream of JSON records.",

@@ -19,7 +19,7 @@ RUN --mount=type=secret,id=ondas_fixtures_token set -eu; \
     if [ -f /run/secrets/ondas_fixtures_token ]; then \
         fixtures_token="$(cat /run/secrets/ondas_fixtures_token)"; \
     fi; \
-    GITHUB_TOKEN="$fixtures_token" python3 -B scripts/install.py ${WAVEPEEK_ONDAS_FIXTURES} ${WAVEPEEK_ONDAS_FSDB_FIXTURES} ${WAVEPEEK_ONDAS_WLF_FIXTURES} ${WAVEPEEK_ONDAS_VWDB_FIXTURES}; \
+    GITHUB_TOKEN="$fixtures_token" python3 -B scripts/install.py ${WAVEPEEK_ONDAS_FIXTURES} ${WAVEPEEK_ONDAS_FSDB_FIXTURES} ${WAVEPEEK_ONDAS_WLF_FIXTURES} ${WAVEPEEK_ONDAS_VWDB_FIXTURES} ${WAVEPEEK_ONDAS_WDB_FIXTURES}; \
     for fixture in ${WAVEPEEK_ONDAS_FIXTURES}; do \
         mkdir -p "${ONDAS_FIXTURES_DIR}/${fixture}"; \
         cp "${fixture}/fixture.json" "${fixture}/waveform.fst" "${ONDAS_FIXTURES_DIR}/${fixture}/"; \
@@ -35,6 +35,10 @@ RUN --mount=type=secret,id=ondas_fixtures_token set -eu; \
     for fixture in ${WAVEPEEK_ONDAS_VWDB_FIXTURES}; do \
         mkdir -p "${ONDAS_FIXTURES_DIR}/${fixture}"; \
         cp -a "${fixture}/." "${ONDAS_FIXTURES_DIR}/${fixture}/"; \
+    done; \
+    for fixture in ${WAVEPEEK_ONDAS_WDB_FIXTURES}; do \
+        mkdir -p "${ONDAS_FIXTURES_DIR}/${fixture}"; \
+        cp "${fixture}/fixture.json" "${fixture}/waveform.wdb" "${ONDAS_FIXTURES_DIR}/${fixture}/"; \
     done; \
     cp -a LICENSES "${ONDAS_FIXTURES_DIR}/"; \
     rm -rf /tmp/ondas-fixtures /tmp/ondas-fixtures.tar.gz

@@ -772,9 +772,10 @@ class BenchGateHelperTest(unittest.TestCase):
             metrics = {"mean": 0.01, "median": 0.01, "min": 0.01, "max": 0.01}
             common.write_json(timing, {"results": [{**metrics, "times": [0.01]}]})
             common.write_json(shm_run / "case.wavepeek.json", {"data": [], "diagnostics": []})
-            wlf_run = root / "e2e-wlf/revised"
-            common.write_json(wlf_run / "case.hyperfine.json", {"results": [{**metrics, "times": [0.01]}]})
-            common.write_json(wlf_run / "case.wavepeek.json", {"data": [], "diagnostics": []})
+            for fmt in ("wlf", "vwdb"):
+                run = root / f"e2e-{fmt}/revised"
+                common.write_json(run / "case.hyperfine.json", {"results": [{**metrics, "times": [0.01]}]})
+                common.write_json(run / "case.wavepeek.json", {"data": [], "diagnostics": []})
             real_compare = compare.run_e2e_compare
 
             def compare_first_baseline(**kwargs: object) -> dict[str, object]:
@@ -804,6 +805,7 @@ class BenchGateHelperTest(unittest.TestCase):
                 self.assertIn("cross-golden-fst-vcd", names)
                 self.assertNotIn("cross-golden-fst-shm", names)
                 self.assertIn("e2e-shm-first-baseline-validation", names)
+                self.assertIn("e2e-wlf-first-baseline-validation", names)
                 self.assertIn("e2e-vwdb-first-baseline-validation", names)
                 self.assertIn("cross-revised-vwdb-fst", names)
                 self.assertNotIn("cross-golden-vwdb-fst", names)
@@ -980,6 +982,7 @@ class BenchGateHelperTest(unittest.TestCase):
                     gate,
                     build_release_shm=mock.Mock(side_effect=record("build-shm")),
                     prepare_shm=mock.Mock(side_effect=record("prepare-shm")),
+                    prepare_wlf=mock.Mock(side_effect=record("prepare-wlf")),
                     prepare_vwdb=mock.Mock(side_effect=record("prepare-vwdb")),
                     build_release_reader=mock.Mock(
                         side_effect=lambda session, feature: order.append(f"build-{feature}-{session.label}"),
@@ -988,6 +991,7 @@ class BenchGateHelperTest(unittest.TestCase):
                         f"e2e-{kwargs['format_name']}-" + "-".join(s.label for s in kwargs["sessions"])
                     )),
                     run_e2e_shm_many=mock.Mock(side_effect=lambda *a, **k: order.append("e2e-shm-many")),
+                    run_e2e_wlf_many=mock.Mock(side_effect=lambda *a, **k: order.append("e2e-wlf-many")),
                 ),
                 mock.patch.object(gate, "run_e2e_fst_many", side_effect=lambda *a, **k: order.append("e2e-fst-many")),
                 mock.patch.object(gate, "run_e2e_vcd_many", side_effect=lambda *a, **k: order.append("e2e-vcd-many")),
@@ -1014,6 +1018,9 @@ class BenchGateHelperTest(unittest.TestCase):
                 "build-shm-baseline",
                 "build-shm-revised",
                 "prepare-shm-revised",
+                "build-wlf-baseline",
+                "build-wlf-revised",
+                "prepare-wlf-revised",
                 "build-vwdb-baseline",
                 "build-vwdb-revised",
                 "prepare-vwdb-revised",
@@ -1023,6 +1030,7 @@ class BenchGateHelperTest(unittest.TestCase):
                 "e2e-vcd-many",
                 "e2e-fsdb-many",
                 "e2e-shm-many",
+                "e2e-wlf-many",
                 "finalize-baseline",
                 "finalize-revised",
                 "compare",

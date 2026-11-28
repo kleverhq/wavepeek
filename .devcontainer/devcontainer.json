@@ -4,7 +4,8 @@
         "context": "..",
         "dockerfile": "Dockerfile",
         "options": [
-            "--network=host"
+            "--network=host",
+            "--secret=id=ondas_fixtures_token,env=WAVEPEEK_ONDAS_FIXTURES_TOKEN"
         ]
     },
     "containerEnv": {

@@ -73,6 +73,8 @@ jobs:
 
       - name: Stage docs in devcontainer
         uses: devcontainers/ci@v0.3
+        env:
+          WAVEPEEK_ONDAS_FIXTURES_TOKEN: ${{ github.token }}
         with:
           configFile: .devcontainer/devcontainer.json
           cacheFrom: |
@@ -141,6 +143,8 @@ jobs:
 
       - name: Verify and push staged docs in devcontainer
         uses: devcontainers/ci@v0.3
+        env:
+          WAVEPEEK_ONDAS_FIXTURES_TOKEN: ${{ github.token }}
         with:
           configFile: .devcontainer/devcontainer.json
           cacheFrom: |
@@ -170,6 +174,7 @@ jobs:
         env:
           BASE_URL: ${{ steps.deployment.outputs.page_url }}
           GH_TOKEN: ${{ github.token }}
+          WAVEPEEK_ONDAS_FIXTURES_TOKEN: ${{ github.token }}
         with:
           configFile: .devcontainer/devcontainer.json
           cacheFrom: |
